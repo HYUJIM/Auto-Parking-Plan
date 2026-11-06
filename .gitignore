@@ -1,22 +1,6 @@
-__pycache__/
-*.py[cod]
-.venv/
-venv/
-.env
-*.egg-info/
-build/
-dist/
-.pytest_cache/
-.ruff_cache/
-.coverage
-htmlcov/
-# 로컬 실행 산출물
-var/
-*.sqlite3
-*.db
+# 저장소 공통 (각 폴더의 세부 규칙은 BE/.gitignore 등에 둔다)
 .DS_Store
 Thumbs.db
-# terraform
-deploy/aws/.terraform/
-deploy/aws/*.tfstate*
-deploy/aws/.terraform.lock.hcl
+.idea/
+.vscode/
+.env

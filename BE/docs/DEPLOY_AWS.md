@@ -1,11 +1,11 @@
 # AWS 배포 절차
 
-리전 `ap-northeast-2`(서울). Terraform 1.6 이상, AWS CLI, Docker 가 필요합니다. 윈도우·맥 모두 같은 명령입니다.
+리전 `ap-northeast-2`(서울). Terraform 1.6 이상, AWS CLI, Docker 가 필요합니다. 윈도우·맥 모두 같은 명령이며, 이미지 빌드·Docker 명령은 `BE/` 폴더에서 실행합니다.
 
 ## 1. 인프라 생성
 
 ```bash
-cd deploy/aws
+cd BE/deploy/aws
 terraform init
 terraform apply -var env=dev
 ```

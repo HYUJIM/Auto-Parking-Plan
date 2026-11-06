@@ -1,8 +1,15 @@
-name: ci
+name: be-ci
 
+# 백엔드(BE/) 변경에만 실행
 on:
   push:
+    paths: ["BE/**", ".github/workflows/**"]
   pull_request:
+    paths: ["BE/**", ".github/workflows/**"]
+
+defaults:
+  run:
+    working-directory: BE
 
 jobs:
   test:
@@ -30,7 +37,7 @@ jobs:
         if: always()
         with:
           name: e2e-${{ matrix.os }}-${{ matrix.python }}
-          path: var/e2e_report*.json
+          path: BE/var/e2e_report*.json
 
   postgres:
     runs-on: ubuntu-latest
