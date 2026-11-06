@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+
+
+
+
+
+
+
+
+
+
+<!-- memberLevel --><script language="JavaScript" src="/js/common/common.js"></script><script language="JavaScript" src="../../js/common/calendar2.js"></script><!-- <link href="../../css/calendar_css.css" rel="stylesheet" type="text/css"> --><script language="javascript"><!--	//조회하기	function func_search(pageSize){		document.form.pageSize.value = pageSize;		document.form.cPage.value=1;		document.form.searchOk.value="0";		document.form.target = "_self";		document.form.action="/stdcode/regCodeL.do";		document.form.submit();	}	//문의	function func_codesearch(){		window.open('/sr/codeRequestL.do?codeseId=00002&codeseNm=법정동코드' ,'popup','width=860,height=630,status=yes,scrollbars=auto');					}	//수정하기	function func_modi(){		var cnt 	= 1;		var rowCnt1 = 1; //11		var pageSize = 10; //10		var	loopCnt	="";		var chkcnt 	= 0;		var	regionCd_pk	= "";		if(cnt == 1){			if(document.form.chkbox.checked){				regionCd_pk = document.form.chkbox.value;			 	chkcnt++;			}		}else{			if(rowCnt1 > pageSize){ //출력갯수만큼 조회될때				loopCnt = pageSize;			}else{					//출력갯수 보다 작을때				loopCnt = rowCnt1;			}			for(var i=0;i<=loopCnt-1;i++){				if(document.form.chkbox[i].checked){					regionCd_pk = document.form.chkbox[i].value;				 	chkcnt++;				 }			}			}		if(chkcnt == 0){			alert("하나를 선택해 주세요.");			return;		}else if(chkcnt > 1){			alert("하나만 선택해 주세요.");			return;		}		document.form.regionCd_pk.value = regionCd_pk;		document.form.target = "_self";		document.form.action = "/stdcode/regCodeU.do";		document.form.submit();	}		//다른페이지보기	function func_move(cPage){		document.form.cPage.value=cPage;		document.form.target = "_self";				document.form.action="/stdcode/regCodeL.do";		document.form.submit();	} 		function func_want(frm,val){		var cnt = document.form.chkWantCnt.value;		if(val == "0"){			frm.value = "1";			cnt = eval(cnt) - 1;		}else{			frm.value = "0";			cnt = eval(cnt) + 1;					}		document.form.chkWantCnt.value = cnt;	}	 	//시/도에 따라서 시/구/군 콤보 변경하기	function func_sgg(searchOk){ 		//sDel(document.form.sggCd); 		document.form.sggCd.length = 1; 		document.form.umdCd.length = 1; 		document.form.riCd.length = 1;		document.form.searchOk.value=searchOk;		document.form.action="/stdcode/sggCodeIL.do";		document.form.target="hidden_frame";		document.form.submit();	}	//시/구/군에 따라서 읍면동 콤보 변경하기	function func_umd(searchOk){ 		//sDel(document.form.umdCd); 		document.form.umdCd.length = 1; 		document.form.riCd.length = 1;		document.form.searchOk.value=searchOk;		document.form.action="/stdcode/umdCodeIL.do";		document.form.target="hidden_frame";		document.form.submit();	}		//읍면동에 따라서 리 콤보 변경하기	function func_ri(searchOk){ 		//sDel(document.form.riCd); 		document.form.riCd.length = 1;		document.form.searchOk.value=searchOk;		document.form.action="/stdcode/riCodeIL.do";		document.form.target="hidden_frame";		document.form.submit();	}				//콤보박스 삭제하기	function sDel(srcList){		for( var i = srcList.options.length ; srcList.options.length > 1 ; i-- ) 		{ 			if ( srcList.options[i] != null ){				srcList.options[i] = null;			}		}	}		//온로드시 시군구 콤보박스 	function func_onloadSgg(searchOk){		var sidoCd = "*";		if(sidoCd*1 > 0){			func_sgg(1);		}else{			func_sgg(0)		}		//func_onloadUmd(1);	}	 	//온로드시 읍면동 콤보박스 	function func_onloadUmd(searchOk){		var umdCd = "*";		if(umdCd*1 > 0){			func_umd(1);		}else{			func_umd(0);		}	}			//사용자 검색 파일 다운로드	function func_fileDown(){		if("1" > 20000){			alert("20000건 이하만 지원합니다.");			return;		}		if(confirm("자료를 다운로드하시겠습니까?\n자료 건수에 따라 다운로드에 일정 시간 소요될 수 있습니다.")) {			if(submitDownloadCheck(15)) {				alert("다운로드 중입니다.\n" + getDownloadSec() + "후에 다시 시도해주세요.");				return;			}			document.form.target="hidden_frame";			document.form.action="/stdcode/regCodeFileDown.do?cPage=1&pageSize="+1;			document.form.submit();		}	}		//전체 검색 파일 다운로드	function func_fullfileDown(){				if(confirm("자료를 다운로드하시겠습니까?\n자료 건수에 따라 다운로드에 일정 시간 소요될 수 있습니다.")) {			if(submitAllDownloadCheck(15)) {				alert("다운로드 중입니다.\n" + getAllDownloadSec() + "후에 다시 시도해주세요.");				return;			}			document.form.target="hidden_frame";			document.form.action="/etc/codeFullDown.do";			document.form.codeseId.value="법정동코드";			document.form.submit();		}	}		function zf(i) 	{ 		if (i < 10)			return '0' + i;		else			return i;	}	function func_date(selectedval){		with(document.form) {			d = new Date(); 			enddate.value = d.getFullYear() + "-" +  zf(d.getMonth()+1)  + "-" + zf(d.getDate());			if (selectedval == '7'){				d.setHours(-168);			} else if (selectedval == "1"){				d.setMonth(d.getMonth()-1);			} else {				d.setMonth(d.getMonth()-3);			}			stdate.value =  d.getFullYear() + "-" + zf(d.getMonth()+1)  + "-" + zf(d.getDate());		}	}	//제개정현황	function func_jaegae(){		window.open('/request/codeAccountPL.do?codese_id=00002', 'jaegae', 'width=430,height=430,scrollbars=auto');  	}	//변경관리방안	function func_byungyung(){		window.open('/request/adminStdCodeAccountChgPR.do?codese_id=00002', 'byungyung', 'width=810,height=380,scrollbars=yes left=0,top=0');  	}		function date_init(){		document.form.stdate.value = "";		document.form.enddate.value = "";	}	// 전체 체크박스	function func_choice(val){		var frm = document.form;		if(val == "AllChkV"){			var allChk = document.getElementById('AllChkV').checked;			if(allChk) {				form.chkHigh.checked = true;					form.chkOrder.checked = true;						form.chkCrtDt.checked = true;				form.chkClsDt.checked = true;				form.chkLocatDt.checked = true;				form.chkLow.checked = true;				form.chkJumin.checked = true;				form.chkJijuk.checked = true;								form.chkHigh.value = "0";					form.chkOrder.value = "0";						form.chkCrtDt.value = "0";				form.chkClsDt.value = "0";				form.chkLocatDt.value = "0";				form.chkLow.value = "0";				form.chkJumin.value = "0";				form.chkJijuk.value = "0";				allChk = "0";			} else {				form.chkHigh.checked = false;					form.chkOrder.checked = false;						form.chkCrtDt.checked = false;				form.chkClsDt.checked = false;				form.chkLocatDt.checked = false;				form.chkLow.checked = false;				form.chkJumin.checked = false;				form.chkJijuk.checked = false;								form.chkHigh.value = "1";					form.chkOrder.value = "1";						form.chkCrtDt.value = "1";				form.chkClsDt.value = "1";				form.chkLocatDt.value = "1";				form.chkLow.value = "1";				form.chkJumin.value = "1";				form.chkJijuk.value = "1";				allChk = "1";			}		}	}//--></script><!-- top -->  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<title>
+	
+		법정동코드목록조회 -
+	
+	행정표준코드관리시스템
+</title>
+<link rel="stylesheet" type="text/css" href="/css/common.css">
+<link rel="stylesheet" type="text/css" href="/css/default.css">
+<link rel="stylesheet" type="text/css" href="/css/index.css">
+<link rel="stylesheet" type="text/css" href="/css/layout.css">
+<link rel="stylesheet" type="text/css" href="/css/ui.dynatree.css"/>
+
+<script type="text/javascript" src="/js/common/jquery.min.js"></script>
+<script type="text/javascript" src="/js/common/jquery-ui.custom.min.js"></script>
+
+<script type="text/javascript" src="/js/common/placeholders.min.js"></script>
+<script type="text/javascript" src="/js/common/jquery.cookie.js"></script>
+<script type="text/javascript" src="/js/common/json2.js"></script>
+<script type="text/javascript" src="/js/common/jquery.dynatree.js"></script>
+<script type="text/javascript" src="/js/common/common2.js"></script>
+<script type="text/javascript" src="/js/common/calendar2.js"></script>
+
+<script type="text/JavaScript">
+$(document).ready(function() {
+	initGnb();
+});
+
+chkSession = function(){
+	 var currentTime = new Date().getTime();
+	 var chk = (((currentTime * 1)- 1793935422590) / 1000) > 1800;
+	 var lt = "null";
+
+	 if(lt=="null" && chk == true){
+		 alert('세션이 만료되어 메인화면으로 이동합니다.');
+		 document.location.href = "/indexFrame.do";
+	 } else {
+		 doLoginAction();
+	 }
+
+};
+
+doLoginAction = function(){
+	var form = document.gPkiForm;
+	var target = document.getElementById("divForm");;
+    Login(target, form);
+};
+
+<!--
+	function forceLogin() {
+		document.duplicateLogin.duplicateForcedLogin.value = "Y";
+		document.gPkiForm.gpkiForcedLogin.value = "Y";
+		document.duplicateLogin.action="/usrmng/loginok.do";
+		document.duplicateLogin.submit();
+	}
+	
+	function forceClose() {
+		$("#modalWindow2").remove();
+		document.duplicateLogin.duplicateForcedLogin.value = "N";
+		document.gPkiForm.gpkiForcedLogin.value = "N";
+		$("#forcedLoginDialog").fadeOut();
+		
+		document.duplicateLogin.action = "/etc/duplicateLoginCancle.do";
+		document.duplicateLogin.submit();
+	}
+	
+	function forceOpen() {
+		var div = $('#forcedLoginDialog');
+		div.css("position", "absolute");
+		div.css("top", Math.max(0, (($(window).height() - div.outerHeight()) / 2) + $(window).scrollTop()) + "px");
+		div.css("left", Math.max(0, (($(window).width() - div.outerWidth()) / 2) + $(window).scrollLeft()) + "px");
+		
+		var i2 = document.createElement("div");
+		i2.className = "modalWindow";
+		i2.setAttribute("id", "modalWindow2");
+		i2.setAttribute("style","display: block;position: fixed;border: 0;left: 0;top: 0;width: 100%;height: 10000px;background: #000;opacity: .3;filter: alpha(opacity : 40);z-index:1;");
+		document.getElementById("wrap").appendChild(i2);
+		
+		div.fadeIn(500);
+	}
+	
+	function hidestatus(){
+		window.status='';
+		return true;
+	}
+
+	if (document.layers)
+	document.captureEvents(Event.MOUSEOVER | Event.MOUSEOUT);
+
+	document.onmouseover=hidestatus;
+	document.onmouseout=hidestatus;
+
+	function idPwSearch(){
+		document.form99.action="/usrmng/idPwSearchR.do";
+		document.form99.target = "_self";
+		document.form99.submit();
+	}
+
+	function userReg(){
+		document.form99.action="/usrmng/userRegC.do";
+		document.form99.target = "_self";
+		document.form99.submit();
+	}
+
+	function doDigitalSign() {
+		var authReqMsg = "";
+		authReqMsg = GPKI.GetAuthReq();
+
+		if(authReqMsg != "" && authReqMsg != null) {
+			document.form99.signature.value = authReqMsg;
+			document.form99.logintype.value="4";
+			document.form99.action="/usrmng/loginok.do";
+			document.form99.target = "hidden_frame999";
+			document.form99.submit();
+		} else {
+			return;
+		}
+	}
+
+	function doDigitalSignaaaa() {
+		window.open('/usrmng/certification.do' ,'popup','width=430,height=402');
+	}
+
+	function pkilogin(){
+		document.form99.logintype.value="3";
+		document.form99.action="/usrmng/loginok.do";
+		document.form99.target = "hidden_frame999";
+		document.form99.submit();
+
+	}
+
+	
+	function goGpki(){
+		window.open("http://www.gpki.go.kr/","","");
+	}
+
+	function GpkiLogin(){
+		var thisForm = document.form99;
+		document.form99.logintype.value="4";
+		document.form99.target = "hidden_frame";
+		thisForm.action = "/usrmng/loginok.do";
+
+		Login1(thisForm);
+	}
+
+	
+	function goInstall() {
+		document.location.href = "/gpkisecureweb/install.jsp";
+	}
+
+	
+	function movePages(page, checked, gpkiYn) {
+		var form = document.gPkiForm;
+
+		if(page == "0") { 
+			if(checked == "1" && gpkiYn == "Y") {
+				form.recieveType.value = page; 
+				form.recieveURL.value = "http://www.infra.go.kr/signon/recieveSign.jsp"; 
+
+				form.action = "/etc/signon/sendSign.do";
+				form.method = "post";
+				form.target = "_top";
+				form.submit();
+			} else {
+				top.location.href = "http://www.infra.go.kr/";
+			}
+		}
+
+		if(page == "1") { 
+			if(checked == "1" && gpkiYn == "Y") {
+				form.recieveType.value = page; 
+				form.recieveURL.value = "http://www.moi.go.kr/frt/sub/a06/b04/dat101/screen.do";
+
+				form.action = "/etc/signon/sendSign.do";
+				form.method = "post";
+				form.target = "_top";
+				form.submit();
+			} else {
+				top.location.href = "http://www.moi.go.kr/frt/sub/a06/b04/dat101/screen.do";
+			}
+		}
+
+		if(page == "2") { 
+			if(checked == "1" && gpkiYn == "Y") {
+				form.recieveType.value = page; 
+				form.recieveURL.value = "https://www.code.go.kr/signon/recieveSign.jsp"; 
+
+				form.action = "/etc/signon/sendSign.do";
+				form.method = "post";
+				form.target = "_top";
+				form.submit();
+			} else {
+				top.location.href = "http://www.code.go.kr/";
+			}
+		}
+
+		if(page == "3") { 
+			if(checked == "1" && gpkiYn == "Y") {
+				form.recieveType.value = page; 
+				form.recieveURL.value = "http://www.moi.go.kr/frt/sub/a06/b04/dat301/screen.do";
+
+				form.action = "/etc/signon/sendSign.do";
+				form.method = "post";
+				form.target = "_top";
+				form.submit();
+			} else {
+				top.location.href = "http://www.moi.go.kr/frt/sub/a06/b04/dat301/screen.do";
+			}
+		}
+
+		if(page == "4") { 
+			if(checked == "1" && gpkiYn == "Y") {
+				form.recieveType.value = page; 
+				form.recieveURL.value = "http://www.dir.go.kr/main.jsp"; 
+
+				form.action = "/etc/signon/sendSign.do";
+				form.method = "post";
+				form.target = "_top";
+				form.submit();
+			} else {
+				top.location.href = "http://www.dir.go.kr/main.jsp";
+			}
+		}
+
+		if(page == "5") { 
+			top.location.href = "http://www.adams.go.kr/";
+		}
+	}
+//-->
+</script>
+
+<script type="text/javascript">
+	
+	function goToHash() {
+		// mainpage
+		if (document.getElementById('main-container'))
+			document.location.hash = 'main-container';
+		// subpage
+		else
+			document.location.hash = 'contents';
+
+		return;
+	}
+
+	
+	function initGnb() {
+		if (!window.$) return false;
+
+		var gnb = $('#gnb');
+		var focused = false;
+		var anchors = gnb.find('#gnbmenu a');
+		anchors.on({
+			blur: function(ev) {
+				focused = false;
+				
+				setTimeout(function(){
+					if (!focused) gnb.removeClass('active');
+				}, 0);
+			},
+			focus: function(ev) {
+				focused = true;
+				gnb.addClass('active');
+			},
+		})
+
+	};
+	
+	function clearXSS(value) {
+		var returnValue = value;
+		var checkValue = ["select", "insert", "update", "delete", "union", "//", "/*", "*/", "--","user_tables","drop","and","or","if","join",
+		        			"substring","from","where","declare","user_table_columns","table_name","column_name","syscolumns","substr","openrowset","xp","sysobjects",
+		          			"javascript","eval","onabort","oncontrolselect","onfocusin","onpaste","vbscript","innerHTML","onactivate","oncopy","onfocusout",
+		          			"onpropertychange","expression","charset","onafterprint","oncut","onhelp","onreadystatechange","applet","document","onafterupdate",
+		          			"ondataavailable","onkeydown","onreset","meta","string","onbefore","ondatasetchanged","onkeypress","onresize","xml","create","onbeforeactivate",
+		          			"ondatasetcomplete","onkeyup","onresizeend","blink","append","onbeforecopy","ondblclick","onlayoutcomplete","onresizestart","link","binding",
+		          			"onbeforecut","ondeactivate","onload","onrowenter","style","alert","onbeforedeactivate","ondrag","onlosecapture","onrowexit","script","msgbox",
+		          			"onbeforeeditfocus","ondragend","onmousedown","onrowsdelete","embed","refresh","onbeforepaste","ondragenter","onmouseenter","onrowsinserted",
+		          			"object","embed","onbeforeprint","ondragleave","onmouseleave","onscroll","iframe","ilayer","onbeforeunload","ondragover","onmousemove","onselect",
+		          			"frame","applet","onbeforeupdate","ondragstart","onmouseout","onselectionchange","frameset","cookie","onblur","ondrop","onmouseover",
+		          			"onselectstart","ilayer","onbounce","onerror","onmouseup","onstart","layer","void","oncellchange","onerrorupdate","onmousewheel","onstop","bgsound",
+		          			"href","onchange","onfilterchange","onmove","onsubmit","title","onclick","onfinish","onmoveend","onunload","base","oncontextmenu","onfocus","onmovestart"];
+		
+		if (returnValue == null || returnValue.trim() == "") {
+			return "";
+		}
+		
+		for(var i=0; i < checkValue.length; i++) {
+			if(returnValue.includes(checkValue[i])) {
+				returnValue = returnValue.replaceAll(checkValue[i], '');
+			}
+		}
+		
+		returnValue = returnValue.replaceAll('&', '&#38;');
+		returnValue = returnValue.replaceAll('<', '&lt;');
+		returnValue = returnValue.replaceAll('>', '&gt;');
+		returnValue = returnValue.replaceAll('#', '&#35;');
+		returnValue = returnValue.replaceAll('%', "&#37;");
+		returnValue = returnValue.replaceAll('.', '&#46;');
+		returnValue = returnValue.replaceAll('%2E', '&#46;');
+		returnValue = returnValue.replaceAll('%2F', '&#47;');
+		returnValue = returnValue.replaceAll('%00', null);
+		returnValue = returnValue.replaceAll('\"', '&quot;');
+		returnValue = returnValue.replaceAll('\'', '&#x27;');
+		returnValue = returnValue.replaceAll('\/', '&#x2F;');
+
+		return returnValue;
+	}
+</script>
+
+
+<body>
+	<div id="wrap">
+		<header id="header">
+			<div id="header-center" class="clearfix">
+                <form name="form99" method="post" action="/usrmng/loginok.do">
+                    <input type="hidden" name="searchArea" value="">
+                    <input type="hidden" name="cmd" value="LOGIN">
+                    <input type="hidden" name="returnUrl" value="">
+                    <input type="hidden" name="memberDN">
+                    <input type="hidden" name="logintype">
+                    <input type="hidden" name="signature">
+                    <input type="hidden" name="challenge" value="2V6Ms/H4v4m5h20FLBZUcpdwhS8=">
+                    <input type="hidden" name="userId2" value="">
+                </form>
+				
+				<nav id="gnb">
+                	<a href="#container" class="content_wrap" onclick="goToHash(); return false;" tabindex="0">본문 바로가기</a>
+               		<h1>
+               			<a href="/etc/index_iframe.do">
+               				<img src="/image/common/ci.png" alt="행정표준코드 관리시스템" />
+               			</a>
+               		</h1>
+					<ul id="gnbmenu" class="parent-menu clearfix">
+						<li>
+							<a href="/stdcode/orgCodeL.do">코드검색</a>
+							<div class="child-menu-wrap">
+								<p class="child-head-link">코드검색</p>
+								<ul class="child-menu">
+									<li><a href="/stdcode/orgCodeL.do">기관코드검색</a></li>
+									<li><a href="/stdcodesrch/classSearchL.do">코드검색</a></li>
+									<li><a href="/stdcodesrch/CodeSearchGuide.do">코드검색 안내</a></li>									
+									
+								</ul>
+							</div>
+						</li>					
+						<li>
+							<a href="/qna/faqL.do">자주묻는질문</a>
+							<div class="child-menu-wrap">
+								<p class="child-head-link">자주묻는질문</p>
+								<ul class="child-menu">
+									<li><a href="/qna/faqL.do">자주묻는질문</a></li>
+									<li><a href="/request/codeReqMaual.do">기관코드등록안내</a></li>
+									<li><a href="/intro/StdCodeManual.do">시스템 이용방법</a></li>
+								</ul>
+							</div>
+						</li>
+						<li>
+							<a href="/bbsmng/boardL.do">공지사항</a>
+							<div class="child-menu-wrap">
+								<p class="child-head-link">공지사항</p>
+								<ul class="child-menu">
+									<li><a href="/bbsmng/boardL.do">공지사항</a></li>
+									<li><a href="/bbsmng/dataBbsL.do">코드변경안내</a></li>
+									
+									<li><a href="/comp/compBas_01.do">자료검색</a></li>									
+								</ul>
+							</div>
+						</li>
+						<li>
+							<a href="/intro/StdCodeIntro.do">행정표준코드소개</a>
+							<div class="child-menu-wrap">
+								<p class="child-head-link">행정표준코드소개</p>
+								<ul class="child-menu">
+									<li><a href="/intro/StdCodeIntro.do">행정표준코드소개</a></li>
+									<li><a href="/intro/StdCodeword.do">용어정의</a></li>
+								</ul>
+							</div>
+						</li>
+												
+					</ul>
+					<ul id="utilmenu">
+					
+                        <li>
+							
+							<a href="/etc/login.do" title="인증서 로그인">
+								<span class="mymenu" style="font-size:13pt"><strong>인증서 로그인</strong></span>
+							</a>
+						</li>
+					
+					</ul>
+					<div class="gnb-bg"></div>
+				</nav>
+			</div>
+		</header>
+		
+		<div class="hidden" style="width:0px; height:0px;display:none;">
+			<div id="divForm" class="form">
+				<form name="gPkiForm" action="/usrmng/loginok.do" method="post" >
+					<input type="hidden" name="sessionid" id="sessionid" value="fFhnhd9HZ65gYa9WiB3jerQD.CODROOTserver2">
+					<input type="hidden" name="challenge" id="challenge" value="2V6Ms/H4v4m5h20FLBZUcpdwhS8=">
+					<input type="hidden" name="userDN" id="userDN" >
+					<input type="hidden" name="forcedLogin" id="gpkiForcedLogin">
+				</form>
+			</div>
+			<iframe name="hidden_frame999" style="display:none;" width="0" height="0" src="/etc/empty.do" title="빈 페이지"></iframe>
+		</div>
+	
+		 <div id="forcedLoginDialog" title="강제 로그인" class="forcedDialog">
+			<form id="duplicateLogin" name="duplicateLogin" action="/etc/login.do" method="POST">
+				<input type="hidden" name="forcedLogin" id="duplicateForcedLogin" value="">
+				<div class="forcedDialog-body">
+					<div>
+						<span>정상적으로 로그아웃하지 않았거나, 동일 사용자가 로그인한 상태입니다.</span>
+					</div>
+					<div>
+						<strong style="color:red;">강제로 로그인</strong> 하시겠습니까?
+					</div>
+					<div style="font-size:0.7em;">
+						<span>(강제 로그인 시 <u>다시 로그인</u>을 하셔야 합니다.)</span>
+					</div>
+				</div>
+				<div>
+					<a class="button" href="javascript:forceLogin();" >확인</a>
+					<a class="button button-util" href="javascript:forceClose();">취소</a>
+				</div>
+			</form>
+		</div>
+	 <div id="container">	<div id="container-center"><!-- top End --> 		<div id="navigation">			<h4 class="navi-title">코드검색</h4>			<ul class="navi-list">							            	<li ><a href="/stdcode/orgCodeL.do">기관코드검색</a></li>								<li  class="active"><a href="/stdcodesrch/classSearchL.do">코드검색</a></li>				<li ><a href="/stdcodesrch/CodeSearchGuide.do">코드검색 안내</a></li>			</ul>		</div>		<div id="contents-wrap">			<div id="contents-head-wrap">				<div id="contents-head">					<h4>법정동코드목록조회</h4>					<ul id="breadcrumb">						<li>홈</li>						<li>코드검색</li>						<li>															코드검색														</li>					</ul>				</div>			</div><div id="contents">    <form name="form" method="post"><input type="hidden" name="cPage" value="1"><input type="hidden" name="regionCd_pk"><input type="hidden" name="chkWantCnt" value="0"><input type="hidden" name="reqSggCd" value="*"><input type="hidden" name="reqUmdCd" value="*"><input type="hidden" name="reqRiCd" value="*"><input type="hidden" name="searchOk" value="0"><input type="hidden" name="codeseId" value="00002">    	<table width="770" border="0" align="right" cellpadding="0" cellspacing="0">		<tr> 			<td colspan="2">			<div class="align-right mb5">				<label for="pageSize">화면출력갯수</label>				<select id="pageSize" name="pageSize" size="1" class="input_text" onchange="javascript:func_search(this.value)">					<option value="10" selected>10</option>					<option value="15" >15</option>					<option value="20" >20</option>					<option value="50">50</option>					<option value="100">100</option>				</select>			</div>			<table class="table" width="770" border="0" align="center" cellpadding="0" cellspacing="0">         		<caption></caption>				<tr> 	                <th width="20%" class="table_header_left01_blue">법정동 코드</th>	                <td width="30%" class="table_top_right_blue_11"><label for="regionCd"></label><input id="regionCd" name="regionCd" type="text" size="30" value="2726000000" maxlength="10" onKeyDown="javascript:if (event.keyCode == 13) func_search('10');"></td>	                <th width="20%" class="table_header_center01_blue">법정동명</th>	                <td width="30%" class="table_top_right_blue_11"><label for="locataddNm"></label><input id="locataddNm" name="locataddNm" type="text" size="30" value="" onKeyDown="javascript:if (event.keyCode == 13) func_search('10');"></td>				</tr>				<tr> 	                <th class="table_left02">지역선택</th>	                <td colspan="3" class="table_center01_11">	                <label>					<select name="sidoCd" size="1" class="input_text" onchange="javascript:func_sgg();" id="Type1">	                    <option value="*">시/도</option>				        			    		<option value="51" >강원특별자치도</option>			    					    		<option value="41" >경기도</option>			    					    		<option value="48" >경상남도</option>			    					    		<option value="47" >경상북도</option>			    					    		<option value="29" >광주광역시</option>			    					    		<option value="27" >대구광역시</option>			    					    		<option value="30" >대전광역시</option>			    					    		<option value="26" >부산광역시</option>			    					    		<option value="11" >서울특별시</option>			    					    		<option value="36" >세종특별자치시</option>			    					    		<option value="31" >울산광역시</option>			    					    		<option value="28" >인천광역시</option>			    					    		<option value="12" >전남광주통합특별시</option>			    					    		<option value="46" >전라남도</option>			    					    		<option value="52" >전북특별자치도</option>			    					    		<option value="50" >제주특별자치도</option>			    					    		<option value="44" >충청남도</option>			    					    		<option value="43" >충청북도</option>			    		                    					</select>					</label>					<label>					<select name="sggCd" size="1" class="input_text" onchange="javascript:func_umd();" id="Type2">	                    <option value="*">시/군/구</option>	                              					</select>					</label> 					<label>					<select name="umdCd" size="1" class="input_text" onchange="javascript:func_ri();" id="Type3">	                    <option value="*">읍/면/동</option>											</select> 					</label>					<label>					<select name="riCd" size="1" id="Type4">	                    <option value="*">리</option>											</select>					</label>				</td>			</tr>			<tr>                 <th class="table_left02">폐지구분</th>                <td colspan="3" class="table_center01_11">					<input id="disuseAt01" type="radio" name="disuseAt" value="ALL" >					<label for="disuseAt01">전체</label>															<input id="disuseAt02" type="radio" name="disuseAt" value="0" checked>					<label for="disuseAt02">현존</label>															<input id="disuseAt03" type="radio" name="disuseAt" value="1" >					<label for="disuseAt03">폐지</label>                </td>			</tr>			<tr>                 <th class="table_left02">변경기간</th>                <td colspan="3" class="table_center01_11">                						<label for="stdate">					<input name="stdate" value="" id="stdate" type="text" class="input_text" size="25" maxlength='10' readOnly></label>					<img src="../../img/icon/icon_calendar.gif" id="cal_btn" width="14" height="12" border="0" align="absmiddle" onClick="javascript:popUpCalendar(document.getElementById('cal_btn'), document.getElementById('stdate'), 'yyyy-mm-dd');" alt="달력" longdesc="새창으로 열기">                  ~ 					<label for="enddate">					<input name="enddate" value="" id="enddate" type="text" class="input_text" size="25" maxlength='10' readOnly></label>					<img src="../../img/icon/icon_calendar.gif" id="cal_btn1" width="14" height="12" border="0" align="absmiddle" onClick="javascript:popUpCalendar(document.getElementById('cal_btn1'), document.getElementById('enddate'), 'yyyy-mm-dd');" alt="달력" longdesc="새창으로 열기">					<a href="javascript:func_date('7');" class="button button-util">일주일</a>                    <a href="javascript:func_date('1');" class="button button-util">1개월</a>                    <a href="javascript:func_date('3');" class="button button-util">3개월</a>                    <a href="javascript:date_init();" class="button button-util">초기화</a>			  	</td>			</tr>			<tr>                 <td colspan="4" class="table_left" style="text-align: start;"> 					<table class="table-border-none" width="726" border="0" align="center" cellpadding="0" cellspacing="0">					<tr>						<td width="726" colspan="8" height="23" class="table_left03">							<label for="AllChkV" class="mr50"><input id="AllChkV" type="checkbox" name="AllChkV" value="AllChkV"  onclick="javascript:func_choice(this.value);">전체선택</label>							원하는 출력항목을 아래박스에서 체크하세요.						</td>					</tr>                    <tr> 						<td height="23" class="table_left03">						<label for="chkHigh"><input id="chkHigh" type="checkbox" name="chkHigh" value="1"  onclick="func_want(this,this.value);">                        상위지역코드</label>                        <label class="ml10" for="chkOrder"><input id="chkOrder" type="checkbox" name="chkOrder" value="1"  onclick="func_want(this,this.value);">                        서열</label>                        <label class="ml10" for="chkCrtDt"><input id="chkCrtDt" type="checkbox" name="chkCrtDt" value="1"  onclick="func_want(this,this.value);">                        생성일</label>                        <label class="ml10" for="chkClsDt"><input id="chkClsDt" type="checkbox" name="chkClsDt" value="1"  onclick="func_want(this,this.value);">                        폐지일</label>                        <label class="ml10" for="chkLocatDt"><input id="chkLocatDt" type="checkbox" name="chkLocatDt" value="1"  onclick="func_want(this,this.value);">                        최종작업일</label>                        <label class="ml10" for="chkLow"><input id="chkLow" type="checkbox" name="chkLow" value="1"  onclick="func_want(this,this.value);">                        최하지역명</label>                        <label class="ml10" for="chkJumin"><input id="chkJumin" type="checkbox" name="chkJumin" value="1"  onclick="func_want(this,this.value);">                        법정동코드(주민)</label>                        <label class="ml10" for="chkJijuk"><input id="chkJijuk" type="checkbox" name="chkJijuk" value="1"  onclick="func_want(this,this.value);">                        법정동코드(지적)</label></td>                    </tr>					</table>				</td>			</tr>		</table>		<div class="align-right mt5 mb10">			<a href="javascript:func_jaegae();" class="button button-util">제개정현황</a>			<a href="javascript:func_byungyung();" class="button button-util">변경관리방안</a>			<a href="javascript:func_search('10');" class="button">조회</a>		</div>		</td>	</tr>	<tr>        <td colsapn="2">        <div class="ui-container">			 			 <div class="ui-right">			 	<a href="javascript:func_fileDown();" class="button button-util button-icon"><span class="swico ico-file-down"></span>사용자 검색자료</a> 			 	<a href="javascript:func_fullfileDown();" class="button button-util button-icon"><span class="swico ico-file-down"></span>법정동 코드 전체자료</a> 	 		</div>		</div>	    </td>	</tr>	<tr> 		<td colspan="2">		<table class="table" width="770" border="0" cellspacing="0" cellpadding="0">			<thead>			<tr>                               <td width="150px" class="table_header_left01_blue01">법정동코드</td>                              <td width="*" class="table_header_center01_blue01">법정동명</td>                                                                                                                                                                                                                  			</tr>			</thead>             		                    			<tr> 						                <td class="table_left">2726000000</td>		                               <td class="table_center01">대구광역시 수성구</td>		                		                		                		                		                		                		                		                      		                                  			</tr>              		</table>		</td>	</tr>	<tr>		<td colspan="2">			<table width="770" border="0" cellspacing="0" cellpadding="0">			<tr>                 <td colspan="3">                <div align="center">                     <table width="770" border="0" cellspacing="0" cellpadding="0">					<tr>						<td  width="712" align="center">						            <span class='paging-item active'>1</span>
+</td>						<td width="100" align="right">총 <strong><font color="FF9900">1</font></strong>건</td>					</tr>                     </table>				</div>				</td>			</tr>			</table>	</tr>	<tr> 		<td>  		<div class="ui-container">  			<div class="ui-right">    			<a href="javascript:func_codesearch();" class="button button-util">법정동코드 문의</a>  			</div>  		</div>  		</td>	</tr>    	<tr> 		<td colspan="2">			<table class="table" width="770" border="0" cellspacing="0" cellpadding="0">			<thead>				<tr> 				                					                <td width="*" class="table_header_left01_blue01">소관 부서</td>	                					                <td width="10%" class="table_header_center01_blue01">문의처</td>					                <td width="30%" class="table_header_center01_blue01">비고</td>				                				</tr>			</thead>                        <tr>             		            	<td class="table_center01_11line">&nbsp;&nbsp;국토교통부 국토도시실 국토정보정책관 공간정보제도과</td>	                <td class="table_center">&nbsp;044-201-4653</td>	                <td class="table_center01_11">&nbsp;</td>	                         </tr>           	             </table>		</td>	</tr>	<tr> 		<td colspan="2"><br/>			<table class="table" width="770" border="0" cellspacing="0" cellpadding="0">			<thead>				<tr>                     <td width="385" class="table_header_left01_blue01">분류명</td>                    <td width="385" class="table_header_center01_blue01">주제분류명</td>				</tr>			</thead>					<tr> 				<td class="table_center">&nbsp;공통</td>                <td class="table_center">&nbsp;공통</td>			</tr>					</table>		</td>	</tr>	</table></form></div><!-- E/subpage 본문 --><iframe title=" " name="hidden_frame" style="display:none" width="100%" height="500" src="/etc/empty.do">  <iframe title=" " name="hidden_frame1" style="display:none" width="100%" height="500" src="/etc/empty.do">  
+
+
+<script type="text/javascript">
+	
+	// 웹접근성 정책
+	function webPop(){
+		window.open('/etc/webPop.do' ,'popup1','left=440,top=0,width=425,height=310');
+	}
+	
+	// 회원탈퇴 팝업창
+	function leavePop(){
+		window.open('/etc/leavePop.do' ,'popup2','left=440,top=0,width=425,height=340');
+	}
+	
+</script>
+ 	</div> <!-- E/#wrap -->
+			<footer id="footer">
+				<div class="footer-util">
+					<div class="footer-util-container clearfix">
+						<div class="util-links">
+							<!-- <a href="/etc/privacy/privacy.do">개인정보 처리방침</a> -->
+<!-- 							<a href="javascript:webPop();" title="새창열림">웹접근성 정책</a> -->
+<!-- 							<a href="javascript:void(0)">이용약관</a> -->
+							
+							
+							<!-- <a href="< %=ABSOLUTEURL%>/etc/privacy.do">개인정보처리방침</a> -->
+							<!-- <a href="javascript:leavePop()">회원탈퇴</a> -->
+						</div>
+
+					</div>
+				</div>
+				<div class="footer-copyright">
+					<div class="footer-copyright-container">
+						<address>
+							[30112] 세종특별자치시 도움6로 42(어진동) 정부세종청사 중앙동 &nbsp;행정안전부 공공서비스혁신과 
+							<span class="ml10 mr10">|</span>
+							운영지원단 TEL.02-6338-1557
+						</address>
+						<p>COPYRIGHT(C) MINISTRY OF THE INTERIOR AND SAFETY. ALL RIGHTS RESERVED.</p>
+					</div>
+				</div>
+			</footer>
+			</div>
+			</div>
+		</div>
+	</body>
+</html>
+<script type="text/javascript">	func_onloadSgg(1);</script>

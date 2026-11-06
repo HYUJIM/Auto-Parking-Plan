@@ -1,0 +1,44 @@
+{
+  "schema_version": "rule_extraction@1.0",
+  "document_version_id": "33333333-3333-4333-8333-333333333333",
+  "rules": [
+    {
+      "rule_key": "BCR.ZONE.R2G",
+      "category": "BUILDING_COVERAGE",
+      "title": "제2종일반주거지역 건폐율",
+      "automation_level": "auto",
+      "conditions": [
+        {
+          "field": "zoning",
+          "operator": "eq",
+          "value": "제2종일반주거지역"
+        }
+      ],
+      "values": [
+        {
+          "value_key": "ratio",
+          "value_type": "max",
+          "num_max": 50,
+          "unit": "%",
+          "evidence": {
+            "provision_id": "11111111-1111-4111-8111-111111111111",
+            "quote": "제2종일반주거지역: 60퍼센트 이하"
+          }
+        }
+      ],
+      "confidence": "high"
+    }
+  ],
+  "delegations": [
+    {
+      "from_provision_id": "22222222-2222-4222-8222-222222222222",
+      "relation": "delegates",
+      "target_hint": "특별시·광역시 조례",
+      "evidence": {
+        "provision_id": "22222222-2222-4222-8222-222222222222",
+        "quote": "광역시 조례로 위임한다"
+      }
+    }
+  ],
+  "unresolved": []
+}

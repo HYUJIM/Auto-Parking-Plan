@@ -1,0 +1,365 @@
+{
+  "format": "app-seed-extraction@1",
+  "document_key": "kr.rule.parking",
+  "effective_from": "2026-07-27",
+  "model": "scripted:build_seed_extractions@v1",
+  "prompt_version": "seed-script@v1",
+  "note": "주차장법 시행규칙 제3조①(표 이미지 전사본), 제6조①3나2)(표 이미지 전사본), 제6조①4. 전사본은 사람 대조 후 승인",
+  "extraction": {
+    "schema_version": "rule_extraction@1.0",
+    "document_version_id": "@version",
+    "rules": [
+      {
+        "rule_key": "PARK.STALL.PARALLEL",
+        "category": "PARKING_STALL_SIZE",
+        "title": "주차단위구획 (평행주차형식)",
+        "automation_level": "auto",
+        "conditions": [],
+        "values": [
+          {
+            "value_key": "parallel.compact.width",
+            "value_type": "min",
+            "num_min": 1.7,
+            "unit": "m",
+            "condition_note": null,
+            "evidence": {
+              "provision_id": "@art3/para1/item1/tbl24335428/row1",
+              "quote": "경형 | 1.7미터 이상 | 4.5미터 이상"
+            }
+          },
+          {
+            "value_key": "parallel.compact.length",
+            "value_type": "min",
+            "num_min": 4.5,
+            "unit": "m",
+            "condition_note": null,
+            "evidence": {
+              "provision_id": "@art3/para1/item1/tbl24335428/row1",
+              "quote": "경형 | 1.7미터 이상 | 4.5미터 이상"
+            }
+          },
+          {
+            "value_key": "parallel.general.width",
+            "value_type": "min",
+            "num_min": 2.0,
+            "unit": "m",
+            "condition_note": null,
+            "evidence": {
+              "provision_id": "@art3/para1/item1/tbl24335428/row2",
+              "quote": "일반형 | 2.0미터 이상 | 6.0미터 이상"
+            }
+          },
+          {
+            "value_key": "parallel.general.length",
+            "value_type": "min",
+            "num_min": 6.0,
+            "unit": "m",
+            "condition_note": null,
+            "evidence": {
+              "provision_id": "@art3/para1/item1/tbl24335428/row2",
+              "quote": "일반형 | 2.0미터 이상 | 6.0미터 이상"
+            }
+          },
+          {
+            "value_key": "parallel.residential_road.width",
+            "value_type": "min",
+            "num_min": 2.0,
+            "unit": "m",
+            "condition_note": null,
+            "evidence": {
+              "provision_id": "@art3/para1/item1/tbl24335428/row3",
+              "quote": "보도와 차도의 구분이 없는 주거지역의 도로 | 2.0미터 이상 | 5.0미터 이상"
+            }
+          },
+          {
+            "value_key": "parallel.residential_road.length",
+            "value_type": "min",
+            "num_min": 5.0,
+            "unit": "m",
+            "condition_note": null,
+            "evidence": {
+              "provision_id": "@art3/para1/item1/tbl24335428/row3",
+              "quote": "보도와 차도의 구분이 없는 주거지역의 도로 | 2.0미터 이상 | 5.0미터 이상"
+            }
+          },
+          {
+            "value_key": "parallel.two_wheel.width",
+            "value_type": "min",
+            "num_min": 1.0,
+            "unit": "m",
+            "condition_note": null,
+            "evidence": {
+              "provision_id": "@art3/para1/item1/tbl24335428/row4",
+              "quote": "이륜자동차전용 | 1.0미터 이상 | 2.3미터 이상"
+            }
+          },
+          {
+            "value_key": "parallel.two_wheel.length",
+            "value_type": "min",
+            "num_min": 2.3,
+            "unit": "m",
+            "condition_note": null,
+            "evidence": {
+              "provision_id": "@art3/para1/item1/tbl24335428/row4",
+              "quote": "이륜자동차전용 | 1.0미터 이상 | 2.3미터 이상"
+            }
+          }
+        ],
+        "confidence": "high"
+      },
+      {
+        "rule_key": "PARK.STALL.NON_PARALLEL",
+        "category": "PARKING_STALL_SIZE",
+        "title": "주차단위구획 (평행주차형식 외)",
+        "automation_level": "auto",
+        "conditions": [],
+        "values": [
+          {
+            "value_key": "non_parallel.compact.width",
+            "value_type": "min",
+            "num_min": 2.0,
+            "unit": "m",
+            "condition_note": null,
+            "evidence": {
+              "provision_id": "@art3/para1/item2/tbl33758907/row1",
+              "quote": "경형 | 2.0미터 이상 | 3.6미터 이상"
+            }
+          },
+          {
+            "value_key": "non_parallel.compact.length",
+            "value_type": "min",
+            "num_min": 3.6,
+            "unit": "m",
+            "condition_note": null,
+            "evidence": {
+              "provision_id": "@art3/para1/item2/tbl33758907/row1",
+              "quote": "경형 | 2.0미터 이상 | 3.6미터 이상"
+            }
+          },
+          {
+            "value_key": "non_parallel.general.width",
+            "value_type": "min",
+            "num_min": 2.5,
+            "unit": "m",
+            "condition_note": null,
+            "evidence": {
+              "provision_id": "@art3/para1/item2/tbl33758907/row2",
+              "quote": "일반형 | 2.5미터 이상 | 5.0미터 이상"
+            }
+          },
+          {
+            "value_key": "non_parallel.general.length",
+            "value_type": "min",
+            "num_min": 5.0,
+            "unit": "m",
+            "condition_note": null,
+            "evidence": {
+              "provision_id": "@art3/para1/item2/tbl33758907/row2",
+              "quote": "일반형 | 2.5미터 이상 | 5.0미터 이상"
+            }
+          },
+          {
+            "value_key": "non_parallel.extended.width",
+            "value_type": "min",
+            "num_min": 2.6,
+            "unit": "m",
+            "condition_note": null,
+            "evidence": {
+              "provision_id": "@art3/para1/item2/tbl33758907/row3",
+              "quote": "확장형 | 2.6미터 이상 | 5.2미터 이상"
+            }
+          },
+          {
+            "value_key": "non_parallel.extended.length",
+            "value_type": "min",
+            "num_min": 5.2,
+            "unit": "m",
+            "condition_note": null,
+            "evidence": {
+              "provision_id": "@art3/para1/item2/tbl33758907/row3",
+              "quote": "확장형 | 2.6미터 이상 | 5.2미터 이상"
+            }
+          },
+          {
+            "value_key": "non_parallel.disabled.width",
+            "value_type": "min",
+            "num_min": 3.3,
+            "unit": "m",
+            "condition_note": null,
+            "evidence": {
+              "provision_id": "@art3/para1/item2/tbl33758907/row4",
+              "quote": "장애인전용 | 3.3미터 이상 | 5.0미터 이상"
+            }
+          },
+          {
+            "value_key": "non_parallel.disabled.length",
+            "value_type": "min",
+            "num_min": 5.0,
+            "unit": "m",
+            "condition_note": null,
+            "evidence": {
+              "provision_id": "@art3/para1/item2/tbl33758907/row4",
+              "quote": "장애인전용 | 3.3미터 이상 | 5.0미터 이상"
+            }
+          },
+          {
+            "value_key": "non_parallel.two_wheel.width",
+            "value_type": "min",
+            "num_min": 1.0,
+            "unit": "m",
+            "condition_note": null,
+            "evidence": {
+              "provision_id": "@art3/para1/item2/tbl33758907/row5",
+              "quote": "이륜자동차 전용 | 1.0미터 이상 | 2.3미터 이상"
+            }
+          },
+          {
+            "value_key": "non_parallel.two_wheel.length",
+            "value_type": "min",
+            "num_min": 2.3,
+            "unit": "m",
+            "condition_note": null,
+            "evidence": {
+              "provision_id": "@art3/para1/item2/tbl33758907/row5",
+              "quote": "이륜자동차 전용 | 1.0미터 이상 | 2.3미터 이상"
+            }
+          }
+        ],
+        "confidence": "high"
+      },
+      {
+        "rule_key": "PARK.AISLE.OFFSTREET",
+        "category": "DRIVE_AISLE_WIDTH",
+        "title": "노외주차장 차로 너비·출입구 너비",
+        "automation_level": "auto",
+        "conditions": [],
+        "values": [
+          {
+            "value_key": "parallel_0.two_plus_gates",
+            "value_type": "min",
+            "num_min": 3.3,
+            "unit": "m",
+            "evidence": {
+              "provision_id": "@art6/para1/item3/sub2/tbl24335458/row1",
+              "quote": "평행주차 | 3.3.미터 | 5.0미터"
+            }
+          },
+          {
+            "value_key": "parallel_0.one_gate",
+            "value_type": "min",
+            "num_min": 5.0,
+            "unit": "m",
+            "evidence": {
+              "provision_id": "@art6/para1/item3/sub2/tbl24335458/row1",
+              "quote": "평행주차 | 3.3.미터 | 5.0미터"
+            }
+          },
+          {
+            "value_key": "perpendicular_90.two_plus_gates",
+            "value_type": "min",
+            "num_min": 6.0,
+            "unit": "m",
+            "evidence": {
+              "provision_id": "@art6/para1/item3/sub2/tbl24335458/row2",
+              "quote": "직각주차 | 6.0미터 | 6.0미터"
+            }
+          },
+          {
+            "value_key": "perpendicular_90.one_gate",
+            "value_type": "min",
+            "num_min": 6.0,
+            "unit": "m",
+            "evidence": {
+              "provision_id": "@art6/para1/item3/sub2/tbl24335458/row2",
+              "quote": "직각주차 | 6.0미터 | 6.0미터"
+            }
+          },
+          {
+            "value_key": "angle_60.two_plus_gates",
+            "value_type": "min",
+            "num_min": 4.5,
+            "unit": "m",
+            "evidence": {
+              "provision_id": "@art6/para1/item3/sub2/tbl24335458/row3",
+              "quote": "60도 대향주차 | 4.5미터 | 5.5미터"
+            }
+          },
+          {
+            "value_key": "angle_60.one_gate",
+            "value_type": "min",
+            "num_min": 5.5,
+            "unit": "m",
+            "evidence": {
+              "provision_id": "@art6/para1/item3/sub2/tbl24335458/row3",
+              "quote": "60도 대향주차 | 4.5미터 | 5.5미터"
+            }
+          },
+          {
+            "value_key": "angle_45.two_plus_gates",
+            "value_type": "min",
+            "num_min": 3.5,
+            "unit": "m",
+            "evidence": {
+              "provision_id": "@art6/para1/item3/sub2/tbl24335458/row4",
+              "quote": "45도 대향주차 | 3.5미터 | 5.0미터"
+            }
+          },
+          {
+            "value_key": "angle_45.one_gate",
+            "value_type": "min",
+            "num_min": 5.0,
+            "unit": "m",
+            "evidence": {
+              "provision_id": "@art6/para1/item3/sub2/tbl24335458/row4",
+              "quote": "45도 대향주차 | 3.5미터 | 5.0미터"
+            }
+          },
+          {
+            "value_key": "cross.two_plus_gates",
+            "value_type": "min",
+            "num_min": 3.5,
+            "unit": "m",
+            "evidence": {
+              "provision_id": "@art6/para1/item3/sub2/tbl24335458/row5",
+              "quote": "교차주차 | 3.5미터 | 5.0미터"
+            }
+          },
+          {
+            "value_key": "cross.one_gate",
+            "value_type": "min",
+            "num_min": 5.0,
+            "unit": "m",
+            "evidence": {
+              "provision_id": "@art6/para1/item3/sub2/tbl24335458/row5",
+              "quote": "교차주차 | 3.5미터 | 5.0미터"
+            }
+          },
+          {
+            "value_key": "gate.width_min",
+            "value_type": "min",
+            "num_min": 3.5,
+            "unit": "m",
+            "evidence": {
+              "provision_id": "@art6/para1/item4",
+              "quote": "노외주차장의 출입구 너비는 3.5미터 이상"
+            }
+          },
+          {
+            "value_key": "gate.width_50plus",
+            "value_type": "min",
+            "num_min": 5.5,
+            "unit": "m",
+            "condition_note": "주차대수 50대 이상: 출구·입구 분리 또는 너비 5.5미터 이상 출입구",
+            "evidence": {
+              "provision_id": "@art6/para1/item4",
+              "quote": "주차대수 규모가 50대 이상인 경우에는 출구와 입구를 분리하거나 너비 5.5미터 이상의 출입구를 설치"
+            }
+          }
+        ],
+        "confidence": "high"
+      }
+    ],
+    "delegations": [],
+    "unresolved": []
+  }
+}

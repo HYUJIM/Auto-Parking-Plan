@@ -1,0 +1,195 @@
+<!-- FIXTURE (verbatim line excerpt): 주차장법 시행규칙 lsInfoR.do (lsiSeq=288421, efYd=20260727), fetched 2026-11-06
+     source: data/legal_sources/raw/kr.rule.parking__2026-07-27__lsInfoR-288421.html lines 1-133, 198-223, 484-515 (1-based, inclusive)
+     Lines are copied byte-for-byte; unrelated articles in between are omitted. -->
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="ko" xml:lang="ko">
+ <head></head>
+ <body>
+  <input type="hidden" id="lsNm" name="lsNm" value="주차장법 시행규칙" /> 
+  <input type="hidden" id="lsId" name="lsId" value="008238" /> 
+  <input type="hidden" id="lsiSeq" name="lsiSeq" value="288421" /> 
+  <input type="hidden" id="ancYd" name="ancYd" value="20260727" /> 
+  <input type="hidden" id="efYd" name="efYd" value="20260727" /> 
+  <input type="hidden" id="ancNo" name="ancNo" value="01604" /> 
+  <input type="hidden" id="lsBdyChrCls" name="lsBdyChrCls" value="010202" /> 
+  <input type="hidden" id="lumIsConOrdin" value="Y" /> 
+  <input type="hidden" id="nwYnValue" value="Y" /> 
+  <input type="hidden" id="hstLnkDpYn" value="0" /> 
+  <style>
+.byl_pop ul li {
+	padding: 7px;
+	margin-left: 10px;
+}
+</style> 
+  <script type="text/javascript">
+$(document).ready(function(){
+	customResizePop(); // 본문 리사이즈
+	initEDotXPress('\uC8FC\uCC28\uC7A5\uBC95 \uC2DC\uD589\uADDC\uCE59');
+});
+
+function customResizePop() {
+		// 본문 버튼 높이 만큼 제공한다. 13은 패딩값
+		var $contentHeight = $("#center").height() - ($('.body_top_area').height() + 13);
+		var $conTopHeight = $('#conTop').height() + 35;
+
+		var bdyValue = lsVO.bdyUpdValue.updateContentNm || 'lsBdy';
+		
+        //lsInfoP 가 열릴 때 본문은 무조건 조회 하기 때문에 조건문 밖에 위치 하도록 변경.
+		$('#viewwrapCenter').css('overflow-y', 'hidden');
+        $('#bodyContentTOP > #viewwrapCenter').height($contentHeight);
+        $('#conScroll').height($('#viewwrapCenter').height() - $conTopHeight);
+        
+        if (bdyValue == 'lsBdy') {
+			/* 본문에서는 법령명 고정 때문에 hidden 처리*/
+			$('#viewwrapCenter').css('overflow-y', 'hidden');
+			$('#bodyContentTOP > #viewwrapCenter').height($contentHeight);
+			if($('#viewwrapCenter2').height() != null || $('#viewwrapCenter2').height() == 0){
+				$('#bodyContentTOP > #viewwrapCenter2').height($contentHeight);
+				$('#conScroll').height($('#viewwrapCenter2').height() - $conTopHeight);
+				$('#viewwrapCenter2').css('overflow', 'hidden');
+			}
+			$('#bodyContent').css('width', 'inherit');
+		} else if (bdyValue == 'lsPtnThdCmp') {
+			lspttnThdCmpResize();
+		} else if (bdyValue == 'lumThdCmp') {
+			thdCmpNewScPResize();
+		} else if (bdyValue == 'lumThdCmpSc') {
+
+		} else if (bdyValue == 'thdCmpNew') {
+
+		} else if (bdyValue == 'lsOldAndNew') {				
+			// 신구법은 이전 이후 버튼 높이까지 마이너스 한다. 
+			$('#bodySideContent > #oldAndNewDiv').height(($contentHeight + $('#tmpWidth').height()-114));
+		} else if (bdyValue == 'lsRvsDocInfoR') {
+
+			$('#bodySideContent > #viewwrapCenter').height($contentHeight);
+			$('#conScroll').height($('#viewwrapCenter').height() - $conTopHeight);
+			$('#conTop').height($('.cont_top').height());
+			$('#rvsConScroll').height($('#viewwrapCenter').height() - $('#rvsConTop').height());
+			
+		} else {
+			$('#bodySideContent > #viewwrapCenter').height($contentHeight);
+		}
+}
+
+function fileLayer(temp){
+	var tempStr = $("#hwptext"+temp).attr("value");
+	if(tempStr.length > 32){
+ 		$("#hwptext"+temp).css("width", "80%").css("text-overflow", "ellipsis").css("overflow","hidden").css("white-space","nowrap");
+ 		$("#hwpxtext"+temp).css("width", "80%").css("text-overflow", "ellipsis").css("overflow","hidden").css("white-space","nowrap");
+ 		$("#pdftext"+temp).css("width", "80%").css("text-overflow", "ellipsis").css("overflow","hidden").css("white-space","nowrap");
+ 	}
+
+ 	$(".byl_pop").css("display","none");
+
+ 	//레이어높이값
+ 	var height = $("#fileSaveLayer"+temp).height();
+ 	//본문 제일 하단 위치값 
+	var pagePos = document.querySelector('#center');
+	pagePos = pagePos.getBoundingClientRect().bottom;
+	//레이어버튼위치값
+	var layPos =document.querySelector('#imgPos'+temp);
+	layPos = layPos.getBoundingClientRect().bottom;
+	var lay_pop = $('#fileSaveLayer'+temp);
+	var pos = $('#imgPos'+temp).position();
+	
+	if(pagePos > height+layPos){ //레이어가 잘리지 않을 때 
+		lay_pop.css('top', (pos.top)+25 + 'px');
+		lay_pop.css('left', '250px')
+	}else{ //레이어가 잘릴 때
+		lay_pop.css('top', ((pos.top)-height)+ 'px');
+		lay_pop.css('left', (pos.left)+25+'px');
+	}
+	document.getElementById("fileSaveLayer"+temp).style.display="block";
+}
+
+function copyToClipBoard(temp2){
+	var content = document.getElementById('textarea'+temp2);
+	content.select();
+	document.execCommand('copy');
+	alert("주소가 클립보드에 저장되었습니다.");
+	content.setSelectionRange(0,0);
+}
+
+function delLayer(temp){
+	document.getElementById("fileSaveLayer"+temp).style.display="none";
+}
+
+</script> 
+  <div id="contentBody" class="scr_ctrl"> 
+   <div id="sideCenter" class="cont_area"> 
+    <ul class="cont_icon"> 
+     <li><a><img alt="판" src="/LSW/images/button/btn_jostmdico.gif" />판례</a></li> 
+     <li><a><img alt="연" src="/LSW/images/button/btn_year3.gif" />연혁</a></li> 
+     <li><a><img alt="행" src="/LSW/images/button/btn_entrust3_2.gif" />위임행정규칙</a></li> 
+     <li><a><img alt="규" src="/LSW/images/button/btn_entrust4_2.gif" />규제</a></li> 
+     <li><a><img alt="한" src="/LSW/images/button/btn_oneviewIcon.gif" />한눈보기</a></li> 
+    </ul> 
+    <!-- 연혁법령 안내문구 --> 
+    <!-- 법령명 --> 
+    <div id="conTop" class="cont_top"> 
+     <a id="top"></a> 
+     <!-- 국민신문고 연결배너 출력 --> 
+     <h2> 주차장법 시행규칙 </h2> 
+     <div class="ct_sub"> 
+      <span>[시행 2026. 7. 27.] [국토교통부령 제1604호, 2026. 7. 27., 일부개정]</span> 
+     </div> 
+     <a name="J3:0" id="J3:0"></a> 
+     <div class="pgroup"> 
+      <ul class="lawico01"> 
+       <li><a title="조문체계도 팝업으로 이동" style="text-decoration: none;" onclick="javascript:joStmdPop('288421', '0003', '00' );return false; " href="#AJAX"> <img alt="조문체계도버튼" src="/LSW/images/button/btn_jostmdico.gif" /> </a></li> 
+       <li><a title="연혁 팝업으로 이동" style="text-decoration: none;" onclick="javascript:fJoHstShow(this, '008238', '288421', '98805099', '010202');return false;" href="#AJAX"> <img alt="연혁" src="/LSW/images/button/btn_year3.gif" /> </a></li> 
+       <li><a href="javascript:;" onclick="javascript:openCtlInfoList('288421', '008238', '0003', '00');return false;" style="text-decoration: none;" title="관련규정 팝업으로 이동"> <img src="images/button/btn_entrust4_2.gif" alt="관련규제버튼" /> </a></li> 
+      </ul> 
+      <div class="lawcon"> 
+       <p class="pty1_p4"> <input name="joNoList" id="Y000300" style="vertical-align: middle;" onclick="javascript:getJoSelectLayer(this,'');" type="checkbox" value="3:0:000300:98805099" /> <span class="bl"><label for="Y000300"> 제3조(주차장의 주차구획) </label> </span> ① <a title="팝업으로 이동" class="link sfon1" onclick="javascript:fncLsLawPop('1034130279','ALLJO','');" href="javascript:;">법</a> <a title="팝업으로 이동" class="link sfon2" onclick="javascript:fncLsLawPop('1034130281','JO','');" href="javascript:;">제6조</a><a title="팝업으로 이동" class="link sfon3" onclick="javascript:fncLsLawPop('1034130283','JO','');" href="javascript:;">제1항</a>에 따른 주차장의 주차단위구획은 다음 각 호와 같다. <span class="sfon">&lt;개정 2012. 7. 2., 2018. 3. 21.&gt;</span> </p>
+       <p class="pty1_de2h">1. 평행주차형식의 경우<br /><img alt="구분 너비 길이
+경형 1.7미터 이상 4.5미터 이상
+일반형 2.0미터 이상 6.0미터 이상
+보도와 차도의 구분이 없는 주거지역의 도로 2.0미터 이상 5.0미터 이상
+이륜자동차전용 1.0미터 이상 2.3미터 이상 " src="/LSW/flDownload.do?flSeq=24335428" /> </p> 
+       <p class="pty1_de2h">2. 평행주차형식 외의 경우<br /><img alt="구분 너비 길이
+경형 2.0미터 이상 3.6미터 이상
+일반형 2.5미터 이상 5.0미터 이상
+확장형 2.6미터 이상 5.2미터 이상
+장애인전용 3.3미터 이상 5.0미터 이상
+이륜자동차 전용 1.0미터 이상 2.3미터 이상 " src="/LSW/flDownload.do?flSeq=33758907" /> </p> 
+       <p class="pty1_de2_1">② 제1항에 따른 주차단위구획은 흰색 실선(경형자동차 전용주차구획의 주차단위구획은 파란색 실선)으로 표시하여야 한다. </p> 
+       <p class="pty1_de2_1">③ 둘 이상의 연속된 주차단위구획의 총 너비 또는 총 길이는 제1항에 따른 주차단위구획의 너비 또는 길이에 주차단위구획의 개수를 곱한 것 이상이 되어야 한다. <span class="sfon">&lt;신설 2015. 3. 23.&gt;</span> </p> 
+       <p class="pty1_de2"> <span class="sfon">[전문개정 2010. 10. 29.]</span> </p> 
+       <p></p> 
+      </div> 
+     </div> 
+     <a name="J11:0" id="J11:0"></a> 
+     <div class="pgroup"> 
+      <ul class="lawico01"> 
+       <li><a title="조문체계도 팝업으로 이동" style="text-decoration: none;" onclick="javascript:joStmdPop('288421', '0011', '00' );return false; " href="#AJAX"> <img alt="조문체계도버튼" src="/LSW/images/button/btn_jostmdico.gif" /> </a></li> 
+       <li><a title="연혁 팝업으로 이동" style="text-decoration: none;" onclick="javascript:fJoHstShow(this, '008238', '288421', '98805443', '010202');return false;" href="#AJAX"> <img alt="연혁" src="/LSW/images/button/btn_year3.gif" /> </a></li> 
+       <li><a href="javascript:;" onclick="javascript:openCtlInfoList('288421', '008238', '0011', '00');return false;" style="text-decoration: none;" title="관련규정 팝업으로 이동"> <img src="images/button/btn_entrust4_2.gif" alt="관련규제버튼" /> </a></li> 
+      </ul> 
+      <div class="lawcon"> 
+       <p class="pty1_p4"> <input name="joNoList" id="Y001100" style="vertical-align: middle;" onclick="javascript:getJoSelectLayer(this,'');" type="checkbox" value="11:0:001100:98805443" /> <span class="bl"><label for="Y001100"> 제11조(부설주차장의 구조ㆍ설비기준) </label> </span> ① <a title="팝업으로 이동" class="link sfon1" onclick="javascript:fncLsLawPop('1034130309','ALLJO','');" href="javascript:;">법</a> <a title="팝업으로 이동" class="link sfon2" onclick="javascript:fncLsLawPop('1034130311','JO','');" href="javascript:;">제6조</a><a title="팝업으로 이동" class="link sfon3" onclick="javascript:fncLsLawPop('1034130313','JO','');" href="javascript:;">제1항</a>에 따른 부설주차장의 구조ㆍ설비기준에 대해서는 <a title="팝업으로 이동" class="link sfon2" onclick="javascript:fncLsLawPop('1034130325','JO','');" href="javascript:;">제5조</a><a title="팝업으로 이동" class="link sfon4" onclick="javascript:fncLsLawPop('1034130327','JO','');" href="javascript:;">제6호</a> 및 <a title="팝업으로 이동" class="link sfon4" onclick="javascript:fncLsLawPop('1034130329','JO','');" href="javascript:;">제7호</a>와 <a title="팝업으로 이동" class="link sfon2" onclick="javascript:fncLsLawPop('1034130315','JO','');" href="javascript:;">제6조</a><a title="팝업으로 이동" class="link sfon3" onclick="javascript:fncLsLawPop('1034130317','JO','');" href="javascript:;">제1항</a><a title="팝업으로 이동" class="link sfon4" onclick="javascript:fncLsLawPop('1034130319','JO','');" href="javascript:;">제1호부터 제8호</a>까지ㆍ제10호ㆍ제12호ㆍ제13호ㆍ제15호 및 <a title="팝업으로 이동" class="link sfon2" onclick="javascript:fncLsLawPop('1034130491','JO','');" href="javascript:;">같은 조</a> <a title="팝업으로 이동" class="link sfon3" onclick="javascript:fncLsLawPop('1034130493','JO','');" href="javascript:;">제7항</a>을 준용한다. 다만, 단독주택 및 다세대주택으로서 해당 부설주차장을 이용하는 차량의 소통에 지장을 주지 아니한다고 시장ㆍ군수 또는 구청장이 인정하는 주택의 부설주차장의 경우에는 그러하지 아니하다. <span class="sfon">&lt;개정 2020. 6. 25.&gt;</span> </p>
+       <p class="pty1_de2_1">② 다음 각 호의 부설주차장에 대해서는 <a title="팝업으로 이동" class="link sfon2" onclick="javascript:fncLsLawPop('1034130335','JO','');" href="javascript:;">제6조</a><a title="팝업으로 이동" class="link sfon3" onclick="javascript:fncLsLawPop('1034130337','JO','');" href="javascript:;">제1항</a><a title="팝업으로 이동" class="link sfon4" onclick="javascript:fncLsLawPop('1034130339','JO','');" href="javascript:;">제9호</a> 및 <a title="팝업으로 이동" class="link sfon4" onclick="javascript:fncLsLawPop('1034130343','JO','');" href="javascript:;">제11호</a>를 준용한다. </p> 
+       <p class="pty1_de2h">1. 주차대수 30대를 초과하는 지하식 또는 건축물식 형태의 자주식주차장으로서 판매시설, 숙박시설, 운동시설, 위락시설, 문화 및 집회시설, 종교시설 또는 업무시설(이하 이 항에서 “판매시설등”이라 한다)의 용도로 이용되는 건축물의 부설주차장 </p> 
+       <p class="pty1_de2h">2. 제1호에 따른 규모의 주차장을 설치한 판매시설등과 다른 용도의 시설이 복합적으로 설치된 건축물의 부설주차장으로서 각각의 시설에 대한 부설주차장을 구분하여 사용ㆍ관리하는 것이 곤란한 건축물의 부설주차장 </p> 
+       <p class="pty1_de2_1">③ 제2항에 따른 건축물 외의 건축물(단독주택 및 다세대주택은 제외한다)의 부설주차장으로서 지하식 또는 건축물식 형태의 자주식주차장에는 벽면에서부터 50센티미터 이내를 제외한 바닥면의 최소 조도와 최대 조도를 <a title="팝업으로 이동" class="link sfon2" onclick="javascript:fncLsLawPop('1034130341','JO','');" href="javascript:;">제6조</a><a title="팝업으로 이동" class="link sfon3" onclick="javascript:fncLsLawPop('1034130331','JO','');" href="javascript:;">제1항</a><a title="팝업으로 이동" class="link sfon4" onclick="javascript:fncLsLawPop('1034130333','JO','');" href="javascript:;">제9호</a> 각 목과 같이 하여야 한다. <span class="sfon">&lt;개정 2013. 1. 25.&gt;</span> </p> 
+       <p class="pty1_de2_1">④ 주차대수 50대 이상의 부설주차장에 설치되는 확장형 주차단위구역에 관하여는 <a title="팝업으로 이동" class="link sfon2" onclick="javascript:fncLsLawPop('1034130321','JO','');" href="javascript:;">제6조</a><a title="팝업으로 이동" class="link sfon3" onclick="javascript:fncLsLawPop('1034130323','JO','');" href="javascript:;">제1항</a><a title="팝업으로 이동" class="link sfon4" onclick="javascript:fncLsLawPop('1034130345','JO','');" href="javascript:;">제14호</a>를 준용한다. <span class="sfon">&lt;신설 2012. 7. 2.&gt;</span> </p> 
+       <p class="pty1_de2_1">⑤ 부설주차장의 총주차대수 규모가 8대 이하인 자주식주차장의 구조 및 설비기준은 제1항 본문에도 불구하고 다음 각 호에 따른다. <span class="sfon">&lt;개정 2012. 7. 2., 2013. 1. 25., 2016. 4. 12.&gt;</span> </p> 
+       <p class="pty1_de2h">1. 차로의 너비는 2.5미터 이상으로 한다. 다만, 주차단위구획과 접하여 있는 차로의 너비는 주차형식에 따라 다음 표에 따른 기준 이상으로 하여야 한다.<br /><img alt="주차형식 차로의 너비
+평행주차 3.0미터
+직각주차 6.0미터 
+60도 대향주차 4.0미터 
+45도 대향주차 3.5미터
+교차주차 3.5미터   
+" src="/LSW/flDownload.do?flSeq=24335465" /> </p> 
+       <p class="pty1_de2h">2. 보도와 차도의 구분이 없는 너비 12미터 미만의 도로에 접하여 있는 부설주차장은 그 도로를 차로로 하여 주차단위구획을 배치할 수 있다. 이 경우 차로의 너비는 도로를 포함하여 6미터 이상(평행주차형식인 경우에는 도로를 포함하여 4미터 이상)으로 하며, 도로의 포함 범위는 중앙선까지로 하되, 중앙선이 없는 경우에는 도로 반대쪽 경계선까지로 한다. </p> 
+       <p class="pty1_de2h">3. 보도와 차도의 구분이 있는 12미터 이상의 도로에 접하여 있고 주차대수가 5대 이하인 부설주차장은 그 주차장의 이용에 지장이 없는 경우만 그 도로를 차로로 하여 직각주차형식으로 주차단위구획을 배치할 수 있다. </p> 
+       <p class="pty1_de2h">4. 주차대수 5대 이하의 주차단위구획은 차로를 기준으로 하여 세로로 2대까지 접하여 배치할 수 있다. </p> 
+       <p class="pty1_de2h">5. 출입구의 너비는 3미터 이상으로 한다. 다만, 막다른 도로에 접하여 있는 부설주차장으로서 시장ㆍ군수 또는 구청장이 차량의 소통에 지장이 없다고 인정하는 경우에는 2.5미터 이상으로 할 수 있다. </p> 
+       <p class="pty1_de2h">6. 보행인의 통행로가 필요한 경우에는 시설물과 주차단위구획 사이에 0.5미터 이상의 거리를 두어야 한다. </p> 
+       <p class="pty1_de2_1">⑥ 제1항 및 제5항에 따라 도로를 차로로 하여 설치한 부설주차장의 경우 도로와 주차구획선 사이에는 담장 등 주차장의 이용을 곤란하게 하는 장애물을 설치할 수 없다. <span class="sfon">&lt;개정 2012. 7. 2.&gt;</span> </p> 
+       <p class="pty1_de2"> <span class="sfon">[전문개정 2010. 10. 29.]</span> </p> 
+       <p></p> 
+      </div> 
+     </div> 
+</body></html>

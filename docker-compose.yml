@@ -1,0 +1,79 @@
+# 로컬 통합 실행 (윈도우 Docker Desktop / 맥 공통)
+#   docker compose up --build
+# 외부 공공 API 키가 없으면 mock(로컬 모의 서버)을 기본으로 사용한다. 실제 키를 쓰려면 .env 에서 *_BASE_URL 을 지우고 키를 넣는다.
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: app
+      POSTGRES_DB: app
+    # 호스트 포트는 열지 않는다 (로컬에 이미 PostgreSQL 이 있으면 충돌). 직접 접속하려면 아래 주석을 풀고 DB_PORT 지정
+    # ports: ["${DB_PORT:-55432}:5432"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app -d app"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    volumes: ["pgdata:/var/lib/postgresql/data"]
+
+  mock:
+    image: autoparkingplan-app:local  # api 가 빌드한 같은 이미지를 쓴다
+    pull_policy: never
+    command: ["python", "-m", "mockserver", "--host", "0.0.0.0", "--port", "8090"]
+    ports: ["${MOCK_PORT:-8090}:8090"]
+
+  api:
+    build: .
+    image: autoparkingplan-app:local  # mock·worker·bootstrap 이 모두 이 이미지를 쓴다 (한 번만 빌드)
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
+    environment: &appenv
+      DATABASE_URL: postgresql+psycopg://app:app@db:5432/app
+      REVIEW_EXECUTOR: worker
+      BLOB_LOCAL_DIR: /srv/app/var/blobs
+      JUSO_API_KEY: ${JUSO_API_KEY:-mock-key}
+      JUSO_BASE_URL: ${JUSO_BASE_URL:-http://mock:8090}
+      VWORLD_API_KEY: ${VWORLD_API_KEY:-mock-key}
+      VWORLD_DATA_URL: ${VWORLD_DATA_URL:-http://mock:8090}
+      VWORLD_NED_URL: ${VWORLD_NED_URL:-http://mock:8090}
+      BUILDING_HUB_KEY: ${BUILDING_HUB_KEY:-mock-key}
+      BUILDING_HUB_URL: ${BUILDING_HUB_URL:-http://mock:8090}
+      LLM_PROVIDER: ${LLM_PROVIDER:-fake}
+      ADMIN_TOKEN: ${ADMIN_TOKEN:-change-me-local-admin}
+    ports: ["${API_PORT:-8000}:8000"]
+    depends_on:
+      db: {condition: service_healthy}
+      mock: {condition: service_started}
+    volumes: ["blobs:/srv/app/var/blobs"]
+
+  worker:
+    image: autoparkingplan-app:local
+    pull_policy: never
+    restart: unless-stopped
+    command: ["python", "-m", "app.cli", "worker"]
+    env_file:
+      - path: .env
+        required: false
+    environment: *appenv
+    depends_on:
+      db: {condition: service_healthy}
+    volumes: ["blobs:/srv/app/var/blobs"]
+
+  # 최초 1회: 원문 적재 + 기록된 추출 결과 적재
+  #   docker compose run --rm bootstrap
+  bootstrap:
+    image: autoparkingplan-app:local
+    pull_policy: never
+    profiles: ["tools"]
+    command: ["python", "-m", "app.cli", "bootstrap", "--approve-as", "${BOOTSTRAP_REVIEWER:-dev-reviewer}", "--ack-warnings", "--confirm-transcriptions"]
+    environment: *appenv
+    depends_on:
+      db: {condition: service_healthy}
+    volumes: ["blobs:/srv/app/var/blobs"]
+
+volumes:
+  pgdata:
+  blobs:

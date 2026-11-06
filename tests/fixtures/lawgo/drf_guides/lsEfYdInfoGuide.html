@@ -1,0 +1,693 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="ko" xml:lang="ko">
+ <head> 
+  <meta http-equiv="Content-Type" content="text/html;charset=utf-8" /> 
+  <meta http-equiv="Pragma" content="No-Cache" /> 
+  <meta http-equiv="Cache-Control" content="no-cache" /> 
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />     
+  <script type="text/javascript" src="/LSO/js/common/jquery-1.6.1.min.js"></script> 
+  <script type="text/javascript" src="/LSO/js/common/common.js"></script> 
+  <script type="text/javascript" src="/LSO/js/common/jquery.cookie.js"></script> 
+  <script type="text/javascript" src="/LSO/mask/js/jquery.loadmask.js"></script> 
+  <script type="text/javascript" src="/LSO/js/common/CookieUtil.js"></script>  
+  <link rel="stylesheet" type="text/css" href="/LSO/css/common.css" />
+  <link rel="stylesheet" type="text/css" href="/LSO/css/main.css" />
+  <link rel="stylesheet" type="text/css" href="/LSO/mask/css/jquery.loadmask.css" />
+  <style type="text/css">
+	.info_p{
+		margin-top: 10px;
+		margin-bottom: 10px;
+	}
+</style>
+  <title>국가법령정보 공동활용</title> 
+  <title></title>
+ </head> 
+ <body> 
+  <div class="area_skip">
+   <a href="#navi">본문 바로가기</a>
+  </div> 
+  <div class="header"> 
+   <div class="header-wrap"> 
+    <h1 class="header-logo"><a href="/LSO/main.do">국가법령정보 공동활용 LAW OPEN DATA</a></h1> 
+    <ul class="gnb"> 
+     <li><a href="/LSO/information/service.do" class="gnbmn01">이용안내</a></li> 
+     <li><a href="/LSO/openApi/guideList.do" class="gnbmn02">OPEN API</a></li> 
+     <li><a href="/LSO/cuCtgr/cuCategoryGuide.do" class="gnbmn03">맞춤형서비스</a></li> 
+     <li><a href="/LSO/lab/hangulAddr.do" class="gnbmn04">개발자LAB</a></li> 
+     <li><a href="/LSO/openState/hpGallery.do" class="gnbmn05">활용사례</a></li> 
+    </ul> 
+    <p class="header-util"> <a href="/LSO/usr/usrInfoMod.do" class="util01">마이페이지</a> <a href="/LSO/login.do" class="util02">로그인</a> </p> 
+   </div> 
+  </div> 
+  <div class="conbody"> 
+   <div id="sidemenu_left"> 
+    <script type="text/javascript">
+	$(document).ready(function(){
+		//alert("DOM 요소 로드 후 이벤트");
+	});
+	
+	window.onload = function() {
+		//alert("jsp 완전 로드 후 이벤트");
+		setLnbMenu();
+	};
+
+	function setLnbMenu() {
+		var currUrl = location.href;
+		/*이용안내*/
+		if((currUrl.indexOf("information/") > -1) || (currUrl.indexOf("support/notice") > -1)) {
+			$("#lnbTitle").html("이용안내");
+			$("#lnb").find("#service").css("display", "");
+			$("#lnb").find("#guide").css("display", "");
+			$("#lnb").find("#notice").css("display", ""); // add
+			if (currUrl.indexOf("service") > -1) $("#lnb").find("#service").addClass("menuon");
+			if (currUrl.indexOf("guide") > -1) $("#lnb").find("#guide").addClass("menuon");
+			if (currUrl.indexOf("notice") > -1) $("#lnb").find("#notice").addClass("menuon"); // add
+		}
+		
+		/*OpenApi*/
+		if (currUrl.indexOf("openApi/") > -1) {
+			$("#lnbTitle").html("OPENAPI");
+			$("#lnb").find("#guideList").css("display", "");
+			$("#lnb").find("#openApiCase").css("display", "");
+			$("#lnb").find("#cuAsk").css("display", "");
+			$("#lnb").find("#openApiManual").css("display", "");
+			if (currUrl.indexOf("guideList") > -1) 	 $("#lnb").find("#guideList").addClass("menuon");
+			if (currUrl.indexOf("openApiCase") > -1) $("#lnb").find("#openApiCase").addClass("menuon");
+			if (currUrl.indexOf("cuAsk") > -1) 		 $("#lnb").find("#cuAsk").addClass("menuon");
+			if (currUrl.indexOf("openApiManual") > -1) 		 $("#lnb").find("#openApiManual").addClass("menuon");
+			
+		}
+		
+		/*맞춤형서비스*/
+		if (currUrl.indexOf("cuCtgr/") > -1) { 
+			$("#lnbTitle").html("맞춤형서비스");
+			$("#lnb").find("#cuCategoryGuide").css("display", "");
+			$("#lnb").find("#cuCategoryMain").css("display", "");
+			if (currUrl.indexOf("cuCategoryGuide") > -1) $("#lnb").find("#cuCategoryGuide").addClass("menuon");
+			if (currUrl.indexOf("cuCategoryMain") > -1) $("#lnb").find("#cuCategoryMain").addClass("menuon");
+		}
+			
+		/*개발자LAB*/
+		if((currUrl.indexOf("lab/") > -1) || (currUrl.indexOf("support/lsHstInf") > -1)) {
+			$("#lnbTitle").html("개발자LAB");
+			$("#lnb").find("#hangulAddr").css("display", "");
+			$("#lnb").find("#lawListSupport").css("display", "");
+			$("#lnb").find("#ipErrorCheck").css("display", "");
+			$("#lnb").find("#selfDiagnosis").css("display", "");
+			$("#lnb").find("#lsHstInf").css("display", "");
+			$("#lnb").find("#supportCase").css("display", "");
+			$("#lnb").find("#sampleCode").css("display", "");
+			if (currUrl.indexOf("hangulAddr") > -1)     $("#lnb").find("#hangulAddr").addClass("menuon");
+			if (currUrl.indexOf("lawListSupport") > -1) $("#lnb").find("#lawListSupport").addClass("menuon");
+			if (currUrl.indexOf("ipErrorCheck") > -1)   $("#lnb").find("#ipErrorCheck").addClass("menuon");
+			if (currUrl.indexOf("selfDiagnosis") > -1)  $("#lnb").find("#selfDiagnosis").addClass("menuon");
+			/* if (currUrl.indexOf("jointUse") > -1) 	   $("#lnb4").find("#jointUse").addClass("menuon");
+			if (currUrl.indexOf("xmlRss") > -1) 	   $("#lnb4").find("#xmlRss").addClass("menuon");
+			if (currUrl.indexOf("searchOpenApi") > -1) $("#lnb4").find("#searchOpenApi").addClass("menuon"); */
+			if (currUrl.indexOf("lsHstInf") > -1) $("#lnb").find("#lsHstInf").addClass("menuon");
+			if (currUrl.indexOf("supportCase") > -1) $("#lnb").find("#supportCase").addClass("menuon");
+			if (currUrl.indexOf("sampleCode") > -1) $("#lnb").find("#sampleCode").addClass("menuon");
+		}
+
+		/*활용사례*/
+		if(currUrl.indexOf("openState/") > -1) {
+			$("#lnbTitle").html("활용사례");
+			$("#lnb").find("#hpGallery").css("display", "");
+			$("#lnb").find("#gallery").css("display", "");
+			$("#lnb").find("#orgList").css("display", "");
+			if (currUrl.indexOf("hpGallery") > -1) $("#lnb").find("#hpGallery").addClass("menuon");
+			if (currUrl.indexOf("gallery") > -1) $("#lnb").find("#gallery").addClass("menuon");
+			if (currUrl.indexOf("orgList") > -1) $("#lnb").find("#orgList").addClass("menuon");
+		}
+
+		/*활용지원센터*/
+		/*
+		if(currUrl.indexOf("support/") > -1){
+			$("#lnbTitle").html("활용지원센터");
+			$("#lnb").find("#notice").css("display", "");
+			$("#lnb").find("#faq").css("display", "");
+			$("#lnb").find("#lsHstInf").css("display", "");
+			if (currUrl.indexOf("notice") > -1) 	 $("#lnb").find("#notice").addClass("menuon");
+			if (currUrl.indexOf("faq") > -1)	 	 $("#lnb").find("#faq").addClass("menuon");
+			if (currUrl.indexOf("lsHstInf") > -1) $("#lnb").find("#lsHstInf").addClass("menuon");
+		}
+		*/
+		/*마이페이지*/
+		if(currUrl.indexOf("usr/") > -1){
+			$("#lnbTitle").html("마이페이지");
+			$("#lnb").find("#usrInfo").css("display", "");
+			$("#lnb").find("#usrOcInfo").css("display", "");
+			$("#lnb").find("#combineError").css("display", "");
+			if(currUrl.indexOf("usrInfo") > -1) 	 $("#lnb").find("#usrInfo").addClass("menuon");
+			if(currUrl.indexOf("usrOcInfo") > -1) 	 $("#lnb").find("#usrOcInfo").addClass("menuon");
+			if(currUrl.indexOf("combineError") > -1) $("#lnb").find("#combineError").addClass("menuon");
+		}
+	}
+</script> 
+    <div id="sidemenu"> 
+     <div id="lnb"> 
+      <h2><span id="lnbTitle"></span></h2> 
+      <ul> 
+       <li id="service" style="display: none;"><a href="/LSO/information/service.do">공동활용 서비스란</a></li> 
+       <li id="guide" style="display: none;"><a href="/LSO/information/guide.do">이용안내</a></li> 
+       <li id="guideList" style="display: none;"><a href="/LSO/openApi/guideList.do">OPEN API 활용가이드</a></li> 
+       <li id="openApiManual" style="display: none;"><a href="/LSO/openApi/openApiManual.do">OPEN API 활용방법</a></li> 
+       <li id="openApiCase" style="display: none;"><a href="/LSO/openApi/openApiCase.do">OPEN API 활용사례</a></li> 
+       <li id="cuAsk" style="display: none;"><a href="/LSO/openApi/cuAskList.do">OPEN API 신청</a></li> 
+       <li id="cuCategoryGuide" style="display: none;"><a href="/LSO/cuCtgr/cuCategoryGuide.do">맞춤형서비스 이용안내</a></li> 
+       <li id="cuCategoryMain" style="display: none;"><a href="/LSO/cuCtgr/cuCategoryMain.do">맞춤형서비스 신청</a></li> 
+       <li id="hangulAddr" style="display: none;"><a href="/LSO/lab/hangulAddr.do">법령한글주소</a></li> 
+       <li id="sampleCode" style="display: none;"><a href="/LSO/lab/sampleCode.do">샘플소스코드</a></li> 
+       <li id="lawListSupport" style="display: none;"><a href="/LSO/lab/lawListSupport.do">법령목록지원</a></li> 
+       <li id="ipErrorCheck" style="display: none;"><a href="/LSO/lab/ipErrorCheck.do">IP 접속이력</a></li> 
+       <li id="selfDiagnosis" style="display: none;"><a href="/LSO/lab/selfDiagnosis.do">오류자가진단</a></li> 
+       <li id="supportCase" style="display: none;"><a href="/LSO/lab/supportCase.do">지원사례 및 질의응답</a></li> 
+       <li id="hpGallery" style="display: none;"><a href="/LSO/openState/hpGallery.do">홈페이지갤러리</a></li> 
+       <li id="gallery" style="display: none;"><a href="/LSO/openState/gallery.do">APP갤러리</a></li> 
+       <li id="orgList" style="display: none;"><a href="/LSO/openState/orgList.do">공공데이터현황</a></li> 
+       <li id="notice" style="display: none;"><a href="/LSO/support/noticeList.do">공지사항</a></li> 
+       <li id="faq" style="display: none;"><a href="/LSO/support/faq.do">FAQ</a></li> 
+       <li id="lsHstInf" style="display: none;"><a href="/LSO/support/lsHstInf.do">법령이력조회</a></li> 
+       <li id="usrInfo" style="display: none;"><a href="/LSO/usr/usrInfoMod.do">사용자정보관리</a></li> 
+       <li id="usrOcInfo" style="display: none;"><a href="/LSO/usr/usrOcInfoMod.do">API인증키관리</a></li> 
+       <li id="combineError" style="display: none;"><a href="/LSO/usr/combineErrorBrdForm.do">통합오류신고</a></li> 
+      </ul> 
+     </div> 
+    </div>
+   </div> 
+   <div class="area_contents"> 
+    <div class="navi" id="navi"> 
+     <ul> 
+      <li><a href="/LSO/main.do">홈 &gt;</a></li> 
+      <li><a href="/LSO/openApi/guideList.do">OPEN API &gt;</a></li> 
+      <li class="now"><a href="/LSO/openApi/guideList.do">OPEN API 활용가이드</a></li> 
+     </ul> 
+     <div class="tit"> 
+      <h3>OPEN API 활용가이드</h3> 
+     </div> 
+     <div class="conimg"> 
+      <img src="/LSO/images/subimg02.png" alt="openAPI 활용가이드" /> 
+     </div> 
+    </div> 
+    <div class="contents"> 
+     <p><img src="/LSO/images/open_top_ment.gif" alt="법제처 사이트에서 제공되는 검색에 대한 결과를 XML로 받아볼 수 있는 대화형 서비스입니다." /></p> 
+     <!-- HtmlTagFilter 적용으로 인해 HTML 로딩이 느림 현상 발생. local에서 사용시 include로 사용하면 빠름 -->    
+     <meta charset="UTF-8" />  
+     <!-- 
+	history :
+		2019. 01. 09. [#13107] 시행일법령 본문 xml 법령명약칭 추가
+		2021. 12. 30. [#26337] OPEN API 제공 데이터 추가 요청
+		2024. 02. 06. [#34128] 시행일법령목록 API 공동부령정보 누락 확인
+		2024. 04. 25. [#34622] OPEN API 가이드페이지 현행화
+		2024. 09. 26. [#35284] 공동활용 저장 형식 추가 제공 - 법령, 행정규칙, 자치법규
+		2024. 12. 26. [#35857] OPEN API 법령 본문 가이드페이지 현행화
+		2025. 07. 24. [#37062] OPEN API 가이드페이지 샘플 URL 현행화
+		2025. 09. 23. [#37580] OPEN API 활용 가이드 변경 요청
+		2026. 01. 29. [#38236] 법령 본문 조회 OPEN API 가이드 페이지 개선
+ -->   
+     <div class="guide_area">
+      <!-- guide 22--> 
+      <h3>현행법령(시행일) 본문 조회 API</h3> 
+      <dl> 
+       <dt style="font-weight: bold;">
+         - 요청 URL : http://www.law.go.kr/DRF/lawService.do?target=eflaw
+       </dt> 
+      </dl> 
+      <dl> 
+       <dt style="font-weight: bold;">
+        요청 변수 (request parameter)
+       </dt> 
+       <dd style="background:none;"> 
+        <table class="blist guide"> 
+         <caption>
+          요청변수 안내
+         </caption> 
+         <colgroup> 
+          <col width="14%" /> 
+          <col width="20%" /> 
+          <col width="*" /> 
+         </colgroup> 
+         <thead> 
+          <tr> 
+           <th>요청변수</th> 
+           <th>값</th> 
+           <th>설명</th> 
+          </tr> 
+         </thead> 
+         <tbody> 
+          <tr> 
+           <td>OC</td> 
+           <td>string(필수)</td> 
+           <td>신청한 API인증값</td> 
+          </tr> 
+          <tr> 
+           <td>target</td> 
+           <td>string : eflaw(필수)</td> 
+           <td>서비스 대상</td> 
+          </tr> 
+          <tr> 
+           <td>type</td> 
+           <td>char(필수)</td> 
+           <td>출력 형태 : HTML/XML/JSON <br /> 생략시 기본값 : XML</td> 
+          </tr> 
+          <tr> 
+           <td>ID</td> 
+           <td>char</td> 
+           <td> 법령 ID (ID 또는 MST 중 하나는 반드시 입력,<br />ID로 검색하면 그 법령의 현행 법령 본문 조회) </td> 
+          </tr> 
+          <tr> 
+           <td>MST</td> 
+           <td>char</td> 
+           <td> 법령 마스터 번호 - 법령테이블의 lsi_seq 값을 의미함 </td> 
+          </tr> 
+          <tr> 
+           <td>efYd</td> 
+           <td>int(필수)</td> 
+           <td>법령의 시행일자 <br /> (ID 입력시에는 무시하는 값으로 입력하지 않음)</td> 
+          </tr> 
+          <tr> 
+           <td>JO</td> 
+           <td>int</td> 
+           <td> 조번호<br /> 생략(기본값) : 모든 조를 표시함<br /> 6자리숫자 : 조번호(4자리)+조가지번호(2자리)<br /> (000200 : 2조, 001002 : 10조의 2)<br /> </td> 
+          </tr> 
+          <tr> 
+           <td>chrClsCd</td> 
+           <td>char</td> 
+           <td> 원문/한글 여부<br /> 생략(기본값) : 한글<br /> (010202 : 한글, 010201 : 원문)<br /> </td> 
+          </tr> 
+         </tbody> 
+        </table> 
+       </dd> 
+       <dd style="background:none; padding: 20px 0 0 18px;"> 
+        <table class="guide_table"> 
+         <tbody>
+          <tr> 
+           <td class="td_title">샘플 URL</td> 
+          </tr> 
+          <tr> 
+           <td class="td_subtitle">1. 자동차관리법 ID HTML 상세조회</td> 
+          </tr> 
+          <tr> 
+           <td class="td_content"> <a href="//www.law.go.kr/DRF/lawService.do?OC=test&amp;target=eflaw&amp;ID=1747&amp;type=HTML" target="_blank"> http://www.law.go.kr/DRF/lawService.do?OC=test&amp;target=eflaw&amp;ID=1747&amp;type=HTML </a> </td> 
+          </tr> 
+          <tr> 
+           <td class="td_subtitle">2. 자동차관리법 법령 Seq XML 조회</td> 
+          </tr> 
+          <tr> 
+           <td class="td_content"> <a href="//www.law.go.kr/DRF/lawService.do?OC=test&amp;target=eflaw&amp;MST=166520&amp;efYd=20151007&amp;type=XML" target="_blank"> http://www.law.go.kr/DRF/lawService.do?OC=test&amp;target=eflaw&amp;MST=166520&amp;efYd=20151007&amp;type=XML </a> </td> 
+          </tr> 
+          <tr> 
+           <td class="td_subtitle">3. 자동차관리법 3조 XML 상세조회</td> 
+          </tr> 
+          <tr> 
+           <td class="td_content"> <a href="//www.law.go.kr/DRF/lawService.do?OC=test&amp;target=eflaw&amp;MST=166520&amp;efYd=20151007&amp;JO=000300&amp;type=XML" target="_blank"> http://www.law.go.kr/DRF/lawService.do?OC=test&amp;target=eflaw&amp;MST=166520&amp;efYd=20151007&amp;JO=000300&amp;type=XML </a> </td> 
+          </tr> 
+          <tr> 
+           <td class="td_subtitle">4. 자동차관리법 ID JSON 상세조회</td> 
+          </tr> 
+          <tr> 
+           <td class="td_content"> <a href="//www.law.go.kr/DRF/lawService.do?OC=test&amp;target=eflaw&amp;ID=1747&amp;type=JSON" target="_blank"> http://www.law.go.kr/DRF/lawService.do?OC=test&amp;target=eflaw&amp;ID=1747&amp;type=JSON </a> </td> 
+          </tr> 
+         </tbody>
+        </table> 
+       </dd> 
+       <dt style="font-weight: bold;">
+        출력 결과 필드(response field)
+       </dt> 
+       <dd style="background:none;"> 
+        <table class="blist guide"> 
+         <caption>
+          출력 결과 필드 안내
+         </caption> 
+         <colgroup> 
+          <col width="14%" /> 
+          <col width="20%" /> 
+          <col width="*" /> 
+         </colgroup> 
+         <thead> 
+          <tr> 
+           <th>필드</th> 
+           <th>값</th> 
+           <th>설명</th> 
+          </tr> 
+         </thead> 
+         <tbody> 
+          <tr> 
+           <td class="txtcnt">법령ID</td> 
+           <td>int</td> 
+           <td>법령ID</td> 
+          </tr> 
+          <tr> 
+           <td class="txtcnt">공포일자</td> 
+           <td>int</td> 
+           <td>공포일자</td> 
+          </tr> 
+          <tr> 
+           <td class="txtcnt">공포번호</td> 
+           <td>int</td> 
+           <td>공포번호</td> 
+          </tr> 
+          <tr> 
+           <td class="txtcnt">언어</td> 
+           <td>string</td> 
+           <td>언어종류</td> 
+          </tr> 
+          <tr> 
+           <td class="txtcnt">법종구분</td> 
+           <td>string</td> 
+           <td>법종류의 구분</td> 
+          </tr> 
+          <tr> 
+           <td class="txtcnt">법종구분코드</td> 
+           <td>string</td> 
+           <td>법종구분코드</td> 
+          </tr> 
+          <tr> 
+           <td class="txtcnt">법령명_한글</td> 
+           <td>string</td> 
+           <td>한글법령명</td> 
+          </tr> 
+          <tr> 
+           <td class="txtcnt">법령명_한자</td> 
+           <td>string</td> 
+           <td>법령명_한자</td> 
+          </tr> 
+          <tr> 
+           <td class="txtcnt">법령명약칭</td> 
+           <td>string</td> 
+           <td>법령명약칭</td> 
+          </tr> 
+          <tr> 
+           <td class="txtcnt">편장절관</td> 
+           <td>int</td> 
+           <td>편장절관 일련번호</td> 
+          </tr> 
+          <tr> 
+           <td class="txtcnt">소관부처코드</td> 
+           <td>int</td> 
+           <td>소관부처코드</td> 
+          </tr> 
+          <tr> 
+           <td class="txtcnt">소관부처</td> 
+           <td>string</td> 
+           <td>소관부처명</td> 
+          </tr> 
+          <tr> 
+           <td class="txtcnt">전화번호</td> 
+           <td>string</td> 
+           <td>전화번호</td> 
+          </tr> 
+          <tr> 
+           <td class="txtcnt">시행일자</td> 
+           <td>int</td> 
+           <td>시행일자</td> 
+          </tr> 
+          <tr> 
+           <td class="txtcnt">제개정구분</td> 
+           <td>string</td> 
+           <td>제개정구분</td> 
+          </tr> 
+          <tr> 
+           <td class="txtcnt">조문시행일자문자열</td> 
+           <td>string</td> 
+           <td>조문시행일자문자열</td> 
+          </tr> 
+          <tr> 
+           <td class="txtcnt">별표시행일자문자열</td> 
+           <td>string</td> 
+           <td>별표시행일자문자열</td> 
+          </tr> 
+          <tr> 
+           <td class="txtcnt">별표편집여부</td> 
+           <td>string</td> 
+           <td>별표편집여부</td> 
+          </tr> 
+          <tr> 
+           <td class="txtcnt">공포법령여부</td> 
+           <td>string</td> 
+           <td>공포법령여부</td> 
+          </tr> 
+          <tr> 
+           <td class="txtcnt">소관부처명</td> 
+           <td>string</td> 
+           <td>소관부처명</td> 
+          </tr> 
+          <tr> 
+           <td class="txtcnt">소관부처코드</td> 
+           <td>int</td> 
+           <td>소관부처코드</td> 
+          </tr> 
+          <tr> 
+           <td class="txtcnt">부서명</td> 
+           <td>string</td> 
+           <td>연락부서명</td> 
+          </tr> 
+          <tr> 
+           <td class="txtcnt">부서연락처</td> 
+           <td>string</td> 
+           <td>연락부서 전화번호</td> 
+          </tr> 
+          <tr> 
+           <td class="txtcnt">공동부령구분</td> 
+           <td>string</td> 
+           <td>공동부령의 구분</td> 
+          </tr> 
+          <tr> 
+           <td class="txtcnt">구분코드</td> 
+           <td>string</td> 
+           <td>구분코드(공동부령구분 구분코드)</td> 
+          </tr> 
+          <tr> 
+           <td class="txtcnt">공포번호</td> 
+           <td>string</td> 
+           <td>공포번호(공동부령의 공포번호)</td> 
+          </tr> 
+          <tr> 
+           <td class="txtcnt">조문번호</td> 
+           <td>int</td> 
+           <td>조문번호</td> 
+          </tr> 
+          <tr> 
+           <td class="txtcnt">조문가지번호</td> 
+           <td>int</td> 
+           <td>조문가지번호</td> 
+          </tr> 
+          <tr> 
+           <td class="txtcnt">조문여부</td> 
+           <td>string</td> 
+           <td>조문여부</td> 
+          </tr> 
+          <tr> 
+           <td class="txtcnt">조문제목</td> 
+           <td>string</td> 
+           <td>조문제목</td> 
+          </tr> 
+          <tr> 
+           <td class="txtcnt">조문시행일자</td> 
+           <td>int</td> 
+           <td>조문시행일자</td> 
+          </tr> 
+          <tr> 
+           <td class="txtcnt">조문제개정유형</td> 
+           <td>string</td> 
+           <td>조문제개정유형</td> 
+          </tr> 
+          <tr> 
+           <td class="txtcnt">조문이동이전</td> 
+           <td>int</td> 
+           <td>조문이동이전</td> 
+          </tr> 
+          <tr> 
+           <td class="txtcnt">조문이동이후</td> 
+           <td>int</td> 
+           <td>조문이동이후</td> 
+          </tr> 
+          <tr> 
+           <td class="txtcnt">조문변경여부</td> 
+           <td>string</td> 
+           <td>조문변경여부<br />(Y값이 있으면 해당 조문내에 변경 내용 있음 )</td> 
+          </tr> 
+          <tr> 
+           <td class="txtcnt">조문내용</td> 
+           <td>string</td> 
+           <td>조문내용</td> 
+          </tr> 
+          <tr> 
+           <td class="txtcnt">항번호</td> 
+           <td>int</td> 
+           <td>항번호</td> 
+          </tr> 
+          <tr> 
+           <td class="txtcnt">항제개정유형</td> 
+           <td>string</td> 
+           <td>항제개정유형</td> 
+          </tr> 
+          <tr> 
+           <td class="txtcnt">항제개정일자문자열</td> 
+           <td>string</td> 
+           <td>항제개정일자문자열</td> 
+          </tr> 
+          <tr> 
+           <td class="txtcnt">항내용</td> 
+           <td>string</td> 
+           <td>항내용</td> 
+          </tr> 
+          <tr> 
+           <td class="txtcnt">호번호</td> 
+           <td>int</td> 
+           <td>호번호</td> 
+          </tr> 
+          <tr> 
+           <td class="txtcnt">호내용</td> 
+           <td>string</td> 
+           <td>호내용</td> 
+          </tr> 
+          <tr> 
+           <td class="txtcnt">목번호</td> 
+           <td>int</td> 
+           <td>목번호</td> 
+          </tr> 
+          <tr> 
+           <td class="txtcnt">목내용</td> 
+           <td>string</td> 
+           <td>목내용</td> 
+          </tr> 
+          <tr> 
+           <td class="txtcnt">조문참고자료</td> 
+           <td>string</td> 
+           <td>조문참고자료</td> 
+          </tr> 
+          <tr> 
+           <td class="txtcnt">부칙공포일자</td> 
+           <td>int</td> 
+           <td>부칙공포일자</td> 
+          </tr> 
+          <tr> 
+           <td class="txtcnt">부칙공포번호</td> 
+           <td>int</td> 
+           <td>부칙공포번호</td> 
+          </tr> 
+          <tr> 
+           <td class="txtcnt">부칙내용</td> 
+           <td>string</td> 
+           <td>부칙내용</td> 
+          </tr> 
+          <tr> 
+           <td class="txtcnt">별표번호</td> 
+           <td>int</td> 
+           <td>별표번호</td> 
+          </tr> 
+          <tr> 
+           <td class="txtcnt">별표가지번호</td> 
+           <td>int</td> 
+           <td>별표가지번호</td> 
+          </tr> 
+          <tr> 
+           <td class="txtcnt">별표구분</td> 
+           <td>string</td> 
+           <td>별표구분</td> 
+          </tr> 
+          <tr> 
+           <td class="txtcnt">별표제목</td> 
+           <td>string</td> 
+           <td>별표제목</td> 
+          </tr> 
+          <tr> 
+           <td class="txtcnt">별표제목<br />문자열</td> 
+           <td>string</td> 
+           <td>별표제목문자열</td> 
+          </tr> 
+          <tr> 
+           <td class="txtcnt">별표시행일자</td> 
+           <td>int</td> 
+           <td>별표시행일자</td> 
+          </tr> 
+          <tr> 
+           <td class="txtcnt">별표서식<br />파일링크</td> 
+           <td>string</td> 
+           <td>별표서식파일링크</td> 
+          </tr> 
+          <tr> 
+           <td class="txtcnt">별표HWP<br />파일명</td> 
+           <td>string</td> 
+           <td>별표 HWP 파일명</td> 
+          </tr> 
+          <tr> 
+           <td class="txtcnt">별표서식<br />PDF파일링크</td> 
+           <td>string</td> 
+           <td>별표서식PDF파일링크</td> 
+          </tr> 
+          <tr> 
+           <td class="txtcnt">별표PDF<br />파일명</td> 
+           <td>string</td> 
+           <td>별표 PDF 파일명</td> 
+          </tr> 
+          <tr> 
+           <td class="txtcnt">별표서식<br />이미지파일링크</td> 
+           <td>string</td> 
+           <td>별표서식이미지파일링크</td> 
+          </tr> 
+          <tr> 
+           <td class="txtcnt">별표이미지<br />파일명</td> 
+           <td>string</td> 
+           <td>별표 이미지 파일명</td> 
+          </tr> 
+          <tr> 
+           <td class="txtcnt">별표내용</td> 
+           <td>string</td> 
+           <td>별표내용</td> 
+          </tr> 
+          <tr> 
+           <td class="txtcnt">개정문내용</td> 
+           <td>string</td> 
+           <td>개정문내용</td> 
+          </tr> 
+          <tr> 
+           <td class="txtcnt">제개정이유내용</td> 
+           <td>string</td> 
+           <td>제개정이유내용</td> 
+          </tr> 
+         </tbody> 
+        </table> 
+       </dd> 
+      </dl> 
+     </div>
+     <!-- guide 22 //-->  
+    </div>
+    <!-- contents  --> 
+   </div> 
+  </div> 
+  <style>
+#bottom #bottom_wrap .copyright a{
+	text-decoration: underline; color:#096FBA;
+}
+
+#bottom #bottom_wrap .copyright{
+	margin-left: 145px;
+}
+</style> 
+  <!-- footer --> 
+  <div id="bottom"> 
+   <div class="bottom_wrap"> 
+    <div class="go_moleg"> 
+     <a href="javascript:;"><img src="/LSO/images/logo_moleg.gif" alt="법제처" /></a> 
+    </div> 
+    <!-- go_moleg  //--> 
+    <!-- Foot Link --> 
+    <ul class="go_link"> 
+     <li><a href="http://www.law.go.kr/lawPetitionForm.do?menuId=13&amp;subMenuId=79" target="_blank" onkeypress=""><img src="/LSO/images/footmn1.gif" alt="법적효력/저작권" /></a></li> 
+     <li><a href="http://www.law.go.kr/LSW/privacyPolicy.do" target="_blank" title="팝업으로 이동"><img src="/LSO/images/footer-quicmenu031.gif" alt="개인정보처리방침" /></a></li> 
+     <li><a href="/LSO/usr/combineErrorBrdForm.do" title="통합 오류신고"><img src="/LSO/images/footer-quicmenu04.gif" alt="통합 오류신고" /></a></li> 
+    </ul> 
+    <ul class="law_link"> 
+     <li><a href="http://www.moleg.go.kr" target="_blank" onkeypress=""><img src="/LSO/images/foot_logo01.gif" alt="법제처" /></a></li> 
+     <li><a href="http://www.law.go.kr" target="_blank" onkeypress=""><img src="/LSO/images/foot_logo02.gif" alt="국가법령정보센터" /></a></li> 
+    </ul> 
+    <div></div> 
+    <p class="copyright" style="margin-left: 145px;"> (30102) 세종특별자치시 도움5로 20, 정부세종청사 법제처 <br /> [<b>사용신청 및 이용문의 : 02-2109-6446</b>]<br /> Copyright(c) 법제처 All rights reserved. </p> 
+   </div>
+   <!-- bottom_wrap  //--> 
+  </div> 
+  <!-- bottom //--> 
+ </body>
+</html>

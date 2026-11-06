@@ -1,0 +1,36 @@
+{
+  "schema_version": "verification_report@1.0",
+  "verdict": "PASS",
+  "checked_at": "2026-11-05T16:43:33+00:00",
+  "ledger_hash": "d648bac852cc146a1401fdb493e33c505b8aafa98d08243b47c4386e6a3d4ecc",
+  "explanation_hash": "7a871f214bd57683d311183c683db6f73e9bbed6f2c01f00aeade0a7ca9f6024",
+  "errors": [],
+  "coverage": [
+    {
+      "fact_id": "F_SUBJ",
+      "status": "COVERED"
+    },
+    {
+      "fact_id": "F_AREA",
+      "status": "COVERED"
+    },
+    {
+      "fact_id": "F_PERIOD",
+      "status": "COVERED"
+    },
+    {
+      "fact_id": "F_OBL",
+      "status": "COVERED"
+    },
+    {
+      "fact_id": "F_WIDTH",
+      "status": "COVERED"
+    },
+    {
+      "fact_id": "F_EXC",
+      "status": "COVERED"
+    }
+  ],
+  "judge": null,
+  "feedback_for_regeneration": []
+}
