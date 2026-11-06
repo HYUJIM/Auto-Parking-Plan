@@ -63,8 +63,11 @@ def _centroid(geom: dict | None) -> list[float] | None:
 
 class ParcelService:
     def __init__(self, *, juso=None, vworld=None, building=None, cache_days: int = 30, coord_lookup_limit: int = 5,  # noqa: ANN001
-                 example_data: bool = False):
+                 example_data: bool = False, refresh_min_interval_s: int = 600):
         self.example_data = example_data  # 공식 API 가 아닌 곳(모의 서버 등)에서 받은 필지 → 예시 데이터로 표시
+        # 공개 API 의 ?refresh=true 는 외부 공공 API(일일 할당량)를 다시 부른다. 같은 필지는 이 간격 안에 다시 부르지 않는다
+        # → 반복 호출로 인증키 할당량을 소진시켜 서비스 전체를 멈추게 하는 공격 차단
+        self.refresh_min_interval_s = refresh_min_interval_s
         self.juso = juso
         self.vworld = vworld
         self.building = building
@@ -119,6 +122,8 @@ class ParcelService:
             raise ParcelNotFound(pnu)
         row = s.get(Parcel, pnu)
         now = utcnow()
+        if refresh and row is not None and (now - row.fetched_at).total_seconds() < self.refresh_min_interval_s:
+            refresh = False  # 방금 받은 정보 → 외부 API 를 다시 부르지 않고 저장된 정보를 쓴다
         if row is not None and not refresh and row.expires_at > now:
             return row
         try:

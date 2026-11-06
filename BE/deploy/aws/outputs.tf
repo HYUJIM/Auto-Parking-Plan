@@ -1,5 +1,6 @@
 output "api_url" {
-  value = "http://${aws_lb.api.dns_name}"
+  # 인증서가 있으면 HTTPS (인증서의 도메인을 ALB DNS 이름에 CNAME/ALIAS 로 연결해 그 도메인으로 접속)
+  value = "${var.acm_certificate_arn == "" ? "http" : "https"}://${aws_lb.api.dns_name}"
 }
 
 output "ecr_repository_url" {

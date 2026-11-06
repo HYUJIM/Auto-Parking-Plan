@@ -34,6 +34,7 @@ from app.explain.ledger import EngineFact
 from app.parcels.snapshot import ParcelSnapshot
 from app.review.basis import basis_for_rules, node_for
 from app.review.rules_logic import L4_ESCALATE_RE, base_use_name, eval_formula, fmt_num, match_rule, norm, use_group
+from app.security.sanitize import safe_url
 
 log = logging.getLogger(__name__)
 
@@ -431,7 +432,7 @@ class ReviewEngine:
                     else:
                         related.append({"layer": doc.layer, "document_title": doc.official_title, "article_label": None,
                                         "effective_from": ver.effective_from.isoformat() if ver.effective_from else None,
-                                        "quote": None, "url": ver.source_url, "rule_id": None})
+                                        "quote": None, "url": safe_url(ver.source_url), "rule_id": None})
             else:
                 # 토지이용계획에서만 확인된 구역: 고시 원문을 아직 등록하지 않았으므로 토지이음 열람 경로를 안내한다
                 related.append({"layer": "L4_SPECIAL_ZONE", "document_title": f"{o['name']} (토지이음에서 결정 고시·도면 확인)",

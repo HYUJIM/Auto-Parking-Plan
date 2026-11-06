@@ -64,8 +64,9 @@ def build_container(settings: Settings, *, db: Database | None = None, llms: LLM
     if parcels is None:
         juso, vworld, building = build_external_clients(settings)
         parcels = ParcelService(juso=juso, vworld=vworld, building=building, cache_days=settings.parcel_cache_days,
-                                example_data=not _official_hosts(settings))
+                                example_data=not _official_hosts(settings),
+                                refresh_min_interval_s=settings.parcel_refresh_min_interval_s)
     explainer = ExplanationService(writer=llms.writer, judge=llms.judge, max_attempts=settings.explanation_max_attempts)
     reviews = ReviewService(db, parcels, explainer, executor=settings.review_executor, workers=settings.review_workers,
-                            timezone=settings.timezone)
+                            timezone=settings.timezone, max_pending=settings.max_pending_reviews)
     return Container(settings, db, blobs, llms, parcels, explainer, reviews)

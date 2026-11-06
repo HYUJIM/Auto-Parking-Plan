@@ -64,6 +64,11 @@ resource "aws_route_table_association" "public" {
   route_table_id = aws_route_table.public.id
 }
 
+# VPC 기본 보안그룹은 규칙을 모두 비워 둔다 (실수로 붙여도 아무 통신도 허용하지 않도록)
+resource "aws_default_security_group" "default" {
+  vpc_id = aws_vpc.main.id
+}
+
 resource "aws_security_group" "alb" {
   name   = "${local.name}-alb"
   vpc_id = aws_vpc.main.id
@@ -79,14 +84,16 @@ resource "aws_security_group" "alb" {
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
+  egress { # 대상(ECS 작업)의 8000 포트로만
+    from_port   = 8000
+    to_port     = 8000
+    protocol    = "tcp"
+    cidr_blocks = [aws_vpc.main.cidr_block]
   }
 }
 
+# 나가는 통신: HTTPS(공공 API·LLM·ECR·Secrets Manager·S3·CloudWatch), HTTP(국가법령정보 DRF 가 http://www.law.go.kr),
+# PostgreSQL(프라이빗 서브넷의 RDS). VPC DNS(Route 53 Resolver)·작업 메타데이터는 보안그룹 대상이 아니다.
 resource "aws_security_group" "app" {
   name   = "${local.name}-app"
   vpc_id = aws_vpc.main.id
@@ -96,11 +103,23 @@ resource "aws_security_group" "app" {
     protocol        = "tcp"
     security_groups = [aws_security_group.alb.id]
   }
-  egress { # 공공 API·LLM API 호출
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
+  egress {
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
+  }
+  egress {
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+  egress {
+    from_port   = 5432
+    to_port     = 5432
+    protocol    = "tcp"
+    cidr_blocks = aws_subnet.private[*].cidr_block
   }
 }
 
@@ -118,12 +137,35 @@ resource "aws_security_group" "db" {
 # ── 저장소 ──────────────────────────────────────────────────
 resource "aws_ecr_repository" "app" {
   name                 = local.name
-  image_tag_mutability = "MUTABLE"
+  image_tag_mutability = var.ecr_immutable_tags ? "IMMUTABLE" : "MUTABLE"
   image_scanning_configuration { scan_on_push = true }
 }
 
 resource "aws_s3_bucket" "raw" {
   bucket_prefix = "${local.name}-law-raw-"
+}
+
+# ACL 비활성 (객체는 항상 버킷 소유자 것, 공개 ACL 불가)
+resource "aws_s3_bucket_ownership_controls" "raw" {
+  bucket = aws_s3_bucket.raw.id
+  rule { object_ownership = "BucketOwnerEnforced" }
+}
+
+# TLS(HTTPS) 가 아닌 요청은 모두 거부
+resource "aws_s3_bucket_policy" "raw" {
+  bucket = aws_s3_bucket.raw.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "DenyInsecureTransport"
+      Effect    = "Deny"
+      Principal = "*"
+      Action    = "s3:*"
+      Resource  = [aws_s3_bucket.raw.arn, "${aws_s3_bucket.raw.arn}/*"]
+      Condition = { Bool = { "aws:SecureTransport" = "false" } }
+    }]
+  })
+  depends_on = [aws_s3_bucket_public_access_block.raw]
 }
 
 resource "aws_s3_bucket_versioning" "raw" {
@@ -157,22 +199,24 @@ resource "aws_db_subnet_group" "db" {
 }
 
 resource "aws_db_instance" "db" {
-  identifier              = local.name
-  engine                  = "postgres"
-  engine_version          = "16"
-  instance_class          = var.db_instance_class
-  allocated_storage       = 20
-  max_allocated_storage   = 100
-  storage_encrypted       = true
-  db_name                 = "app"
-  username                = "app"
-  password                = random_password.db.result
-  db_subnet_group_name    = aws_db_subnet_group.db.name
-  vpc_security_group_ids  = [aws_security_group.db.id]
-  backup_retention_period = 7
-  deletion_protection     = var.env == "prod"
-  skip_final_snapshot     = var.env != "prod"
-  publicly_accessible     = false
+  identifier                = local.name
+  engine                    = "postgres"
+  engine_version            = "16"
+  instance_class            = var.db_instance_class
+  allocated_storage         = 20
+  max_allocated_storage     = 100
+  storage_encrypted         = true
+  db_name                   = "app"
+  username                  = "app"
+  password                  = random_password.db.result
+  db_subnet_group_name      = aws_db_subnet_group.db.name
+  vpc_security_group_ids    = [aws_security_group.db.id]
+  backup_retention_period   = 7
+  copy_tags_to_snapshot     = true
+  deletion_protection       = var.env == "prod"
+  skip_final_snapshot       = var.env != "prod"
+  final_snapshot_identifier = "${local.name}-final" # skip_final_snapshot=false(prod)일 때 필수
+  publicly_accessible       = false
 }
 
 # 앱 비밀값: 콘솔/CLI 로 값만 채운다 (terraform 상태에 키를 남기지 않도록 기본값은 빈 JSON)
@@ -184,9 +228,10 @@ resource "aws_secretsmanager_secret" "db_url" {
   name_prefix = "${local.name}-db-url-"
 }
 
+# sslmode=require: 앱↔RDS 구간 암호화 강제 (PostgreSQL 16 RDS 기본 파라미터도 rds.force_ssl=1)
 resource "aws_secretsmanager_secret_version" "db_url" {
   secret_id     = aws_secretsmanager_secret.db_url.id
-  secret_string = "postgresql+psycopg://app:${random_password.db.result}@${aws_db_instance.db.address}:5432/app"
+  secret_string = "postgresql+psycopg://app:${random_password.db.result}@${aws_db_instance.db.address}:5432/app?sslmode=require"
 }
 
 # ── ECS ─────────────────────────────────────────────────────
@@ -218,9 +263,25 @@ resource "aws_iam_role" "exec" {
   assume_role_policy = data.aws_iam_policy_document.ecs_assume.json
 }
 
-resource "aws_iam_role_policy_attachment" "exec" {
-  role       = aws_iam_role.exec.name
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+# 실행 역할(이미지 pull·로그·비밀 주입): AmazonECSTaskExecutionRolePolicy 와 같은 동작을 이 저장소·로그 그룹으로만 한정
+resource "aws_iam_role_policy" "exec_pull_logs" {
+  role = aws_iam_role.exec.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      { Effect = "Allow", Action = ["ecr:GetAuthorizationToken"], Resource = "*" }, # 리소스 수준 권한을 지원하지 않는 API
+      {
+        Effect   = "Allow"
+        Action   = ["ecr:BatchCheckLayerAvailability", "ecr:GetDownloadUrlForLayer", "ecr:BatchGetImage"]
+        Resource = aws_ecr_repository.app.arn
+      },
+      {
+        Effect   = "Allow"
+        Action   = ["logs:CreateLogStream", "logs:PutLogEvents"]
+        Resource = [aws_cloudwatch_log_group.app.arn, "${aws_cloudwatch_log_group.app.arn}:*"]
+      }
+    ]
+  })
 }
 
 resource "aws_iam_role_policy" "exec_secrets" {
@@ -236,29 +297,38 @@ resource "aws_iam_role" "task" {
   assume_role_policy = data.aws_iam_policy_document.ecs_assume.json
 }
 
+# 작업 역할(앱 코드가 쓰는 권한): 원문 버킷의 접두사 아래 읽기·쓰기만 (삭제 없음). 비밀값은 실행 역할이 주입하므로 여기엔 없다.
 resource "aws_iam_role_policy" "task_s3" {
   role = aws_iam_role.task.id
   policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [{
-      Effect   = "Allow"
-      Action   = ["s3:GetObject", "s3:PutObject", "s3:ListBucket"]
-      Resource = [aws_s3_bucket.raw.arn, "${aws_s3_bucket.raw.arn}/*"]
-    }]
+    Statement = [
+      { Effect = "Allow", Action = ["s3:ListBucket"], Resource = aws_s3_bucket.raw.arn },
+      { Effect = "Allow", Action = ["s3:GetObject", "s3:PutObject"], Resource = "${aws_s3_bucket.raw.arn}/${local.s3_prefix}*" }
+    ]
   })
 }
 
 locals {
-  image = "${aws_ecr_repository.app.repository_url}:${var.image_tag}"
+  image     = "${aws_ecr_repository.app.repository_url}:${var.image_tag}"
+  s3_prefix = "law-raw/" # 앱 기본값(S3_PREFIX)과 같게 두고 환경변수로도 명시
   env = [
-    { name = "APP_ENV", value = var.env },
+    # 앱은 APP_ENV 로 local|test|prod 만 받는다 (dev·staging 을 넘기면 기동 실패). AWS 배포는 env 와 상관없이
+    # 인터넷에 공개되므로 항상 prod — 일괄 승인 금지, ADMIN_TOKEN 강도 검사 등 운영 보호가 켜진다
+    { name = "APP_ENV", value = "prod" },
     { name = "BLOB_STORE", value = "s3" },
     { name = "S3_BUCKET", value = aws_s3_bucket.raw.bucket },
+    { name = "S3_PREFIX", value = local.s3_prefix },
     { name = "AWS_REGION", value = var.region },
     { name = "REVIEW_EXECUTOR", value = "worker" },
     { name = "LLM_PROVIDER", value = var.llm_provider },
     { name = "CORS_ORIGINS", value = jsonencode(var.cors_origins) },
     { name = "VWORLD_DOMAIN", value = var.vworld_domain },
+    # 앱 앞단 프록시 수 (ALB 1개). 앱이 X-Forwarded-For 에서 실제 클라이언트 IP 를 고를 때 쓴다
+    { name = "TRUSTED_PROXY_HOPS", value = "1" },
+    # uvicorn 은 이 대역(=ALB)에서 온 X-Forwarded-For 만 믿고, 오른쪽부터 처음 나오는 외부 IP 를 클라이언트로 본다.
+    # '*' 로 두면 클라이언트가 넣은 맨 앞 값을 그대로 써서 IP 가 위조된다.
+    { name = "FORWARDED_ALLOW_IPS", value = aws_vpc.main.cidr_block },
   ]
   secret_keys = ["JUSO_API_KEY", "VWORLD_API_KEY", "BUILDING_HUB_KEY", "LAWGO_OC", "ANTHROPIC_API_KEY", "OPENAI_API_KEY", "ADMIN_TOKEN"]
   secrets = concat(
@@ -268,6 +338,12 @@ locals {
   log = {
     logDriver = "awslogs"
     options   = { "awslogs-group" = aws_cloudwatch_log_group.app.name, "awslogs-region" = var.region, "awslogs-stream-prefix" = "app" }
+  }
+  # 루트 파일시스템 읽기 전용 + 리눅스 권한(capability) 모두 제거. 운영(BLOB_STORE=s3)에서 앱이 쓰는 곳은 tempfile(/tmp) 뿐
+  hardening = {
+    readonlyRootFilesystem = true
+    mountPoints            = [{ sourceVolume = "tmp", containerPath = "/tmp", readOnly = false }]
+    linuxParameters        = { capabilities = { drop = ["ALL"] } }
   }
 }
 
@@ -283,7 +359,8 @@ resource "aws_ecs_task_definition" "api" {
     operating_system_family = "LINUX"
     cpu_architecture        = "X86_64"
   }
-  container_definitions = jsonencode([{
+  volume { name = "tmp" } # 작업 임시 저장소(바인드 마운트) → /tmp
+  container_definitions = jsonencode([merge(local.hardening, {
     name             = "api"
     image            = local.image
     essential        = true
@@ -291,7 +368,7 @@ resource "aws_ecs_task_definition" "api" {
     environment      = local.env
     secrets          = local.secrets
     logConfiguration = local.log
-  }])
+  })])
 }
 
 resource "aws_ecs_task_definition" "worker" {
@@ -302,7 +379,8 @@ resource "aws_ecs_task_definition" "worker" {
   memory                   = 1024
   execution_role_arn       = aws_iam_role.exec.arn
   task_role_arn            = aws_iam_role.task.arn
-  container_definitions = jsonencode([{
+  volume { name = "tmp" }
+  container_definitions = jsonencode([merge(local.hardening, {
     name             = "worker"
     image            = local.image
     essential        = true
@@ -310,14 +388,16 @@ resource "aws_ecs_task_definition" "worker" {
     environment      = local.env
     secrets          = local.secrets
     logConfiguration = local.log
-  }])
+  })])
 }
 
 resource "aws_lb" "api" {
-  name               = local.name
-  load_balancer_type = "application"
-  security_groups    = [aws_security_group.alb.id]
-  subnets            = aws_subnet.public[*].id
+  name                       = local.name
+  load_balancer_type         = "application"
+  security_groups            = [aws_security_group.alb.id]
+  subnets                    = aws_subnet.public[*].id
+  drop_invalid_header_fields = true # 헤더 이름이 RFC 에 맞지 않는 요청 헤더는 앱에 넘기지 않는다 (요청 밀반입·헤더 혼동 방지)
+  enable_deletion_protection = var.env == "prod"
 }
 
 resource "aws_lb_target_group" "api" {
@@ -348,6 +428,12 @@ resource "aws_lb_listener" "http" {
       }
     }
   }
+  lifecycle {
+    precondition {
+      condition     = var.env != "prod" || var.acm_certificate_arn != ""
+      error_message = "prod 는 acm_certificate_arn 이 필요합니다 (평문 HTTP 로 X-Admin-Token 이 오가지 않도록)"
+    }
+  }
 }
 
 resource "aws_lb_listener" "https" {
@@ -361,6 +447,133 @@ resource "aws_lb_listener" "https" {
     type             = "forward"
     target_group_arn = aws_lb_target_group.api.arn
   }
+}
+
+# ── WAF (ALB 앞단) ──────────────────────────────────────────
+# 로그인 없는 공개 API 이므로 IP 당 요청 수 제한 + AWS 관리형 공통 규칙(SQLi·XSS·LFI·SSRF 등).
+# admin_allowed_cidrs 를 주면 /admin/* 은 그 IP 에서만 허용.
+resource "aws_wafv2_ip_set" "admin" {
+  count              = var.enable_waf && length(var.admin_allowed_cidrs) > 0 ? 1 : 0
+  name               = "${local.name}-admin"
+  scope              = "REGIONAL"
+  ip_address_version = "IPV4"
+  addresses          = var.admin_allowed_cidrs
+}
+
+resource "aws_wafv2_web_acl" "api" {
+  count = var.enable_waf ? 1 : 0
+  name  = local.name
+  scope = "REGIONAL"
+
+  default_action {
+    allow {}
+  }
+
+  dynamic "rule" {
+    for_each = length(var.admin_allowed_cidrs) > 0 ? [1] : []
+    content {
+      name     = "admin-ip-allowlist"
+      priority = 0
+      action {
+        block {}
+      }
+      statement {
+        and_statement {
+          statement {
+            byte_match_statement {
+              search_string         = "/admin"
+              positional_constraint = "STARTS_WITH"
+              field_to_match {
+                uri_path {}
+              }
+              # 앱 서버가 경로의 %xx 를 풀어서 라우팅하므로 같은 방식으로 풀어 본다 (/%61dmin 우회 방지)
+              text_transformation {
+                priority = 0
+                type     = "URL_DECODE"
+              }
+              text_transformation {
+                priority = 1
+                type     = "NORMALIZE_PATH"
+              }
+            }
+          }
+          statement {
+            not_statement {
+              statement {
+                ip_set_reference_statement {
+                  arn = aws_wafv2_ip_set.admin[0].arn
+                }
+              }
+            }
+          }
+        }
+      }
+      visibility_config {
+        cloudwatch_metrics_enabled = true
+        metric_name                = "${local.name}-admin-ip-allowlist"
+        sampled_requests_enabled   = true
+      }
+    }
+  }
+
+  rule {
+    name     = "rate-limit-per-ip"
+    priority = 10
+    action {
+      block {}
+    }
+    statement {
+      rate_based_statement {
+        limit              = var.waf_rate_limit
+        aggregate_key_type = "IP"
+      }
+    }
+    visibility_config {
+      cloudwatch_metrics_enabled = true
+      metric_name                = "${local.name}-rate-limit"
+      sampled_requests_enabled   = true
+    }
+  }
+
+  rule {
+    name     = "aws-common"
+    priority = 20
+    override_action {
+      none {}
+    }
+    statement {
+      managed_rule_group_statement {
+        vendor_name = "AWS"
+        name        = "AWSManagedRulesCommonRuleSet"
+        dynamic "rule_action_override" {
+          for_each = var.waf_common_rule_count_overrides
+          content {
+            name = rule_action_override.value
+            action_to_use {
+              count {}
+            }
+          }
+        }
+      }
+    }
+    visibility_config {
+      cloudwatch_metrics_enabled = true
+      metric_name                = "${local.name}-aws-common"
+      sampled_requests_enabled   = true
+    }
+  }
+
+  visibility_config {
+    cloudwatch_metrics_enabled = true
+    metric_name                = local.name
+    sampled_requests_enabled   = true
+  }
+}
+
+resource "aws_wafv2_web_acl_association" "api" {
+  count        = var.enable_waf ? 1 : 0
+  resource_arn = aws_lb.api.arn
+  web_acl_arn  = aws_wafv2_web_acl.api[0].arn
 }
 
 resource "aws_ecs_service" "api" {
@@ -399,8 +612,13 @@ resource "aws_ecs_service" "worker" {
 resource "aws_iam_role" "scheduler" {
   name_prefix = "${local.name}-sched-"
   assume_role_policy = jsonencode({
-    Version   = "2012-10-17"
-    Statement = [{ Effect = "Allow", Principal = { Service = "scheduler.amazonaws.com" }, Action = "sts:AssumeRole" }]
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "scheduler.amazonaws.com" }
+      Action    = "sts:AssumeRole"
+      Condition = { StringEquals = { "aws:SourceAccount" = data.aws_caller_identity.me.account_id } } # 혼동된 대리인 방지
+    }]
   })
 }
 
@@ -409,8 +627,18 @@ resource "aws_iam_role_policy" "scheduler" {
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
-      { Effect = "Allow", Action = ["ecs:RunTask"], Resource = [aws_ecs_task_definition.worker.arn_without_revision, "${aws_ecs_task_definition.worker.arn_without_revision}:*"] },
-      { Effect = "Allow", Action = ["iam:PassRole"], Resource = [aws_iam_role.exec.arn, aws_iam_role.task.arn] }
+      {
+        Effect    = "Allow"
+        Action    = ["ecs:RunTask"]
+        Resource  = [aws_ecs_task_definition.worker.arn_without_revision, "${aws_ecs_task_definition.worker.arn_without_revision}:*"]
+        Condition = { ArnEquals = { "ecs:cluster" = aws_ecs_cluster.main.arn } }
+      },
+      {
+        Effect    = "Allow"
+        Action    = ["iam:PassRole"]
+        Resource  = [aws_iam_role.exec.arn, aws_iam_role.task.arn]
+        Condition = { StringEquals = { "iam:PassedToService" = "ecs-tasks.amazonaws.com" } }
+      }
     ]
   })
 }

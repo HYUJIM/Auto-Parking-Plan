@@ -1,8 +1,43 @@
+# 빌드 컨텍스트에서 제외 (Dockerfile 은 필요한 경로만 COPY 하지만, 비밀·로컬 산출물이 데몬으로 전송되거나
+# 나중에 COPY . 로 바뀌어도 이미지에 들어가지 않도록 막는다)
+.git
+.gitignore
+.dockerignore
+**/.DS_Store
+
+# 로컬 환경·비밀
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
+**/*.pem
+**/*.key
+**/*.p12
+**/*.pfx
+
+# 가상환경·캐시·빌드 산출물
 .venv
+venv
 var
 .pytest_cache
 .ruff_cache
+.mypy_cache
+.coverage
+htmlcov
+build
+dist
+*.egg-info
 **/__pycache__
-deploy/aws/.terraform
-.env
-docs/reference/*.pdf
+**/*.py[cod]
+
+# 이미지에 필요 없는 것 (테스트·문서·인프라 코드·terraform 상태)
+tests
+docs
+deploy
+**/*.tfstate*
+**/*.tfvars
+**/.terraform
+docker-compose*.yml
+Dockerfile

@@ -340,6 +340,69 @@ def run_upstream_failure(env: dict, rep: Report, logs: Path, parcels: list[dict]
         stop(p)
 
 
+def run_security(env: dict, rep: Report, logs: Path, parcels: list[dict]) -> None:
+    """외부 공격 대비 (docs/SECURITY.md): 실제 서버 프로세스(app.cli serve)에 요청 제한을 켜고 공격 요청을 보낸다."""
+    print("\n▶ 보안 (모의 공격)")
+    s02 = next(p0 for p0 in parcels if p0["id"] == "S02")
+    port = free_port()
+    e2 = dict(env, APP_ENV="local", RATE_LIMIT_ENABLED="true", RATE_LIMIT_SEARCH_PER_MIN="6", ADMIN_MAX_FAILURES="4",  # 비ASCII 토큰 점검 1회 + 대입 3회 = 4회
+              MAX_BODY_BYTES="8192", REVIEW_EXECUTOR="thread")
+    p = start([sys.executable, "-m", "app.cli", "serve", "--port", str(port)], e2, logs / "api_security.log")
+    try:
+        wait_http(f"http://127.0.0.1:{port}/healthz")
+        c = httpx.Client(base_url=f"http://127.0.0.1:{port}", timeout=30)
+        H = {"X-Admin-Token": ADMIN}
+        r = c.get("/v1/regions")
+        rep.check("보안 헤더 (nosniff·프레임 금지·CSP) + server 헤더 없음",
+                  r.headers.get("x-content-type-options") == "nosniff" and r.headers.get("x-frame-options") == "DENY"
+                  and "default-src 'none'" in r.headers.get("content-security-policy", "") and "server" not in r.headers, str(dict(r.headers)))
+        zone = {"reviewer": REVIEWER, "zone_type": "other", "name": "E2E 보안 점검 구역 (예시)", "notice_title": "E2E 보안 점검 (예시)",
+                "jurisdiction_code": "27260", "pnu_list": [s02["pnu"]]}
+        rs = [c.post("/admin/zones", headers=H, json=zone | {"notice_url": u}).status_code
+              for u in ("javascript:alert(document.cookie)", "data:text/html,<script>alert(1)</script>")]
+        rep.check("관리자 입력의 javascript:/data: 링크 거부 (저장형 XSS)", rs == [422, 422], str(rs))
+        r = c.post("/admin/zones", headers=H, json=zone | {"pnu_list": [], "geometry": {"type": "Polygon", "coordinates": "garbage"}})
+        rep.check("깨진 GeoJSON 경계 거부", r.status_code == 422, r.text[:200])
+        r = c.post("/v1/reviews", content=b'{"pnu":"' + s02["pnu"].encode() + b'","x":"' + b"A" * 50_000 + b'"}',
+                   headers={"Content-Type": "application/json"})
+        rep.check("큰 요청 본문 → 413", r.status_code == 413 and r.json()["error"]["code"] == "PAYLOAD_TOO_LARGE", r.text[:200])
+        r = c.post("/v1/reviews", content='{"pnu":"' + s02["pnu"] + '","inputs":{"gross_floor_area":NaN}}',
+                   headers={"Content-Type": "application/json"})
+        rep.check("NaN 수치 → 422", r.status_code == 422, r.text[:200])
+        r = c.get("/admin/rules", headers={"X-Admin-Token": "관리자".encode()})
+        rep.check("관리자 토큰에 비ASCII 문자 → 401 (500 아님)", r.status_code == 401, r.text[:200])
+        codes = [c.get("/admin/rules", headers={"X-Admin-Token": f"guess{i}", "X-Forwarded-For": f"10.0.0.{i}"}).status_code
+                 for i in range(3)]
+        r = c.get("/admin/rules", headers=H | {"X-Forwarded-For": "10.0.0.99"})
+        rep.check("관리자 토큰 대입 → IP 잠금 (X-Forwarded-For 위조로 못 피함)", codes == [401] * 3 and r.status_code == 429
+                  and int(r.headers.get("retry-after", "0")) > 0, f"{codes} → {r.status_code}")
+        codes = [c.get("/v1/address/search", params={"q": s02["road_address"]}, headers={"X-Forwarded-For": f"10.1.0.{i}"}).status_code
+                 for i in range(8)]
+        r = c.get("/v1/address/search", params={"q": s02["road_address"]})
+        rep.check("주소 검색 폭주 → 429 + Retry-After (헤더 위조로 못 피함)", 429 in codes and r.status_code == 429
+                  and r.json()["error"]["code"] == "RATE_LIMITED" and r.headers.get("retry-after"), str(codes))
+        rep.check("헬스체크는 요청 제한 없음", all(c.get("/healthz").status_code == 200 for _ in range(10)))
+    finally:
+        stop(p)
+    port = free_port()
+    e3 = dict(env, APP_ENV="prod", ADMIN_TOKEN="Zx8-qL2vN0pR7sT4uW1yA3bC6dE9fG5hJ-e2e", REVIEW_EXECUTOR="thread")
+    p = start([sys.executable, "-m", "app.cli", "serve", "--port", str(port)], e3, logs / "api_prod.log")
+    try:
+        wait_http(f"http://127.0.0.1:{port}/healthz")
+        c = httpx.Client(base_url=f"http://127.0.0.1:{port}", timeout=30)
+        docs = [c.get(x).status_code for x in ("/docs", "/redoc", "/openapi.json")]
+        rep.check("운영: API 문서(관리자 경로 포함) 비공개", docs == [404, 404, 404], str(docs))
+        h = c.get("/healthz")
+        rep.check("운영: healthz 에 내부 구성 미노출 + HSTS", h.json() == {"status": "ok"}
+                  and h.headers.get("strict-transport-security", "").startswith("max-age="), h.text[:200])
+    finally:
+        stop(p)
+    weak = subprocess.run([sys.executable, "-c", "from app.config import Settings; Settings()"], cwd=ROOT,
+                          env=dict(env, APP_ENV="prod", ADMIN_TOKEN="change-me-local-admin"), capture_output=True, text=True,
+                          encoding="utf-8", timeout=60)
+    rep.check("운영: 약한 ADMIN_TOKEN 이면 시작 거부", weak.returncode != 0 and "ADMIN_TOKEN" in weak.stderr, weak.stderr[-300:])
+
+
 def main() -> int:
     ensure_utf8_stdio()
     ap = argparse.ArgumentParser()
@@ -395,6 +458,7 @@ def main() -> int:
         run_scenarios(api, rep, parcels, exp)
         run_errors_and_admin(api, rep, parcels)
         run_upstream_failure(env, rep, logs, parcels)
+        run_security(env, rep, logs, parcels)
     except Exception:  # noqa: BLE001
         rep.check("E2E 실행 중 예외 없음", False, traceback.format_exc())
     finally:

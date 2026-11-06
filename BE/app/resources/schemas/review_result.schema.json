@@ -122,7 +122,7 @@
         "article_label": { "type": ["string", "null"], "description": "'제77조제1항제1호' / '별표 1'" },
         "effective_from": { "type": ["string", "null"], "format": "date" },
         "quote": { "type": ["string", "null"], "maxLength": 400 },
-        "url": { "type": ["string", "null"], "format": "uri" },
+        "url": { "type": ["string", "null"], "format": "uri", "pattern": "^https?://" },
         "rule_id": { "type": ["string", "null"], "format": "uuid" }
       }
     },

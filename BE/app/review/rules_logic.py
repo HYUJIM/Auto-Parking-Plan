@@ -90,8 +90,15 @@ _ALLOWED_FUNCS = {"ceil": math.ceil, "floor": math.floor, "min": min, "max": max
 
 
 def eval_formula(expr: str, variables: dict[str, float]) -> float:
-    """규칙 계산식 DSL (rule_extraction.schema 의 formula) 안전 평가. 허용: 변수 4개, + - * /, ceil floor min max."""
-    tree = ast.parse(expr, mode="eval")
+    """규칙 계산식 DSL (rule_extraction.schema 의 formula) 안전 평가. 허용: 변수 4개, + - * /, ceil floor min max.
+
+    eval() 을 쓰지 않고 AST 화이트리스트로만 계산한다 (AI 가 추출한 식에 코드가 섞여도 실행되지 않음)."""
+    if not isinstance(expr, str) or len(expr) > 500:
+        raise ValueError("계산식이 너무 깁니다")
+    try:
+        tree = ast.parse(expr, mode="eval")
+    except (SyntaxError, RecursionError, MemoryError) as e:
+        raise ValueError("계산식을 해석할 수 없습니다") from e
 
     def ev(n):
         if isinstance(n, ast.Expression):
@@ -111,7 +118,13 @@ def eval_formula(expr: str, variables: dict[str, float]) -> float:
             return float(_ALLOWED_FUNCS[n.func.id](*[ev(a) for a in n.args]))
         raise ValueError(f"허용되지 않은 식: {ast.dump(n)}")
 
-    return ev(tree)
+    try:
+        out = ev(tree)
+    except (ArithmeticError, TypeError, RecursionError) as e:  # 0 나누기·overflow·min() 인자 없음 등
+        raise ValueError(f"계산할 수 없는 식: {type(e).__name__}") from e
+    if out is None or not math.isfinite(out):
+        raise ValueError("계산 결과가 유한한 수가 아닙니다")
+    return out
 
 
 def fmt_num(x: float | None) -> str:

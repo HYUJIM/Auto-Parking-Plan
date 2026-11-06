@@ -41,9 +41,10 @@ from urllib.parse import urlencode
 
 import httpx
 
+import app.external._http  # noqa: F401  (httpx 요청 로그에서 OC 값을 가리는 필터 설치)
 from app.legal.parsed import ArticleText, DocumentMeta, Layer, SourceBundle, SourceType, VerifyState, VersionMeta
 
-DRF_BASE_URL = "http://www.law.go.kr/DRF"
+DRF_BASE_URL = "https://www.law.go.kr/DRF"  # http 도 되지만 OC 가 평문으로 가므로 https
 USER_AGENT = "APP-legal-collector/0.1 (dev)"
 KST = dt.timezone(dt.timedelta(hours=9))
 DrfTarget = Literal["law", "eflaw", "ordin"]
@@ -487,8 +488,13 @@ class LawGoDrfClient:
 
     def _get(self, endpoint: str, params: dict[str, str]) -> tuple[bytes, str]:
         q = {"OC": self.oc, "type": "XML", **{k: v for k, v in params.items() if v is not None}}
-        resp = self._http.get(f"{self.base_url}/{endpoint}", params=q)
-        resp.raise_for_status()
+        # httpx 의 예외 메시지에는 요청 URL 전체(= OC 인증값)가 들어간다 → 로그·응답으로 새지 않게 URL 없는 오류로 바꾼다
+        try:
+            resp = self._http.get(f"{self.base_url}/{endpoint}", params=q)
+        except httpx.HTTPError as e:
+            raise DrfError(f"{endpoint} 요청 실패 ({type(e).__name__})") from None
+        if resp.is_error:
+            raise DrfError(f"{endpoint} HTTP {resp.status_code}")
         return resp.content, dt.datetime.now(KST).replace(microsecond=0).isoformat()
 
     def search(self, target: str, query: str, **params: str) -> list[dict[str, Any]]:

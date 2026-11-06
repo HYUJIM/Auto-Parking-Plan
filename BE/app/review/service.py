@@ -18,7 +18,7 @@ from zoneinfo import ZoneInfo
 
 from jsonschema import Draft202012Validator
 from referencing import Registry, Resource
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from app.db.models import Parcel, ReviewItem, ReviewRequest
 from app.db.session import Database
@@ -52,9 +52,18 @@ class ReviewNotFound(Exception):
     pass
 
 
+class ReviewQueueFull(Exception):
+    """대기 중 검토가 상한을 넘음 (요청 폭주 → 새 요청은 잠시 거절해 기존 요청과 서버를 보호)."""
+
+
+# 공개 응답에 싣는 실패 사유: 코드만 그대로, 문구는 고정 (계약 위반 상세·예외 종류 등 내부 정보는 로그·관리자 알림에만)
+PUBLIC_ERROR_MESSAGE = "검토 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요."
+
+
 class ReviewService:
     def __init__(self, db: Database, parcels: ParcelService, explainer: ExplanationService, *,
-                 executor: str = "thread", workers: int = 4, timezone: str = "Asia/Seoul"):
+                 executor: str = "thread", workers: int = 4, timezone: str = "Asia/Seoul", max_pending: int = 500):
+        self.max_pending = max_pending
         self.db = db
         self.parcels = parcels
         self.explainer = explainer
@@ -69,6 +78,9 @@ class ReviewService:
     # ── 제출 ───────────────────────────────────────────────
     def submit(self, *, pnu: str, as_of: date | None, audience: str, inputs: dict[str, Any] | None = None) -> uuid.UUID:
         with self.db.session() as s:
+            pending = s.scalar(select(func.count()).select_from(ReviewRequest).where(ReviewRequest.status == "queued"))
+            if pending >= self.max_pending:
+                raise ReviewQueueFull(pending)
             self.parcels.get_parcel(s, pnu)  # 필지 확정 (없으면 ParcelNotFound / UpstreamUnavailable)
             req = ReviewRequest(pnu=pnu, as_of_date=as_of or today_kst(self.timezone), audience=audience, inputs=inputs or {},
                                 engine_version=ENGINE_VERSION, status="queued",
@@ -177,8 +189,10 @@ class ReviewService:
                 raise ReviewNotFound(str(rid))
             if req.status in ("done", "partial") and req.result_json:
                 return {"state": req.status, "result": self._only_displayable(s, req.result_json)}
+            err = ({"code": req.error.get("code", "INTERNAL_ERROR"), "message": PUBLIC_ERROR_MESSAGE}
+                   if isinstance(req.error, dict) else None)
             return {"state": req.status, "progress": {"review_id": str(rid), "status": req.status, "steps": req.progress,
-                                                      "error": req.error}}
+                                                      "error": err}}
 
     @staticmethod
     def _only_displayable(s, result: dict[str, Any]) -> dict[str, Any]:

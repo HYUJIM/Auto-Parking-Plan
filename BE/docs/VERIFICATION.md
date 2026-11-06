@@ -1,14 +1,15 @@
-# 검증 기록 (2026-11-06)
+# 검증 기록 (2026-11-06, 보안 점검 반영)
 
 ## 1. 무엇을 돌렸나
 
 | 검증 | 환경 | 결과 |
 | --- | --- | --- |
-| 단위·통합 테스트 `python -m pytest` | macOS, Python 3.12 | 387 통과, 3 건너뜀(실제 API 키 필요한 `real_api`) |
-| 같은 테스트, 한국어 윈도우 기본 인코딩 흉내 (`LC_ALL=ko_KR.CP949 PYTHONUTF8=0`) | macOS | 387 통과 |
-| 종단 검증 `scripts/e2e_verify.py` — SQLite, API 내 스레드 | macOS | 점검 531건 중 실패 0 |
-| 같은 종단 검증 — PostgreSQL 16 + 별도 검토 워커 프로세스 (AWS 구성과 같음) | macOS + Docker | 531 / 0 |
-| 같은 종단 검증 — 출력 파이프 cp1252 + CP949 로캘 (GitHub 윈도우 러너 조건) | macOS | 531 / 0 |
+| 단위·통합 테스트 `python -m pytest` | macOS, Python 3.12 | 473 통과, 3 건너뜀(실제 API 키 필요한 `real_api`) — 보안 회귀 테스트 85건 포함 |
+| 같은 테스트, 한국어 윈도우 기본 인코딩 흉내 (`PYTHONIOENCODING=cp949 PYTHONUTF8=0`) | macOS | 473 통과 |
+| 종단 검증 `scripts/e2e_verify.py` — SQLite, API 내 스레드 | macOS | 점검 543건 중 실패 0 (보안 모의 공격 12건 포함) |
+| 같은 종단 검증 — PostgreSQL 16 + 별도 검토 워커 프로세스 (AWS 구성과 같음) | macOS + Docker | 543 / 0 |
+| 같은 종단 검증 — 출력 파이프 cp1252 + CP949 로캘 (GitHub 윈도우 러너 조건) | macOS | 543 / 0 |
+| 보안 점검 — 로컬 모의 공격, 컨테이너 공격, `pip-audit` | macOS + Docker | [`SECURITY.md`](SECURITY.md) |
 | Docker compose (PostgreSQL·모의 API·API·워커) + bootstrap + 실제 HTTP 검토·배치 | Docker Desktop | 정상 |
 | AWS Terraform `terraform validate` / `fmt -check` | hashicorp/terraform:1.9 | 통과 |
 

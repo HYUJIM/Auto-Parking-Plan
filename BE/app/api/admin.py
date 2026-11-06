@@ -21,10 +21,11 @@ import hmac
 import json
 import uuid
 from datetime import date
-from typing import Any
+from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, Header, Request
-from pydantic import BaseModel, Field
+from fastapi import APIRouter, Depends, Header, Query, Request
+from fastapi import Path as PathParam
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import delete, select
 
 from app.api.errors import ApiError
@@ -45,14 +46,31 @@ from app.db.types import utcnow
 from app.explain.ledger import _provision_texts, _refresh, approve_ledger, ledger_to_dict
 from app.legal.ingest import ensure_jurisdiction, ingest_bundle, link_delegations
 from app.review.approval import ApprovalError, approve_rule, edit_rule, log_action, reject_rule
+from app.security.ratelimit import client_ip
+from app.security.sanitize import GeometryError, safe_url, validate_zone_geometry
+
+
+def _token_matches(given: str | None, expected: str) -> bool:
+    """상수 시간 비교. 바이트로 바꿔 비교한다 — 문자열 비교(hmac.compare_digest(str, str))는 비ASCII 문자가 오면
+    TypeError(→ 500)를 내서, 헤더에 한글 등을 넣는 것만으로 서버 오류를 일으킬 수 있었다."""
+    if not given:
+        return False
+    return hmac.compare_digest(given.encode("utf-8", "replace"), expected.encode("utf-8"))
 
 
 def require_admin(request: Request, x_admin_token: str | None = Header(default=None)) -> str:
     token = request.app.state.container.settings.admin_token
     if not token:
         raise ApiError("ADMIN_DISABLED")
-    if not x_admin_token or not hmac.compare_digest(x_admin_token, token):
+    sec = request.app.state.security
+    ip = client_ip(request.scope, sec.trusted_proxy_hops)
+    wait = sec.admin_guard.retry_after(ip)
+    if wait:  # 토큰 대입(무차별 대입) 공격: 여러 번 틀린 IP 는 잠시 잠근다 (맞는 토큰이어도 잠금 동안은 거부)
+        raise ApiError("RATE_LIMITED", "관리자 인증 실패가 많아 잠시 차단되었습니다.", headers={"Retry-After": str(wait)})
+    if not _token_matches(x_admin_token, token):
+        sec.admin_guard.failure(ip)
         raise ApiError("UNAUTHORIZED")
+    sec.admin_guard.success(ip)
     return "admin"
 
 
@@ -72,7 +90,8 @@ def _rule_summary(r: Rule) -> dict[str, Any]:
 
 
 @router.get("/extractions")
-def list_extractions(request: Request, status: str | None = None, limit: int = 100) -> dict[str, Any]:
+def list_extractions(request: Request, status: str | None = Query(None, max_length=40),
+                     limit: int = Query(100, ge=1, le=500)) -> dict[str, Any]:
     with _c(request).db.session() as s:
         q = select(ExtractionRun).where(ExtractionRun.task == "rule_extraction").order_by(ExtractionRun.created_at.desc()).limit(limit)
         if status:
@@ -88,7 +107,8 @@ def list_extractions(request: Request, status: str | None = None, limit: int = 1
 
 
 @router.get("/rules")
-def list_rules(request: Request, status: str = "auto_checked", category: str | None = None) -> dict[str, Any]:
+def list_rules(request: Request, status: str = Query("auto_checked", max_length=40),
+               category: str | None = Query(None, max_length=60)) -> dict[str, Any]:
     with _c(request).db.session() as s:
         q = select(Rule).where(Rule.review_status == status).order_by(Rule.category, Rule.rule_key)
         if category:
@@ -138,7 +158,7 @@ class ApproveAction(ReviewAction):
 
 
 class EditAction(ReviewAction):
-    values: list[dict[str, Any]]
+    values: list[dict[str, Any]] = Field(..., max_length=200)
 
 
 @router.post("/rules/{rule_id}/approve")
@@ -172,11 +192,12 @@ def edit(request: Request, rule_id: uuid.UUID, body: EditAction) -> dict[str, An
 
 class FactPatch(ReviewAction):
     must_mention: bool | None = None
-    key_terms: list[Any] | None = None
+    key_terms: list[Any] | None = Field(default=None, max_length=50)
 
 
 @router.post("/ledgers/{ledger_id}/facts/{fact_key}")
-def patch_fact(request: Request, ledger_id: uuid.UUID, fact_key: str, body: FactPatch) -> dict[str, Any]:
+def patch_fact(request: Request, ledger_id: uuid.UUID, body: FactPatch,
+               fact_key: str = PathParam(..., max_length=200)) -> dict[str, Any]:
     with _c(request).db.session() as s:
         led = s.get(FactLedger, ledger_id)
         if led is None or led.review_status != "draft":
@@ -197,7 +218,7 @@ def patch_fact(request: Request, ledger_id: uuid.UUID, fact_key: str, body: Fact
 
 
 class Dismissal(ReviewAction):
-    candidate_id: str
+    candidate_id: str = Field(..., min_length=1, max_length=200)
     reason: str = Field(..., min_length=2, max_length=300)
 
 
@@ -258,7 +279,7 @@ def refetch(request: Request, document_id: uuid.UUID, body: ReviewAction) -> dic
 
 class ExtractRun(ReviewAction):
     version_id: uuid.UUID
-    categories: list[str] | None = None
+    categories: list[str] | None = Field(default=None, max_length=20)
 
 
 @router.post("/extractions/run")
@@ -281,14 +302,32 @@ class ZoneRegistration(ReviewAction):
     zone_type: str = Field(..., pattern=r"^(district_unit_plan|rnd_special_zone|free_economic_zone|heritage|industrial_complex|other)$")
     name: str = Field(..., min_length=2, max_length=200)
     notice_title: str = Field(..., min_length=2, max_length=300)
-    notice_number: str | None = None
+    notice_number: str | None = Field(default=None, max_length=100)
     notice_date: date | None = None
-    notice_url: str | None = None
+    notice_url: str | None = Field(default=None, max_length=2048)
     jurisdiction_code: str = Field(..., pattern=r"^(00|\d{2}|\d{5})$")
     geometry: dict[str, Any] | None = None
-    pnu_list: list[str] = Field(default_factory=list)
+    pnu_list: list[Annotated[str, Field(pattern=r"^\d{19}$")]] = Field(default_factory=list, max_length=20_000)
     effective_from: date | None = None
     effective_to: date | None = None
+
+    @field_validator("notice_url")
+    @classmethod
+    def _http_url_only(cls, v: str | None) -> str | None:
+        # 이 주소는 공개 검토 결과의 근거 링크(related_basis.url)로 나간다 → javascript: 등은 저장형 XSS
+        if v is not None and safe_url(v) is None:
+            raise ValueError("notice_url 은 http:// 또는 https:// 로 시작하는 주소여야 합니다")
+        return v
+
+    @field_validator("geometry")
+    @classmethod
+    def _valid_geometry(cls, v: dict[str, Any] | None) -> dict[str, Any] | None:
+        if v is None:
+            return v
+        try:
+            return validate_zone_geometry(v)
+        except GeometryError as e:
+            raise ValueError(str(e)) from None
 
 
 @router.post("/zones", status_code=201)
@@ -337,7 +376,7 @@ def verification(request: Request, report_id: uuid.UUID) -> dict[str, Any]:
 
 
 @router.get("/alerts")
-def alerts(request: Request, limit: int = 100) -> dict[str, Any]:
+def alerts(request: Request, limit: int = Query(100, ge=1, le=500)) -> dict[str, Any]:
     """검수·관리자 알림: 범위 이탈(OUT_OF_RANGE), 템플릿까지 실패한 설명, 재수집 본문 불일치·재추출 요청, 실패한 검토."""
     from app.db.models import ReviewItem, ReviewLog, ReviewRequest  # noqa: PLC0415
 

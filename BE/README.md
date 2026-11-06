@@ -85,6 +85,8 @@ docker compose up --build -d
 docker compose run --rm bootstrap
 ```
 
+> 포트는 이 컴퓨터(127.0.0.1)에만 열립니다. 관리자 API 를 쓰려면 `.env` 에 `ADMIN_TOKEN` 을 넣으세요 (비어 있으면 비활성).
+
 ### 테스트
 
 ```bash
@@ -99,9 +101,16 @@ python -m pytest
 | 국가법령정보 Open API (원문 매일 재수집) | `LAWGO_OC` (서버 IP 등록 필요) |
 | 프론티어 LLM | `LLM_PROVIDER=anthropic` + `ANTHROPIC_API_KEY` (작성 `claude-opus-5-5`, 판정 `claude-sonnet-5-5`) 또는 `openai` |
 | DB / 원문 보관 | `DATABASE_URL=postgresql+psycopg://…`, `BLOB_STORE=s3`, `S3_BUCKET` |
-| 관리자 API | `ADMIN_TOKEN` |
+| 관리자 API | `ADMIN_TOKEN` (운영은 32자 이상 무작위 값) |
+| 요청 제한·본문 크기 등 보안 설정 | 기본값으로 켜져 있음. 바꾸려면 [`docs/SECURITY.md`](docs/SECURITY.md) 6장 |
 
 AWS 배포는 [`docs/DEPLOY_AWS.md`](docs/DEPLOY_AWS.md) (Terraform: `deploy/aws/`).
+
+## 보안
+
+공개(비로그인) 서비스라 IP 별 요청 제한(429), 요청 본문 크기 제한(413), 보안 헤더, 관리자 토큰 대입 잠금, 링크(http/https만)·GeoJSON 입력 검사,
+외부 공공 API 재조회 간격 제한이 들어 있습니다. 운영(`APP_ENV=prod`)에서는 API 문서가 꺼집니다.
+로컬 모의 공격으로 찾은 취약점과 조치, 남은 위험은 [`docs/SECURITY.md`](docs/SECURITY.md) 에 있습니다.
 
 ## API 요약
 

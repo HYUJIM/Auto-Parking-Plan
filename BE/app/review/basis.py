@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 
 from app.db.models import Delegation, DocumentVersion, Provision, Rule, SourceDocument
 from app.legal.structure import article_label_for
+from app.security.sanitize import safe_url
 
 LAYER_ORDER = {"L1_NATIONAL": 0, "L2_LAND_USE": 1, "L3_LOCAL": 2, "L4_SPECIAL_ZONE": 3}
 TYPE_ORDER = {"law": 0, "decree": 1, "rule": 2, "ordinance": 3, "local_rule": 4, "notice": 5, "plan": 6}
@@ -68,7 +69,7 @@ def node_for(s: Session, p: Provision, *, quote: str | None, rule_id: uuid.UUID 
         "article_label": label,
         "effective_from": ver.effective_from.isoformat() if ver.effective_from else None,
         "quote": (quote if quote is not None else _verbatim_prefix(p.text))[:400],
-        "url": url,
+        "url": safe_url(url),  # 화면 링크 → http(s) 만 (javascript: 등 저장형 XSS 차단)
         "rule_id": str(rule_id) if rule_id else None,
         "_sort": (LAYER_ORDER[doc.layer], TYPE_ORDER.get(doc.source_type, 9)),
         "_pid": str(p.id),

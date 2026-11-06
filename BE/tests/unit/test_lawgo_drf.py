@@ -116,7 +116,7 @@ def test_client_builds_official_query_and_saves_raw(tmp_path: Path) -> None:
             c.get_document("law")
     assert hits[0]["법령ID"] == "009294"
     q0, q1 = seen[0].url.params, seen[1].url.params
-    assert str(seen[0].url).startswith("http://www.law.go.kr/DRF/lawSearch.do")
+    assert str(seen[0].url).startswith("https://www.law.go.kr/DRF/lawSearch.do")
     assert (q0["OC"], q0["target"], q0["type"], q0["query"]) == ("my-oc", "law", "XML", "국토의 계획 및 이용에 관한 법률")
     assert seen[1].url.path == "/DRF/lawService.do"
     assert (q1["OC"], q1["target"], q1["MST"], q1["efYd"], q1["type"]) == ("my-oc", "eflaw", "284013", "20260701", "XML")

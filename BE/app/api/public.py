@@ -14,9 +14,10 @@ from __future__ import annotations
 
 import uuid
 from datetime import date
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Query, Request
+from fastapi import Path as PathParam
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -27,7 +28,8 @@ from app.parcels.service import AddressNotFound, ParcelNotFound, UpstreamUnavail
 from app.parking.service import SimulationUnavailable, simulate_for_review
 from app.parking.types import SimulationParams
 from app.review.basis import basis_for_rules, provision_label
-from app.review.service import ReviewNotFound, today_kst
+from app.review.service import ReviewNotFound, ReviewQueueFull, today_kst
+from app.security.sanitize import safe_url
 
 router = APIRouter(prefix="/v1", tags=["public"])
 
@@ -64,7 +66,7 @@ def parcel_at(request: Request, lng: float = Query(..., ge=124, le=132), lat: fl
 
 
 @router.get("/parcels/{pnu}")
-def parcel_detail(request: Request, pnu: str, refresh: bool = False) -> dict[str, Any]:
+def parcel_detail(request: Request, pnu: Annotated[str, PathParam(max_length=40)], refresh: bool = False) -> dict[str, Any]:
     c = _c(request)
     with c.db.session() as s:
         try:
@@ -78,14 +80,14 @@ def parcel_detail(request: Request, pnu: str, refresh: bool = False) -> dict[str
 
 class ReviewInputs(BaseModel):
     """향후 확장(LATER): 계획 용도·연면적. MVP 에서는 비워 두면 주차대수는 NEEDS_USE_INPUT."""
-    model_config = {"extra": "forbid"}
+    model_config = {"extra": "forbid", "allow_inf_nan": False}
     building_use: str | None = Field(default=None, max_length=60, description="「건축법 시행령」 별표 1 용도명")
     gross_floor_area: float | None = Field(default=None, gt=0, lt=1e7)
     households: int | None = Field(default=None, gt=0, lt=100000)
 
 
 class ReviewCreate(BaseModel):
-    model_config = {"extra": "forbid"}
+    model_config = {"extra": "forbid", "allow_inf_nan": False}
     pnu: str = Field(..., pattern=r"^\d{19}$")
     as_of_date: date | None = None
     audience: Literal["owner", "architect"] = "owner"
@@ -100,6 +102,8 @@ def create_review(request: Request, body: ReviewCreate) -> JSONResponse:
     try:
         rid = c.reviews.submit(pnu=body.pnu, as_of=body.as_of_date, audience=body.audience,
                                inputs=body.inputs.model_dump(exclude_none=True) if body.inputs else {})
+    except ReviewQueueFull as e:
+        raise ApiError("SERVICE_BUSY", headers={"Retry-After": "30"}) from e
     except ParcelNotFound as e:
         raise ApiError("PARCEL_NOT_FOUND") from e
     except UpstreamUnavailable as e:
@@ -150,7 +154,7 @@ def rule_basis(request: Request, rule_id: uuid.UUID, as_of_date: date | None = N
                          "promulgation_number": ver.promulgation_number,
                          "promulgation_date": ver.promulgation_date.isoformat() if ver.promulgation_date else None,
                          "effective_from": ver.effective_from.isoformat() if ver.effective_from else None,
-                         "source_url": ver.source_url, "fetched_at": ver.fetched_at.isoformat(),
+                         "source_url": safe_url(ver.source_url), "fetched_at": ver.fetched_at.isoformat(),
                          "verification": {"source_access": ver.v_source_access, "version_header": ver.v_version_header,
                                           "text_match": ver.v_text_match, "current_version": ver.v_current_version,
                                           "current_checked_on": ver.current_checked_on.isoformat() if ver.current_checked_on else None},
@@ -174,12 +178,16 @@ def regions(request: Request) -> dict[str, Any]:
                 "roadmap": "추후 대구 전 지역 → 경북 → 전국 확대 예정"}
 
 
+Lng = Annotated[float, Field(ge=-180, le=180)]
+Lat = Annotated[float, Field(ge=-90, le=90)]
+
+
 class SimulationRequest(BaseModel):
-    model_config = {"extra": "forbid"}
-    angles: list[Literal["PARALLEL_0", "ANGLE_45", "ANGLE_60", "PERPENDICULAR_90"]] | None = None
+    model_config = {"extra": "forbid", "allow_inf_nan": False}  # NaN·Infinity 좌표/수치 거부
+    angles: list[Literal["PARALLEL_0", "ANGLE_45", "ANGLE_60", "PERPENDICULAR_90"]] | None = Field(default=None, max_length=8)
     stall_type: Literal["general", "extended"] = "general"
     setback_m: float = Field(default=0.5, ge=0, le=10)
-    gate_point: tuple[float, float] | None = Field(default=None, description="[경도, 위도] 진출입구 희망 위치")
+    gate_point: tuple[Lng, Lat] | None = Field(default=None, description="[경도, 위도] 진출입구 희망 위치")
     gate_count: Literal[1, 2] = 1
     max_alternatives: int = Field(default=3, ge=1, le=6)
     include_unverified: bool = Field(default=False, description="주차장 설치 가능 여부가 '별도 확인 필요'여도 참고 배치를 계산")

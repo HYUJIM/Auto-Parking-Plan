@@ -4,7 +4,7 @@
   * 기본 시간 제한 3.0초 (프로토타입 API 명세). httpx 의 시간 제한은 단계별(connect/read/write/pool)이다.
   * GET 은 시간 초과·연결 오류·5xx 에 한해 1회 재시도하고, 그래도 실패하면 UpstreamError.
   * 인증키는 예외 메시지·로그에 절대 넣지 않는다. httpx 자체 로거("httpx")가 INFO 로 남기는 요청 URL 에서도
-    key·confmKey·serviceKey 값을 가린다(필터 1회 설치).
+    key·confmKey·serviceKey·OC 값을 가린다(필터 1회 설치).
 """
 
 from __future__ import annotations
@@ -24,7 +24,8 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_TIMEOUT = 3.0
 DEFAULT_RETRIES = 1
-_SECRET_PARAM_RE = re.compile(r"(?i)\b((?:confm|service|api)?key)=([^&\s\"']+)")
+# confmKey(도로명주소)·key(브이월드)·serviceKey(공공데이터포털)·OC(국가법령정보 공동활용)
+_SECRET_PARAM_RE = re.compile(r"(?i)\b((?:confm|service|api)?key|oc)=([^&\s\"']+)")
 
 
 def redact_secrets(text: str, secrets: Iterable[str] = ()) -> str:

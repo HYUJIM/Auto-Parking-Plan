@@ -249,7 +249,11 @@ def cmd_approve(args) -> int:
 def cmd_serve(args) -> int:
     import uvicorn  # noqa: PLC0415
 
-    uvicorn.run("app.main:app", host=args.host, port=args.port, reload=False, log_level="info")
+    # server_header=False: "server: uvicorn" 으로 서버 종류를 알리지 않는다.
+    # proxy_headers=False: 이 명령은 앞단 프록시 없이 직접 띄우는 용도 → X-Forwarded-For 로 클라이언트 IP 를 바꾸지 않는다
+    # (uvicorn 기본값은 127.0.0.1 에서 온 X-Forwarded-For 를 믿어, 같은 PC 에서 헤더만 바꿔 요청 제한·잠금을 피할 수 있었다).
+    uvicorn.run("app.main:app", host=args.host, port=args.port, reload=False, log_level="info",
+                server_header=False, proxy_headers=False)
     return 0
 
 
