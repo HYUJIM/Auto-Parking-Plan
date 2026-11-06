@@ -685,7 +685,7 @@ class LawGoHtmlClient:
             raise ValueError("min_interval must be >= 1.0 s for law.go.kr")
         self.base_url = base_url.rstrip("/")
         self.min_interval = min_interval
-        self._last = 0.0
+        self._last: float | None = None  # 마지막 요청이 끝난 시각 (time.perf_counter)
         self._http = httpx.Client(
             headers={"User-Agent": USER_AGENT, "Accept-Language": "ko-KR,ko;q=0.9"},
             timeout=timeout,
@@ -703,9 +703,12 @@ class LawGoHtmlClient:
         self.close()
 
     def _wait(self) -> None:
-        delta = time.monotonic() - self._last
-        if delta < self.min_interval:
-            time.sleep(self.min_interval - delta)
+        # 윈도우의 time.monotonic() 은 약 15.6ms 단위라 간격이 한 칸 짧게 잴 수 있다 → 고해상도 perf_counter 로 재고,
+        # sleep 이 일찍 깨어나도 최소 간격이 지날 때까지 다시 기다린다 (어느 OS 에서든 min_interval 이상 보장)
+        if self._last is None:
+            return
+        while (remaining := self.min_interval - (time.perf_counter() - self._last)) > 0:
+            time.sleep(remaining)
 
     def request(self, method: str, path: str, params: dict[str, str] | None = None) -> FetchedPage:
         params = dict(params or {})
@@ -717,7 +720,7 @@ class LawGoHtmlClient:
             else:
                 resp = self._http.get(url, params=params)
         finally:
-            self._last = time.monotonic()
+            self._last = time.perf_counter()
         resp.raise_for_status()
         record_url = url + ("?" + urlencode(params) if params else "")
         return FetchedPage(

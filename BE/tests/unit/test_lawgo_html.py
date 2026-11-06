@@ -279,11 +279,11 @@ def test_client_requests_are_polite_and_identified() -> None:
         return httpx.Response(200, content=b"<html></html>")
 
     with L.LawGoHtmlClient(min_interval=0.2, transport=httpx.MockTransport(handler)) as c:
-        t0 = time.monotonic()
+        t0 = time.perf_counter()
         c.law_body("288857", "20260918")
         c.ordin_body("2128915", "2152107")
         c.law_history("009419")
-        elapsed = time.monotonic() - t0
+        elapsed = time.perf_counter() - t0
     assert elapsed >= 0.4  # 요청 사이 간격
     ua = seen[0].headers["user-agent"]
     assert ua == "APP-legal-collector/0.1 (dev)" and "@" not in ua
@@ -329,3 +329,20 @@ def test_saved_bundle_traces_back_to_raw_page(path: Path) -> None:
     if b.document.parent_key:
         assert b.document.parent_key in ALLOWED_KEYS
     assert not re.search(r"\n{4,}", "\n".join(a.text for a in b.articles))
+
+
+def test_min_interval_holds_even_if_sleep_wakes_early(monkeypatch) -> None:
+    """윈도우처럼 시계가 거칠거나 sleep 이 일찍 깨어나도 요청 간격은 min_interval 이상이어야 한다."""
+    real_sleep = time.sleep
+    monkeypatch.setattr(L.time, "sleep", lambda s: real_sleep(s / 2))  # 요청한 시간의 절반만 자고 깨어남
+    starts: list[float] = []
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        starts.append(time.perf_counter())
+        return httpx.Response(200, content=b"<html></html>")
+
+    with L.LawGoHtmlClient(min_interval=0.2, transport=httpx.MockTransport(handler)) as c:
+        for _ in range(3):
+            c.law_history("009419")
+    gaps = [b - a for a, b in zip(starts, starts[1:], strict=False)]
+    assert len(gaps) == 2 and all(g >= 0.2 for g in gaps), gaps
