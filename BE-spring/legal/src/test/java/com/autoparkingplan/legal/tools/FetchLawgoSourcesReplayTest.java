@@ -149,7 +149,7 @@ class FetchLawgoSourcesReplayTest {
                 new PrintStream(so, true, StandardCharsets.UTF_8), new PrintStream(se, true, StandardCharsets.UTF_8));
         assertThat(se.toString(StandardCharsets.UTF_8)).isEmpty();
         assertThat(rc).isZero();
-        String stdout = so.toString(StandardCharsets.UTF_8);
+        String stdout = consoleText(so);
         assertThat(stdout).contains("[kr.law.nkpa] 국토의 계획 및 이용에 관한 법률\n")
                 .contains("   -> kr.decree.nkpa__2026-09-18.json: 3 items, missing 6\n")
                 .contains("   -> daegu.ord.building__2026-11-12.json: 0 items, missing 0\n");
@@ -186,7 +186,7 @@ class FetchLawgoSourcesReplayTest {
         int rc = FetchLawgoSources.run(new String[] {"--only", "kr.law.parking", "--skip-region", "--as-of=2026-11-06"}, out, transport,
                 0.0, new PrintStream(so, true, StandardCharsets.UTF_8), new PrintStream(se, true, StandardCharsets.UTF_8));
         assertThat(rc).isEqualTo(1);
-        assertThat(so.toString(StandardCharsets.UTF_8)).startsWith("[kr.law.parking] 주차장법\n");
+        assertThat(consoleText(so)).startsWith("[kr.law.parking] 주차장법\n");
         String manifest = TestFiles.readText(out.resolve("MANIFEST.md"));
         assertThat(manifest).contains("| P2 | `kr.law.parking` | 주차장법 | 수집 실패 | — | — | — | 0 | — |")
                 .contains("- **수집 실패**: RuntimeError('이름 주소에서 일련번호를 찾지 못함: "
@@ -202,5 +202,13 @@ class FetchLawgoSourcesReplayTest {
                 new PrintStream(se, true, StandardCharsets.UTF_8));
         assertThat(rc).isEqualTo(2);
         assertThat(se.toString(StandardCharsets.UTF_8)).contains("error: unrecognized arguments: --bogus");
+    }
+
+    /**
+     * 콘솔 출력 (줄 끝을 \n 으로 맞춤). 도구는 파이썬 print 처럼 플랫폼 줄 끝(윈도우 \r\n)으로 출력하므로 비교 전에 정규화한다.
+     * 파일 출력(번들·MANIFEST·보충 자료)은 항상 \n 이며 아래에서 바이트 그대로 비교한다.
+     */
+    private static String consoleText(ByteArrayOutputStream so) {
+        return so.toString(StandardCharsets.UTF_8).replace("\r\n", "\n");
     }
 }

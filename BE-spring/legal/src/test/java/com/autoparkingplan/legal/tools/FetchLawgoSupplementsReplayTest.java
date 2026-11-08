@@ -54,7 +54,7 @@ class FetchLawgoSupplementsReplayTest {
         assertThat(se.toString(StandardCharsets.UTF_8)).isEmpty();
         assertThat(sleeps).hasSize(names.size()).allMatch(s -> s == 1.2); // 요청마다 1.2초 쉼
         assertThat(transport.requests().getFirst().uri().getRawQuery()).isEqualTo("gubun=&flSeq=168871291&bylClsCd=110201");
-        assertThat(so.toString(StandardCharsets.UTF_8)).contains(" bytes, ").contains(" 줄\n").contains("표 flSeq=24335428: ");
+        assertThat(consoleText(so)).contains(" bytes, ").contains(" 줄\n").contains("표 flSeq=24335428: ");
         for (String f : List.of("kr.decree.nkpa__2026-09-18__annexes.json", "kr.rule.parking__2026-07-27__tables.json")) {
             String produced = TestFiles.readText(out.resolve("supplements").resolve(f));
             String expected = TestFiles.readText(DATA.resolve("supplements").resolve(f));
@@ -66,5 +66,13 @@ class FetchLawgoSupplementsReplayTest {
         for (String n : names) {
             assertThat(TestFiles.read(out.resolve("raw").resolve(n))).as(n).isEqualTo(TestFiles.read(raw.resolve(n)));
         }
+    }
+
+    /**
+     * 콘솔 출력 (줄 끝을 \n 으로 맞춤). 도구는 파이썬 print 처럼 플랫폼 줄 끝(윈도우 \r\n)으로 출력하므로 비교 전에 정규화한다.
+     * 파일 출력(번들·MANIFEST·보충 자료)은 항상 \n 이며 아래에서 바이트 그대로 비교한다.
+     */
+    private static String consoleText(ByteArrayOutputStream so) {
+        return so.toString(StandardCharsets.UTF_8).replace("\r\n", "\n");
     }
 }
