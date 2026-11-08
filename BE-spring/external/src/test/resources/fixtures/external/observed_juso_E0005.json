@@ -1,0 +1,12 @@
+{
+  "results": {
+    "common": {
+      "countPerPage": "10",
+      "errorMessage": "검색어가 입력되지 않았습니다.",
+      "errorCode": "E0005",
+      "totalCount": "0",
+      "currentPage": "1"
+    },
+    "juso": null
+  }
+}

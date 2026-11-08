@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://app.local/schemas/explanation.schema.json",
+  "title": "쉬운 설명 (explanation@2.0)",
+  "description": "AI(또는 템플릿)가 review_item 하나와 그 사실 원장을 받아 쓰는 설명. 화면에 보이는 모든 문장은 sentences 안에 있어야 하고, 각 문장은 근거가 된 원장 fact_id 를 반드시 인용한다. 사후 검증기(post_verifier)를 통과한 경우에만 화면에 나간다.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "category", "audience", "sentences"],
+  "properties": {
+    "schema_version": { "const": "explanation@2.0" },
+    "category": {
+      "enum": ["ZONING_USE", "BUILDING_COVERAGE", "FLOOR_AREA_RATIO", "PARKING_REQUIREMENT",
+               "PARKING_STALL_SIZE", "DRIVE_AISLE_WIDTH", "ROAD_ACCESS", "SETBACK", "HEIGHT_SUNLIGHT", "SPECIAL_ZONE"]
+    },
+    "audience": { "enum": ["owner", "architect"] },
+    "source": { "enum": ["ai", "template_fallback"], "default": "ai" },
+    "sentences": {
+      "type": "array", "minItems": 1, "maxItems": 12,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["sid", "role", "text", "fact_ids"],
+        "properties": {
+          "sid": { "type": "string", "pattern": "^[a-z0-9_]{1,20}$" },
+          "role": { "enum": ["headline", "summary", "meaning", "condition", "exception", "caution"] },
+          "text": { "type": "string", "minLength": 2, "maxLength": 200 },
+          "fact_ids": {
+            "description": "이 문장의 근거가 된 원장 사실. 문장에 쓴 숫자·기간·조건·예외는 모두 여기 인용된 사실에서 와야 한다.",
+            "type": "array", "items": { "type": "string" }, "uniqueItems": true
+          }
+        }
+      }
+    },
+    "glossary": {
+      "description": "용어 풀이. 숫자·기간을 쓰면 안 된다 (검증기는 풀이도 문장처럼 검사하지 않으므로 숫자 금지를 스키마로 강제).",
+      "type": "array", "maxItems": 3,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["term", "plain"],
+        "properties": {
+          "term": { "type": "string", "maxLength": 20, "pattern": "^[^0-9]*$" },
+          "plain": { "type": "string", "maxLength": 80, "pattern": "^[^0-9]*$" }
+        }
+      }
+    }
+  }
+}

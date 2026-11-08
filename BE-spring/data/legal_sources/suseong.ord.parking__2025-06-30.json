@@ -1,0 +1,35 @@
+{
+  "document": {
+    "key": "suseong.ord.parking",
+    "layer": "L3_LOCAL",
+    "source_type": "ordinance",
+    "official_title": "대구광역시 수성구 주차장 설치 및 관리 조례",
+    "jurisdiction_code": "27260",
+    "external_system": "law.go.kr",
+    "external_id": "2049947",
+    "short_title": null,
+    "parent_key": null,
+    "homepage_url": "https://www.law.go.kr/자치법규/대구광역시수성구주차장설치및관리조례",
+    "aliases": {}
+  },
+  "version": {
+    "promulgation_number": "대구광역시수성구조례 제1837호",
+    "promulgation_date": "2025-06-30",
+    "effective_from": "2025-06-30",
+    "effective_to": null,
+    "external_version_id": "2047061",
+    "source_url": "https://www.law.go.kr/LSW/ordinInfoP.do?ordinSeq=2047061&chrClsCd=010202&gubun=ELIS",
+    "fetched_at": "2026-11-06T12:23:29+09:00",
+    "raw_format": "html",
+    "raw_file": "raw/suseong.ord.parking__2025-06-30__ordinInfoR-2047061.html",
+    "v_source_access": "confirmed",
+    "v_version_header": "confirmed",
+    "v_text_match": "not_checked",
+    "v_current_version": "confirmed",
+    "current_checked_on": "2026-11-06",
+    "note": "선별 조문만 수집 (개발용 HTML 수집기) — 이 번들은 버전 표제만 담음(조문 없음)"
+  },
+  "articles": [],
+  "format": "app-legal-source@1",
+  "is_example": false
+}

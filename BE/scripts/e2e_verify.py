@@ -10,8 +10,10 @@
   5) 오류·예외: 주소 없음 404, 잘못된 PNU, 요청 형식 422, 미지원 지역, 외부 API 장애 503, 관리자 인증
   6) 검수 흐름: draft 규칙 확인 → 관리자 승인, L4 특화구역 등록 → ZONE_OVERLAY 격상, 설명 캐시 재사용
 
-실행:  python scripts/e2e_verify.py [--report var/e2e_report.json] [--executor thread|worker] [--keep]
+실행:  python scripts/e2e_verify.py [--report var/e2e_report.json] [--executor thread|worker] [--keep] [--server python|spring]
 PostgreSQL 로 검증:  E2E_DATABASE_URL=postgresql+psycopg://app:app@localhost:5432/app python scripts/e2e_verify.py
+스프링판(../BE-spring) 검증: 먼저 `cd ../BE-spring && ./gradlew :server:bootJar` 후 --server spring.
+  같은 모의 서버·같은 원문·같은 점검을 스프링 서버 프로세스(java -jar app.jar …)에 그대로 돌린다.
 """
 from __future__ import annotations
 
@@ -40,6 +42,8 @@ from shapely.geometry import shape  # noqa: E402
 from app.console import ensure_utf8_stdio  # noqa: E402
 
 ADMIN = "e2e-admin-token-local"
+SPRING_ROOT = ROOT.parent / "BE-spring"
+SERVER = "python"  # --server 로 바꾼다 (python | spring)
 REVIEWER = "e2e-reviewer(개발용 자동 승인)"
 
 
@@ -77,12 +81,39 @@ def wait_http(url: str, timeout: float = 60) -> None:
     raise RuntimeError(f"서버가 뜨지 않음: {url}")
 
 
-def start(cmd: list[str], env: dict, log: Path) -> subprocess.Popen:
+def start(cmd: list[str], env: dict, log: Path, cwd: Path = ROOT) -> subprocess.Popen:
     fh = open(log, "w", encoding="utf-8")  # noqa: SIM115
     kwargs = {}
     if os.name == "nt":
         kwargs["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP  # type: ignore[attr-defined]
-    return subprocess.Popen(cmd, cwd=ROOT, env=env, stdout=fh, stderr=subprocess.STDOUT, **kwargs)
+    return subprocess.Popen(cmd, cwd=cwd, env=env, stdout=fh, stderr=subprocess.STDOUT, **kwargs)
+
+
+def _java() -> str:
+    home = os.environ.get("JAVA_HOME")
+    if home:
+        return str(Path(home) / "bin" / ("java.exe" if os.name == "nt" else "java"))
+    return shutil.which("java") or "java"
+
+
+def app_cmd(*args: str) -> tuple[list[str], Path]:
+    """운영 CLI 명령과 작업 폴더: python -m app.cli … (BE) 또는 java -jar app.jar … (BE-spring)."""
+    if SERVER == "spring":
+        return [_java(), "-jar", str(SPRING_ROOT / "server" / "build" / "libs" / "app.jar"), *args], SPRING_ROOT
+    return [sys.executable, "-m", "app.cli", *args], ROOT
+
+
+def start_api(port: int, env: dict, log: Path) -> subprocess.Popen:
+    """API 서버 (파이썬: uvicorn app.main:app, 스프링: app.jar serve)."""
+    if SERVER == "spring":
+        cmd, cwd = app_cmd("serve", "--port", str(port), "--host", "127.0.0.1")
+        return start(cmd, env, log, cwd)
+    return start([sys.executable, "-m", "uvicorn", "app.main:app", "--port", str(port), "--host", "127.0.0.1"], env, log)
+
+
+def start_cli(env: dict, log: Path, *args: str) -> subprocess.Popen:
+    cmd, cwd = app_cmd(*args)
+    return start(cmd, env, log, cwd)
 
 
 def stop(p: subprocess.Popen | None) -> None:
@@ -322,7 +353,7 @@ def run_upstream_failure(env: dict, rep: Report, logs: Path, parcels: list[dict]
     print("\n▶ 외부 API 장애 (잘못된 인증키)")
     port = free_port()
     e2 = dict(env, JUSO_API_KEY="invalid", VWORLD_API_KEY="invalid", REVIEW_EXECUTOR="thread")
-    p = start([sys.executable, "-m", "uvicorn", "app.main:app", "--port", str(port), "--host", "127.0.0.1"], e2, logs / "api_invalid.log")
+    p = start_api(port, e2, logs / "api_invalid.log")
     try:
         wait_http(f"http://127.0.0.1:{port}/healthz")
         c = httpx.Client(base_url=f"http://127.0.0.1:{port}", timeout=30)
@@ -347,7 +378,7 @@ def run_security(env: dict, rep: Report, logs: Path, parcels: list[dict]) -> Non
     port = free_port()
     e2 = dict(env, APP_ENV="local", RATE_LIMIT_ENABLED="true", RATE_LIMIT_SEARCH_PER_MIN="6", ADMIN_MAX_FAILURES="4",  # 비ASCII 토큰 점검 1회 + 대입 3회 = 4회
               MAX_BODY_BYTES="8192", REVIEW_EXECUTOR="thread")
-    p = start([sys.executable, "-m", "app.cli", "serve", "--port", str(port)], e2, logs / "api_security.log")
+    p = start_cli(e2, logs / "api_security.log", "serve", "--port", str(port))
     try:
         wait_http(f"http://127.0.0.1:{port}/healthz")
         c = httpx.Client(base_url=f"http://127.0.0.1:{port}", timeout=30)
@@ -386,7 +417,7 @@ def run_security(env: dict, rep: Report, logs: Path, parcels: list[dict]) -> Non
         stop(p)
     port = free_port()
     e3 = dict(env, APP_ENV="prod", ADMIN_TOKEN="Zx8-qL2vN0pR7sT4uW1yA3bC6dE9fG5hJ-e2e", REVIEW_EXECUTOR="thread")
-    p = start([sys.executable, "-m", "app.cli", "serve", "--port", str(port)], e3, logs / "api_prod.log")
+    p = start_cli(e3, logs / "api_prod.log", "serve", "--port", str(port))
     try:
         wait_http(f"http://127.0.0.1:{port}/healthz")
         c = httpx.Client(base_url=f"http://127.0.0.1:{port}", timeout=30)
@@ -397,9 +428,10 @@ def run_security(env: dict, rep: Report, logs: Path, parcels: list[dict]) -> Non
                   and h.headers.get("strict-transport-security", "").startswith("max-age="), h.text[:200])
     finally:
         stop(p)
-    weak = subprocess.run([sys.executable, "-c", "from app.config import Settings; Settings()"], cwd=ROOT,
-                          env=dict(env, APP_ENV="prod", ADMIN_TOKEN="change-me-local-admin"), capture_output=True, text=True,
-                          encoding="utf-8", timeout=60)
+    weak_cmd, weak_cwd = (app_cmd("check-config") if SERVER == "spring"
+                          else ([sys.executable, "-c", "from app.config import Settings; Settings()"], ROOT))
+    weak = subprocess.run(weak_cmd, cwd=weak_cwd, env=dict(env, APP_ENV="prod", ADMIN_TOKEN="change-me-local-admin"), capture_output=True,
+                          text=True, encoding="utf-8", timeout=60)
     rep.check("운영: 약한 ADMIN_TOKEN 이면 시작 거부", weak.returncode != 0 and "ADMIN_TOKEN" in weak.stderr, weak.stderr[-300:])
 
 
@@ -409,7 +441,13 @@ def main() -> int:
     ap.add_argument("--report", default=str(ROOT / "var" / "e2e_report.json"))
     ap.add_argument("--executor", choices=["thread", "worker"], default="thread")
     ap.add_argument("--keep", action="store_true", help="임시 폴더를 지우지 않음")
+    ap.add_argument("--server", choices=["python", "spring"], default="python", help="검증할 서버 구현 (spring = ../BE-spring)")
     args = ap.parse_args()
+    global SERVER
+    SERVER = args.server
+    if SERVER == "spring" and not (SPRING_ROOT / "server" / "build" / "libs" / "app.jar").is_file():
+        print("스프링판 실행 파일이 없습니다: cd ../BE-spring && ./gradlew :server:bootJar")
+        return 2
     rep = Report()
     work = Path(tempfile.mkdtemp(prefix="app-e2e-"))
     logs = work / "logs"
@@ -425,7 +463,7 @@ def main() -> int:
     procs: list[subprocess.Popen] = []
     t_start = time.time()
     try:
-        print(f"작업 폴더: {work}\nDB: {db_url.split('@')[-1]}")
+        print(f"작업 폴더: {work}\nDB: {db_url.split('@')[-1]}\n서버: {SERVER}")
         if db_url.startswith("postgresql"):
             from sqlalchemy import create_engine, text  # noqa: PLC0415
 
@@ -436,18 +474,16 @@ def main() -> int:
         procs.append(start([sys.executable, "-m", "mockserver", "--port", str(mock_port), "--host", "127.0.0.1"], env, logs / "mock.log"))
         wait_http(f"{mock}/")
         rep.check("외부 API 모의 서버 기동", True)
-        boot = subprocess.run([sys.executable, "-m", "app.cli", "bootstrap", "--approve-as", REVIEWER, "--ack-warnings",
-                               "--confirm-transcriptions"], cwd=ROOT, env=env,
-                              capture_output=True, text=True, encoding="utf-8", timeout=600)
+        boot_cmd, boot_cwd = app_cmd("bootstrap", "--approve-as", REVIEWER, "--ack-warnings", "--confirm-transcriptions")
+        boot = subprocess.run(boot_cmd, cwd=boot_cwd, env=env, capture_output=True, text=True, encoding="utf-8", timeout=600)
         (logs / "bootstrap.log").write_text(boot.stdout + boot.stderr, encoding="utf-8", newline="\n")
         rep.check("bootstrap (원문 적재·추출 검증·승인)", boot.returncode == 0, boot.stderr[-500:])
         lines = [ln for ln in boot.stdout.splitlines() if ln.startswith(("0", "1"))]
         rep.check("기록된 추출 결과 전부 기계 검증 통과", lines and all(": ok " in ln for ln in lines), "\n".join(lines))
         rep.check("위임 관계 연결", any("위임 관계" in ln and not ln.startswith("위임 관계 0") for ln in boot.stdout.splitlines()))
-        procs.append(start([sys.executable, "-m", "uvicorn", "app.main:app", "--port", str(api_port), "--host", "127.0.0.1"], env,
-                           logs / "api.log"))
+        procs.append(start_api(api_port, env, logs / "api.log"))
         if args.executor == "worker":
-            procs.append(start([sys.executable, "-m", "app.cli", "worker", "--poll", "0.2"], env, logs / "worker.log"))
+            procs.append(start_cli(env, logs / "worker.log", "worker", "--poll", "0.2"))
         api = f"http://127.0.0.1:{api_port}"
         wait_http(f"{api}/healthz")
         rep.check("API 서버 기동 /healthz", httpx.get(f"{api}/healthz").json()["status"] == "ok")
@@ -467,7 +503,8 @@ def main() -> int:
     supported = [s for s in rep.scenarios if s["audience"] in ("owner", "architect") and s["zone"] and s["result"] == "pass"]
     summary = {
         "ran_at": time.strftime("%Y-%m-%dT%H:%M:%S%z"), "platform": sys.platform, "python": sys.version.split()[0],
-        "database": "postgresql" if db_url.startswith("postgresql") else "sqlite", "executor": args.executor,
+        "database": "postgresql" if db_url.startswith("postgresql") else ("h2" if SERVER == "spring" else "sqlite"), "executor": args.executor,
+        "server": SERVER,
         "elapsed_s": round(time.time() - t_start, 1), "checks_total": len(rep.checks), "checks_failed": len(rep.failed),
         "scenarios_total": len(rep.scenarios), "scenarios_passed": len(supported),
         "failed": rep.failed, "scenarios": rep.scenarios, "checks": rep.checks, "logs": str(logs),

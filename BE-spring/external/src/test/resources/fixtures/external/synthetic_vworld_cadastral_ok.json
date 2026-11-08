@@ -1,0 +1,76 @@
+{
+  "response": {
+    "service": {
+      "name": "data",
+      "version": "2.0",
+      "operation": "GetFeature",
+      "time": "12(ms)"
+    },
+    "status": "OK",
+    "record": {
+      "total": "1",
+      "current": "1"
+    },
+    "page": {
+      "total": "1",
+      "current": "1",
+      "size": "10"
+    },
+    "result": {
+      "featureCollection": {
+        "type": "FeatureCollection",
+        "bbox": [
+          128.626,
+          35.8604,
+          128.62626,
+          35.86063
+        ],
+        "features": [
+          {
+            "type": "Feature",
+            "geometry": {
+              "type": "MultiPolygon",
+              "coordinates": [
+                [
+                  [
+                    [
+                      128.626,
+                      35.8604
+                    ],
+                    [
+                      128.62626,
+                      35.8604
+                    ],
+                    [
+                      128.62626,
+                      35.86063
+                    ],
+                    [
+                      128.626,
+                      35.86063
+                    ],
+                    [
+                      128.626,
+                      35.8604
+                    ]
+                  ]
+                ]
+              ]
+            },
+            "properties": {
+              "pnu": "2726010100190010004",
+              "jibun": "9001-4대",
+              "bonbun": "9001",
+              "bubun": "4",
+              "addr": "대구광역시 수성구 범어동 9001-4",
+              "gosi_year": "2026",
+              "gosi_month": "01",
+              "jiga": "3850000"
+            },
+            "id": "LP_PA_CBND_BUBUN.1"
+          }
+        ]
+      }
+    }
+  }
+}

@@ -1,0 +1,264 @@
+{
+ "formula": [
+  {
+   "expr": "ceil(gross_floor_area / 150)",
+   "value": 9.0
+  },
+  {
+   "expr": "floor(site_area * 0.6)",
+   "value": 300.0
+  },
+  {
+   "expr": "min(gross_floor_area, site_area)",
+   "value": 500.0
+  },
+  {
+   "expr": "max(1, 2, 3)",
+   "value": 3.0
+  },
+  {
+   "expr": "-(gross_floor_area - 100) / 2",
+   "value": -567.25
+  },
+  {
+   "expr": "- -3",
+   "value": 3.0
+  },
+  {
+   "expr": "households * 1.5 + 0.5",
+   "value": 18.5
+  },
+  {
+   "expr": "ceil(facility_area / 100) * 2",
+   "value": 6.0
+  },
+  {
+   "expr": "1e3 / 7",
+   "value": 142.85714285714286
+  },
+  {
+   "expr": "(gross_floor_area / 150",
+   "error": true
+  },
+  {
+   "expr": "gross_floor_area ** 2",
+   "error": true
+  },
+  {
+   "expr": "gross_floor_area // 2",
+   "error": true
+  },
+  {
+   "expr": "gross_floor_area % 2",
+   "error": true
+  },
+  {
+   "expr": "+3",
+   "error": true
+  },
+  {
+   "expr": "abs(-1)",
+   "error": true
+  },
+  {
+   "expr": "gross_floor_area.__class__",
+   "error": true
+  },
+  {
+   "expr": "__import__('os')",
+   "error": true
+  },
+  {
+   "expr": "min()",
+   "error": true
+  },
+  {
+   "expr": "min(5)",
+   "error": true
+  },
+  {
+   "expr": "ceil(1, 2)",
+   "error": true
+  },
+  {
+   "expr": "ceil(1e308 * 1e308)",
+   "error": true
+  },
+  {
+   "expr": "min(1/0, 5)",
+   "error": true
+  },
+  {
+   "expr": "gross_floor_area / 0",
+   "error": true
+  },
+  {
+   "expr": "0x10 + 1",
+   "value": 17.0
+  },
+  {
+   "expr": "1_000 * 2",
+   "value": 2000.0
+  },
+  {
+   "expr": "07",
+   "error": true
+  },
+  {
+   "expr": "1 # 주석",
+   "value": 1.0
+  },
+  {
+   "expr": "True + 1",
+   "value": 2.0
+  },
+  {
+   "expr": "None",
+   "error": true
+  },
+  {
+   "expr": "'a'",
+   "error": true
+  },
+  {
+   "expr": "lambda: 1",
+   "error": true
+  },
+  {
+   "expr": "min(1, x=2)",
+   "error": true
+  },
+  {
+   "expr": "max(*[1,2])",
+   "error": true
+  },
+  {
+   "expr": "unknown_var",
+   "error": true
+  },
+  {
+   "expr": "ceil(1.5) + floor(-1.5)",
+   "value": 0.0
+  },
+  {
+   "expr": "min(3, 1, 2,)",
+   "value": 1.0
+  },
+  {
+   "expr": ".5 + 1.",
+   "value": 1.5
+  },
+  {
+   "expr": "2e-3 * 1000",
+   "value": 2.0
+  },
+  {
+   "expr": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+   "error": true
+  }
+ ],
+ "fmt_num": [
+  {
+   "x": null,
+   "s": "?"
+  },
+  {
+   "x": 0.0,
+   "s": "0"
+  },
+  {
+   "x": 1.0,
+   "s": "1"
+  },
+  {
+   "x": 1234567.0,
+   "s": "1,234,567"
+  },
+  {
+   "x": 1234.5,
+   "s": "1,234.5"
+  },
+  {
+   "x": 1234.567,
+   "s": "1,234.57"
+  },
+  {
+   "x": 0.125,
+   "s": "0.12"
+  },
+  {
+   "x": 2.675,
+   "s": "2.67"
+  },
+  {
+   "x": -1500.25,
+   "s": "-1,500.25"
+  },
+  {
+   "x": 0.005,
+   "s": "0.01"
+  },
+  {
+   "x": 1e-07,
+   "s": "0"
+  }
+ ],
+ "use": [
+  {
+   "u": "자동차관련시설 중 동호아목에 해당하는 것과 주차장 및 세차장",
+   "base": "자동차관련시설",
+   "group": "기타"
+  },
+  {
+   "u": "공동주택(아파트를 제외한다)",
+   "base": "공동주택",
+   "group": "주거"
+  },
+  {
+   "u": "제1종 근린생활시설",
+   "base": "제1종근린생활시설",
+   "group": "근린생활"
+  },
+  {
+   "u": "업무시설로서 오피스텔",
+   "base": "업무시설",
+   "group": "업무"
+  },
+  {
+   "u": "단독주택［다가구주택］",
+   "base": "단독주택",
+   "group": "주거"
+  },
+  {
+   "u": "의료시설",
+   "base": "의료시설",
+   "group": "기타"
+  }
+ ],
+ "norm": [
+  {
+   "v": "제2종 일반　주거지역",
+   "n": "제2종일반주거지역"
+  },
+  {
+   "v": " a\tb\n",
+   "n": "ab"
+  },
+  {
+   "v": "",
+   "n": ""
+  },
+  {
+   "v": 0,
+   "n": ""
+  },
+  {
+   "v": 1.5,
+   "n": "1.5"
+  },
+  {
+   "v": 12,
+   "n": "12"
+  }
+ ]
+}

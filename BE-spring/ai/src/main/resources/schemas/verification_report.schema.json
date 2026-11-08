@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://app.local/schemas/verification_report.schema.json",
+  "title": "사후 검증 보고서 (verification_report@1.0)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "verdict", "checked_at", "ledger_hash", "explanation_hash", "errors", "coverage", "judge", "feedback_for_regeneration"],
+  "properties": {
+    "schema_version": { "const": "verification_report@1.0" },
+    "verdict": { "enum": ["PASS", "FAIL"] },
+    "checked_at": { "type": "string", "format": "date-time" },
+    "ledger_hash": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "explanation_hash": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "errors": {
+      "type": "array",
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["code", "message"],
+        "properties": {
+          "code": {
+            "enum": [
+              "SCHEMA", "UNKNOWN_FACT_ID", "UNGROUNDED_SENTENCE",
+              "FABRICATED_VALUE", "DETAIL_MISMATCH", "UNIT_MISMATCH", "COMPARATOR_MISMATCH", "COMPARATOR_MISSING",
+              "VALUE_WITHOUT_UNIT", "UNCITED_FACT_USE",
+              "REFERENCE_FABRICATED", "LAW_NAME_FABRICATED", "SUBJECT_MISMATCH",
+              "POLARITY_MISMATCH", "OMISSION", "OMISSION_DETAIL",
+              "OVERSTATEMENT", "CAUTION_MISSING", "LEDGER_INCOMPLETE",
+              "SEMANTIC_CONTRADICTED", "SEMANTIC_NOT_IN_SOURCE", "SEMANTIC_COVERAGE_PARTIAL", "JUDGE_UNAVAILABLE"
+            ]
+          },
+          "message": { "type": "string" },
+          "sid": { "type": "string" },
+          "fact_id": { "type": "string" },
+          "expected": {},
+          "found": {}
+        }
+      }
+    },
+    "coverage": {
+      "type": "array",
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["fact_id", "status"],
+        "properties": { "fact_id": { "type": "string" }, "status": { "enum": ["COVERED", "PARTIAL", "MISSING"] } }
+      }
+    },
+    "judge": { "type": ["object", "null"] },
+    "feedback_for_regeneration": { "type": "array", "items": { "type": "string" } }
+  }
+}

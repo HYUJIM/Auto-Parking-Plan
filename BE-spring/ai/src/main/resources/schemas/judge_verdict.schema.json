@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://app.local/schemas/judge_verdict.schema.json",
+  "title": "의미 검증 판정 (judge_verdict@1.0)",
+  "description": "설명을 쓴 모델과 분리된 검증 모델이 원장 인용문만 보고 내리는 판정. 이 판정은 실패를 추가할 수만 있고, 결정적 검사의 실패를 지울 수 없다.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "sentences", "coverage"],
+  "properties": {
+    "schema_version": { "const": "judge_verdict@1.0" },
+    "sentences": {
+      "type": "array",
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["sid", "verdict"],
+        "properties": {
+          "sid": { "type": "string" },
+          "verdict": { "enum": ["ENTAILED", "CONTRADICTED", "NOT_IN_SOURCE"] },
+          "fact_ids": { "type": "array", "items": { "type": "string" } },
+          "note": { "type": "string", "maxLength": 200 }
+        }
+      }
+    },
+    "coverage": {
+      "type": "array",
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["fact_id", "verdict"],
+        "properties": {
+          "fact_id": { "type": "string" },
+          "verdict": { "enum": ["COVERED", "PARTIAL", "MISSING"] },
+          "note": { "type": "string", "maxLength": 200 }
+        }
+      }
+    }
+  }
+}
