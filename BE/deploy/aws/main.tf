@@ -1,4 +1,5 @@
-# APP 법규 서버 — AWS 배포 (ap-northeast-2)
+# APP 법규 서버 (스프링판) — AWS 배포 (ap-northeast-2)
+# 이식 전 파이썬판과 같은 구성. 컨테이너 명령은 java -jar app.jar …, 작업 메모리 기본 2GB, 자원 이름 접두어 app-spring-<env>.
 # 구성: ECR · ECS Fargate(api, worker) · ALB · RDS PostgreSQL 16 · S3(원문 보관) · Secrets Manager · CloudWatch · EventBridge(매일 원문 개정 확인)
 # 비용을 줄이기 위해 MVP 는 NAT 게이트웨이 없이 ECS 작업을 퍼블릭 서브넷(공인 IP)에 두고, RDS 는 프라이빗 서브넷에 둔다.
 
@@ -16,7 +17,7 @@ provider "aws" {
 }
 
 locals {
-  name = "app-${var.env}"
+  name = "app-spring-${var.env}" # 파이썬판(app-<env>)과 같은 계정에 함께 띄워도 이름이 겹치지 않게
   azs  = slice(data.aws_availability_zones.available.names, 0, 2)
 }
 
@@ -326,9 +327,6 @@ locals {
     { name = "VWORLD_DOMAIN", value = var.vworld_domain },
     # 앱 앞단 프록시 수 (ALB 1개). 앱이 X-Forwarded-For 에서 실제 클라이언트 IP 를 고를 때 쓴다
     { name = "TRUSTED_PROXY_HOPS", value = "1" },
-    # uvicorn 은 이 대역(=ALB)에서 온 X-Forwarded-For 만 믿고, 오른쪽부터 처음 나오는 외부 IP 를 클라이언트로 본다.
-    # '*' 로 두면 클라이언트가 넣은 맨 앞 값을 그대로 써서 IP 가 위조된다.
-    { name = "FORWARDED_ALLOW_IPS", value = aws_vpc.main.cidr_block },
   ]
   secret_keys = ["JUSO_API_KEY", "VWORLD_API_KEY", "BUILDING_HUB_KEY", "LAWGO_OC", "ANTHROPIC_API_KEY", "OPENAI_API_KEY", "ADMIN_TOKEN"]
   secrets = concat(
@@ -351,8 +349,8 @@ resource "aws_ecs_task_definition" "api" {
   family                   = "${local.name}-api"
   requires_compatibilities = ["FARGATE"]
   network_mode             = "awsvpc"
-  cpu                      = 512
-  memory                   = 1024
+  cpu                      = var.task_cpu
+  memory                   = var.task_memory
   execution_role_arn       = aws_iam_role.exec.arn
   task_role_arn            = aws_iam_role.task.arn
   runtime_platform {
@@ -375,8 +373,8 @@ resource "aws_ecs_task_definition" "worker" {
   family                   = "${local.name}-worker"
   requires_compatibilities = ["FARGATE"]
   network_mode             = "awsvpc"
-  cpu                      = 512
-  memory                   = 1024
+  cpu                      = var.task_cpu
+  memory                   = var.task_memory
   execution_role_arn       = aws_iam_role.exec.arn
   task_role_arn            = aws_iam_role.task.arn
   volume { name = "tmp" }
@@ -384,7 +382,7 @@ resource "aws_ecs_task_definition" "worker" {
     name             = "worker"
     image            = local.image
     essential        = true
-    command          = ["python", "-m", "app.cli", "worker"]
+    command          = ["worker"] # 이미지 ENTRYPOINT = java -jar /srv/app/app.jar
     environment      = local.env
     secrets          = local.secrets
     logConfiguration = local.log
@@ -582,6 +580,8 @@ resource "aws_ecs_service" "api" {
   task_definition = aws_ecs_task_definition.api.arn
   desired_count   = var.api_count
   launch_type     = "FARGATE"
+  # JVM 시작(Flyway 확인 포함) 동안 ALB 헬스체크 실패로 작업이 교체되지 않게
+  health_check_grace_period_seconds = 120
   network_configuration {
     subnets          = aws_subnet.public[*].id
     security_groups  = [aws_security_group.app.id]
@@ -660,6 +660,6 @@ resource "aws_scheduler_schedule" "refresh_sources" {
         assign_public_ip = true
       }
     }
-    input = jsonencode({ containerOverrides = [{ name = "worker", command = ["python", "-m", "app.cli", "refresh-sources"] }] })
+    input = jsonencode({ containerOverrides = [{ name = "worker", command = ["refresh-sources"] }] })
   }
 }

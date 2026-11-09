@@ -21,5 +21,5 @@ output "ecs_cluster" {
 }
 
 output "bootstrap_command" {
-  value = "aws ecs run-task --cluster ${aws_ecs_cluster.main.name} --launch-type FARGATE --task-definition ${aws_ecs_task_definition.worker.family} --overrides '{\"containerOverrides\":[{\"name\":\"worker\",\"command\":[\"python\",\"-m\",\"app.cli\",\"bootstrap\"]}]}' --network-configuration 'awsvpcConfiguration={subnets=[${aws_subnet.public[0].id}],securityGroups=[${aws_security_group.app.id}],assignPublicIp=ENABLED}'"
+  value = "aws ecs run-task --cluster ${aws_ecs_cluster.main.name} --launch-type FARGATE --task-definition ${aws_ecs_task_definition.worker.family} --overrides '{\"containerOverrides\":[{\"name\":\"worker\",\"command\":[\"bootstrap\"]}]}' --network-configuration 'awsvpcConfiguration={subnets=[${aws_subnet.public[0].id}],securityGroups=[${aws_security_group.app.id}],assignPublicIp=ENABLED}'"
 }

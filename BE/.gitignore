@@ -1,22 +1,12 @@
-__pycache__/
-*.py[cod]
-.venv/
-venv/
-.env
-*.egg-info/
+.gradle/
 build/
-dist/
-.pytest_cache/
-.ruff_cache/
-.coverage
-htmlcov/
-# 로컬 실행 산출물
+out/
+bin/
 var/
-*.sqlite3
-*.db
-.DS_Store
-Thumbs.db
-# terraform
-deploy/aws/.terraform/
-deploy/aws/*.tfstate*
-deploy/aws/.terraform.lock.hcl
+*.log
+.env
+.env.*
+!.env.example
+*.tfstate
+*.tfstate.*
+.terraform/

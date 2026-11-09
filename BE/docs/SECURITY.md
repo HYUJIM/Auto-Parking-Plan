@@ -1,103 +1,89 @@
-# 보안 점검 기록 (2026-11-06)
+# 보안 (스프링판)
 
-비로그인 공개 서비스라 누구나 API 를 부를 수 있다는 전제로, 로컬에 서버를 띄워 실제로 공격해 보고 뚫린 곳을 고쳤습니다.
-고친 뒤 같은 공격을 다시 보내 막히는 것을 확인했고, 공격 요청은 회귀 테스트와 종단 검증(`scripts/e2e_verify.py` 의 '보안' 단계)에 넣었습니다.
+이식 전 파이썬판(FastAPI, git 이력 커밋 d70ca97 의 `BE/`)에서 2026-11-06 실제 모의 공격으로 찾은 문제와 보완 조치(1장 A1~A16)를 모두 같은 동작으로
+옮겼고, 종단 검증(`app.jar e2e-verify`)의 보안 단계가 실제 서버 프로세스에 공격 요청을 보내 같은 결과를 확인한다. 2026-11-09 에는 스프링판 자체를 다시 점검했다(4장).
 
-## 1. 점검 범위와 방법
+## 1. 애플리케이션 — 이식 전 점검에서 찾은 문제와 구현
 
-| 대상 | 방법 |
-| --- | --- |
-| 공개 API 8개, 관리자 API 14개 | 로컬 서버(모의 외부 API + 별도 DB)에 공격 요청: 입력 조작(SQL·경로·CRLF·스크립트 문자열, NaN/Infinity, 거대·깊은 JSON), 요청 폭주, 관리자 토큰 대입·비ASCII 토큰, X-Forwarded-For 위조, 악성 링크·경계 저장 후 공개 결과 확인 |
-| 코드 | 인증·입력 검증·출력·로그·외부 호출·계산식·LLM 입력 경로 검토 |
-| 의존성 | `pip-audit` (설치된 60개 패키지) |
-| 저장소 | git 전체 이력에서 키·토큰 패턴 검색, 테스트 표본의 키 값 확인 |
-| Docker / compose / Terraform / CI | 설정 검토 후 이미지 빌드, 읽기 전용 루트로 컨테이너 실행, 컨테이너에 같은 공격, `terraform validate` |
-
-## 2. 발견하고 고친 것 — 애플리케이션
-
-공격 결과의 '고치기 전'은 실제로 보낸 요청의 응답입니다.
-
-| # | 심각도 | 문제 | 고치기 전 (실제 공격) | 조치 | 고친 뒤 |
-| --- | --- | --- | --- | --- | --- |
-| A1 | 높음 | 요청 제한 없음 → 외부 공공 API 할당량 소진, DB·CPU 폭주 | 검토 생성 300건 동시 요청이 전부 202 | IP·경로 묶음별 토큰 버킷(`app/security/ratelimit.py`). 검토 생성 10/분, 주소 검색 30/분, 필지 60/분, 배치 30/분, 그 밖 240/분. 429 + `Retry-After`. 헬스체크 제외 | 50건 동시 → 4~5건만 202, 나머지 429 |
-| A2 | 높음 | `?refresh=true` 로 누구나 외부 API 를 다시 부름 (일일 할당량 → 서비스 전체 정지) | 20번 요청 → 외부 API 100회 호출 | 같은 필지는 10분(`PARCEL_REFRESH_MIN_INTERVAL_S`) 안에 다시 부르지 않음 | 20번 요청 → 외부 호출 0회 |
-| A3 | 높음 | 요청 제한·잠금을 X-Forwarded-For 위조로 회피. uvicorn 이 127.0.0.1(로컬 실행 기본값)이나 `*`(도커 이미지) 에서 온 헤더를 믿고 클라이언트 IP 를 바꿔 씀 | 관리자 토큰 12번 틀려도 잠기지 않음 (매번 다른 IP 로 보임) | 앱이 실제 IP 를 직접 계산: 프록시 수(`TRUSTED_PROXY_HOPS`, ALB=1)만큼 뒤에서 센 값만 믿음. `app.cli serve` 는 `proxy_headers=False`. 이미지는 `--forwarded-allow-ips *` 제거, AWS 는 `FORWARDED_ALLOW_IPS`=VPC 대역 | 위조 헤더로도 10번째 실패에서 잠김 (로컬·컨테이너 모두 확인) |
-| A4 | 중간 | 관리자 토큰 무차별 대입 제한 없음 | 300회 대입 2초, 차단 없음 | IP 별 10회 실패 → 15분 잠금(맞는 토큰도 거부). 운영에서 32자 미만·`change-me`·단조로운 토큰이면 서버가 시작을 거부 | 10회 실패 후 429, `Retry-After: 900` |
-| A5 | 중간 | 관리자 토큰 헤더에 한글 등 비ASCII → 서버 오류 | 500 Internal Server Error (`hmac.compare_digest` 가 str 비교에서 TypeError) | 바이트로 바꿔 상수 시간 비교 | 401 |
-| A6 | 중간 | 저장형 XSS: 관리자가 넣은 `javascript:` 고시 링크가 공개 검토 결과 `related_basis.url` 로 그대로 나감 (프론트가 `<a href>` 로 그리면 실행) | 공개 결과에 `"url": "javascript:alert(1)"` | 입력: `notice_url` 은 http(s) 만. 출력: 근거 링크·`source_url` 은 `safe_url()` 통과분만 (이미 저장된 값도 걸러짐). 결과 계약(`review_result.schema.json`)에 `^https?://` | 등록 422, 기존 저장분도 공개 결과에서 사라짐 |
-| A7 | 중간 | 요청 본문 크기 제한 없음 (메모리 소진) | 30MB 본문을 끝까지 읽고 처리 | 공개 64KB, 관리자 2MB. Content-Length 와 실제로 읽은 양(청크 전송) 둘 다 확인 → 413 | 413 |
-| A8 | 중간 | 운영에서도 API 문서(`/docs`, `/openapi.json`)가 관리자 경로까지 공개, `server: uvicorn` 헤더, healthz 가 LLM 제공자·외부 API 설정 여부 노출 | `/openapi.json` 에 `/admin/*` 14개 | 운영(`APP_ENV=prod`)에서 문서 끔, server 헤더 제거, healthz 는 `{"status":"ok"}` 만 | 문서 404, 헤더 없음 |
-| A9 | 중간 | 보안 헤더 없음 | 없음 | `nosniff`, `X-Frame-Options: DENY`, `CSP: default-src 'none'; frame-ancestors 'none'`, `Referrer-Policy: no-referrer`, `Permissions-Policy`, 관리자 `Cache-Control: no-store`, 운영 HSTS | 모든 응답에 붙음 (429·413 포함) |
-| A10 | 낮음 | 국가법령정보 인증값 `OC` 가 로그·오류에 노출 가능: httpx 로그 가리기 규칙에 `OC=` 없음, `raise_for_status()` 예외 메시지에 URL 전체, 기본 주소가 `http://` | — (OC 미발급이라 실호출은 못 함, 코드·테스트로 확인) | 가리기 규칙에 `OC` 추가, URL 없는 `DrfError` 로 바꿈, 기본 주소 `https://www.law.go.kr/DRF` (https 응답 동일 확인) | 단위 테스트 |
-| A11 | 낮음 | 관리자 L4 구역 입력 검증 부족: 깨진 GeoJSON·대한민국 밖 좌표·자기 교차·꼭짓점 수·PNU 목록 형식 무제한, 목록 `limit` 무제한 | `"coordinates": "garbage"` 가 201 로 저장 | 경계 검사(`validate_zone_geometry`: Polygon/MultiPolygon, 유한한 경위도, 범위, 5만 꼭짓점, 유효 도형, 중첩 깊이), PNU 19자리, 목록 상한, `limit` 1~500 | 422 |
-| A12 | 낮음 | NaN·Infinity 수치를 받아들임 (`gate_point: [NaN, NaN]` 이 200) | 200 | 공개 요청 모델 `allow_inf_nan=False`, 경위도 범위, 각도 목록 8개 상한 | 422 |
-| A13 | 낮음 | 실패한 검토의 내부 오류 상세(결과 계약 위반 경로·메시지)가 공개 응답에 | `error.message` 에 스키마 경로 | 공개 응답은 코드 + 고정 문구만 (상세는 로그·`/admin/alerts`) | 테스트 |
-| A14 | 낮음 | 검토 대기열 무한 (폭주 시 메모리·DB 증가) | 300건 대기 | 대기 500건(`MAX_PENDING_REVIEWS`) 넘으면 503 `SERVICE_BUSY` + `Retry-After` | 테스트 |
-| A15 | 낮음 | 오류 형식 불일치·정보 노출 여지: 프레임워크 404/405/본문 해석 실패는 `{"detail": …}`, 처리 안 된 예외는 평문 | — | 같은 `{"error": {code, message}}` 형식, 처리 안 된 예외는 `INTERNAL_ERROR` 고정 문구 (예외 내용은 로그에만) | 테스트 |
-| A16 | 정보 | 계산식 평가기: 0 나누기·overflow 가 검토 전체를 실패시킴 | — | 산술 오류도 `ValueError`(→ '입력 필요'), 식 길이 500자 상한. `eval()` 미사용 AST 화이트리스트는 원래대로 | 테스트 |
-
-## 3. 발견하고 고친 것 — 배포 설정 (Docker · compose · Terraform · CI)
-
-| 심각도 | 문제 | 조치 |
+| # | 문제 | 구현 |
 | --- | --- | --- |
-| 높음 | AWS 작업에 `APP_ENV=dev` 가 들어가 앱이 시작하지 못함 (`local/test/prod` 만 허용) | AWS 는 항상 `APP_ENV=prod` (인터넷 공개) → 일괄 승인 금지·토큰 강도 검사·문서 끔이 자동 적용 |
-| 높음 | compose 가 API·모의 서버 포트를 `0.0.0.0` 에 열고 관리자 토큰 기본값 `change-me-local-admin` | 포트는 `127.0.0.1` 에만(`HOST_BIND`), 토큰 기본값 제거 (.env 에 넣어야 관리자 API 가 켜짐) |
-| 중간 | WAF 없음 | ALB 에 WAF (IP 당 5분 1000회, AWS 관리형 공통 규칙, 선택: `/admin*` IP 허용 목록) |
-| 중간 | 운영이 HTTP 만으로도 배포 가능 (관리자 토큰 평문 전송) | prod 는 `acm_certificate_arn` 없으면 plan 실패. HTTPS(TLS 1.2/1.3) + 80→443 |
-| 중간 | 컨테이너 루트 파일시스템 쓰기 가능, 권한(capabilities) 그대로 | `readonlyRootFilesystem`, `capabilities.drop=ALL`, `/tmp` 만 쓰기. 숫자 UID 10001 비루트 실행 |
-| 중간 | ECR 태그 덮어쓰기 가능 (매일 도는 `refresh-sources` 가 바꿔치기된 `latest` 를 받음) | 태그 변경 불가(IMMUTABLE) + 푸시 시 취약점 검사 → 배포는 고유 태그(git SHA) |
-| 중간 | IAM 범위 과다 (실행 역할 관리형 정책 `*`, 작업 역할 버킷 전체, 스케줄러 PassRole 무조건) | ECR 저장소·로그 그룹·`law-raw/` 접두사·클러스터로 한정, 혼동된 대리인 방지 조건 |
-| 중간 | ALB 가 잘못된 헤더 필드를 그대로 전달 | `drop_invalid_header_fields`, 운영 삭제 보호 |
-| 낮음 | S3 평문(HTTP) 요청 허용, ACL 가능 / DB 연결 TLS 미강제 / 보안그룹 송신 전체 허용 | TLS 전용 버킷 정책·ACL 끔 / `sslmode=require` / 송신 포트·대상 한정 |
-| 낮음 | 도커 빌드 문맥에 `.env`·tfstate·키 파일이 들어갈 수 있음 | `.dockerignore` 보강 (이미지에 없음 확인) |
-| 낮음 | CI 토큰 권한 기본값, 액션 태그 고정 | `permissions: contents: read`, 액션 커밋 SHA 고정, `persist-credentials: false` |
+| A1 | 요청 제한 없음 | `server.security.TokenBucketLimiter` + `RequestGuardFilter` (서블릿 필터). IP·경로 묶음별 분당 허용량 (검토 생성 10, 배치 30, 주소 검색 30, 필지 60, 그 밖 240), 초과 시 429 + `Retry-After`. `/healthz`·OPTIONS 제외 |
+| A2 | `?refresh=true` 로 외부 API 반복 호출 | `ParcelService.getParcel`: 같은 필지는 `PARCEL_REFRESH_MIN_INTERVAL_S`(600초) 안에 다시 부르지 않음 |
+| A3 | X-Forwarded-For 위조로 제한·잠금 회피 | `server.forward-headers-strategy=none` (Tomcat 이 전달 헤더로 연결 주소를 바꾸지 않음) + `ClientIp`: `TRUSTED_PROXY_HOPS`(ALB=1)만큼 X-Forwarded-For 뒤에서 센 값만 믿음 |
+| A4 | 관리자 토큰 무차별 대입 | `AuthFailureGuard`: IP 별 10회 실패 → 15분 잠금 (맞는 토큰도 거부). 운영에서 32자 미만·`change-me`·단조로운 토큰이면 시작 거부 (`AppSettings`, `check-config` 종료 코드 2) |
+| A5 | 비ASCII 토큰 → 500 | `AdminAuthInterceptor`: UTF-8 바이트로 `MessageDigest.isEqual` 상수 시간 비교 → 401 |
+| A6 | 저장형 XSS (`javascript:` 링크) | 입력: `/admin/zones` 의 `notice_url` 은 http/https 만. 출력: 근거 링크는 모두 `Sanitize.safeUrl` 을 거친다 |
+| A7 | 본문 크기 제한 없음 | `RequestGuardFilter`: 공개 64KB, 관리자 2MB. Content-Length 와 실제로 읽은 양(청크 전송) 둘 다 확인 → 413. 숫자가 아닌 Content-Length 는 Tomcat 이 거절하고 `JsonErrorReportValve` 가 같은 JSON 400 으로 답함 |
+| A8 | 운영에서 문서·서버 정보 노출 | 운영(`APP_ENV=prod`)에서 springdoc(`/docs`, `/openapi.json`) 끔, `Server` 헤더 없음, `/healthz` 는 `{"status":"ok"}` 만 |
+| A9 | 보안 헤더 없음 | `SecurityHeadersFilter`: nosniff, `X-Frame-Options: DENY`, CSP `default-src 'none'; frame-ancestors 'none'`, `Referrer-Policy: no-referrer`, `Permissions-Policy`, COOP, 관리자 `Cache-Control: no-store`, 운영 HSTS |
+| A10 | 국가법령정보 `OC` 노출 가능 | DRF 클라이언트 오류 메시지에 URL 없음, 요청 로그는 `Redact` 로 가림, 기본 주소 https |
+| A11 | 관리자 L4 구역 입력 검증 부족 | `Sanitize.validateZoneGeometry` (Polygon/MultiPolygon, 유한한 대한민국 경위도, 꼭짓점 5만 개, 중첩 4단계, JTS 유효성·넓이 > 0), PNU 19자리, 목록 길이·`limit` 상한 |
+| A12 | NaN·Infinity 수치 | 본문 JSON 의 NaN 은 해석 단계에서 422, 수치 범위·경위도 범위·각도 8개 상한 (`api.Req`) |
+| A13 | 실패한 검토의 내부 오류 상세 노출 | 공개 응답은 오류 코드 + 고정 문구만 (상세는 로그·`/admin/alerts`) |
+| A14 | 검토 대기열 무한 | 대기 500건(`MAX_PENDING_REVIEWS`) 넘으면 503 `SERVICE_BUSY` + `Retry-After: 30` |
+| A15 | 오류 형식 불일치·정보 노출 | `ApiExceptionHandler` + `JsonErrorController` + Tomcat `JsonErrorReportValve`: 404/405/400/413/500 모두 `{"error": {code, message}}`, 처리 안 된 예외는 `INTERNAL_ERROR` 고정 문구 (스택·예외 이름 없음) |
+| A16 | 계산식 평가 | `RulesLogic.evalFormula`: 허용 문법(변수 4개, + - * /, 단항 -, ceil·floor·min·max)만 받는 파서. 코드 실행 경로 없음, 0 나누기·무한대는 '입력 필요'로, 500자 상한. 파이썬 결과와 대조 테스트 |
 
-## 4. 확인했고 문제없던 것
+## 2. 배포 설정
 
-- **SQL 인젝션**: 모든 쿼리가 SQLAlchemy 바인딩. 문자열로 만든 SQL 없음 (`text()` 는 고정 문장 + 바인딩 변수).
-- **경로 조작**: 원문 보관소 키는 상위 경로 탈출을 막고 있음. 공개 API 에 파일 경로 입력 없음. `../` PNU 는 404.
-- **코드 실행**: 계산식은 AST 화이트리스트(eval 미사용). `pickle`·`yaml.load`·셸 실행 없음.
-- **프롬프트 인젝션**: 사용자 입력(주소·용도 등)은 LLM 프롬프트에 들어가지 않음. LLM 입력은 검수 승인된 사실 원장뿐이고, 출력은 사후 검증(원문 인용·숫자 대조)을 통과해야 화면에 나감.
-- **XML**: 법령 XML 파서는 expat 2.6.3 (외부 엔티티 미처리, billion laughs 방어 내장).
-- **CORS**: 허용 출처 목록 방식, 자격 증명(쿠키) 미허용. 낯선 출처의 preflight 는 400.
-- **검증 오류 응답**: 입력값을 되돌려 싣지 않음 (필드 위치와 메시지만).
-- **의존성**: `pip-audit` 알려진 취약점 0건.
-- **비밀값**: git 전체 이력에 실제 키 없음 (테스트용 가짜 값뿐), 외부 API 키는 httpx 로그에서 `***` 로 가려짐 (실제 로그 확인).
+`deploy/aws`, `docker-compose.yml`, `Dockerfile`, `.github/workflows/be-ci.yml`:
+AWS 는 항상 `APP_ENV=prod`, compose 포트는 127.0.0.1 에만·관리자 토큰 기본값 없음, ALB WAF(IP 당 요청 수 + AWS 관리형 공통 규칙, 선택적 `/admin*` IP 허용 목록),
+운영 HTTPS 강제, 컨테이너 non-root(UID 10001)·읽기 전용 루트·capabilities 제거, ECR 태그 변경 불가·푸시 시 검사, 최소 권한 IAM,
+S3 TLS 전용·DB `sslmode=require`, 빌드 문맥에서 비밀 파일 제외, CI 읽기 전용 토큰·액션 SHA 고정.
+JVM 시작 동안 ECS 헬스체크 유예 120초, 작업 메모리 2GB(`task_memory`).
 
-## 5. 남은 위험과 권장 사항
+## 3. 남은 위험
 
-- **AWS 실환경은 확인하지 못했습니다.** `terraform plan/apply`, WAF 오탐, Fargate `/tmp` 권한, RDS `sslmode=require`, 좁힌 송신 규칙으로 외부 API 가 되는지는 배포 후 확인이 필요합니다.
-- **요청 제한은 컨테이너마다 따로 셉니다.** 작업이 N개면 한도가 N배가 됩니다. 여러 작업을 묶는 한도는 WAF rate-based 규칙이 맡습니다. 둘 다 켜 두세요.
-- **프론트엔드는 API 문자열을 HTML 로 넣지 말고 텍스트로 출력**해야 합니다 (주소·고시명 등은 외부·관리자 입력). 링크는 API 가 http(s) 만 내보냅니다.
-- **CORS**: 운영에서는 `cors_origins` 변수에 실제 프론트 주소만 넣으세요 (기본값 `http://localhost:3000`).
-- **Terraform 상태 파일**에 DB 비밀번호가 들어갑니다. 암호화된 S3 원격 상태(+ 잠금)를 쓰거나 RDS `manage_master_user_password` 로 바꾸는 것을 권장합니다.
-- **로그**: ALB 접근 로그·WAF 로그·VPC 흐름 로그가 꺼져 있습니다 (비용). 공격 추적이 필요해지면 켜세요. uvicorn 접근 로그의 IP 는 `FORWARDED_ALLOW_IPS` 를 VPC 대역으로 둔 경우에만 실제 클라이언트입니다.
-- **공급망**: 베이스 이미지는 다이제스트가 아닌 태그, Python 의존성은 잠금 파일이 없습니다. 정식 운영 전 `pip-compile --generate-hashes` 등으로 고정을 권장합니다.
-- **관리자 API**: 토큰 하나로 보호됩니다. 가능하면 `admin_allowed_cidrs` 로 사무실 IP 만 허용하세요.
-- 국가법령정보 `OC` 는 발급받지 못해 실호출로는 확인하지 못했습니다 (코드·단위 테스트로 확인).
+- 요청 제한은 컨테이너(ECS 작업) 단위로 센다 — 여러 작업 전체를 묶는 제한은 ALB 앞의 WAF rate-based 규칙이 맡는다
+- 공개 응답의 설명·근거 문장은 프론트엔드가 **텍스트로** 그려야 한다 (HTML 로 넣으면 저장형 XSS 가 된다; 링크는 http(s) 만 내려간다)
+- 외부 공공 API 와 국가법령정보 원문은 신뢰할 수밖에 없는 입력이다 — 수집한 원문은 해시·버전으로 보관하고, 값은 원문에 있는 것만 쓴다
+- 실제 AWS·실제 API 키로는 미검증 (모의 서버·SDK 대조 테스트로만 확인)
+- 4.3 에 스프링판 고유의 남은 것을 적었다.
 
-## 6. 새 보안 설정 (환경변수)
+## 4. 스프링판 자체 점검 (2026-11-09, 로컬)
 
-| 변수 | 기본값 | 뜻 |
+파이썬판에서 옮긴 조치 위에, 스프링판만의 구조(서블릿 컨테이너·JDK HTTP 클라이언트·H2·JPA)에서 생기는 문제를 로컬에서 다시 점검했다.
+방법: 소스 검토(server 와 라이브러리 모듈 전체), 실행 중인 서버에 변형 요청 60여 건(경로 변형·Accept·헤더·본문 한계·구문 분석기 한계),
+의존성 취약점 조회(OSV, 실행 클래스패스 184개), CI 액션 고정 SHA·Gradle 래퍼 체크섬 확인, 저장소·git 이력의 비밀값 패턴 검색.
+
+### 4.1 고친 것
+
+| # | 문제 (확인 방법) | 조치 |
 | --- | --- | --- |
-| `TRUSTED_PROXY_HOPS` | 0 | 앞단 프록시 수. AWS ALB 뒤 = 1 (Terraform 이 설정) |
-| `RATE_LIMIT_ENABLED` | 테스트만 끔 | 요청 제한 켜기/끄기 |
-| `RATE_LIMIT_REVIEWS_PER_MIN` / `_SEARCH_` / `_PARCELS_` / `_SIMULATIONS_` / `_DEFAULT_` | 10 / 30 / 60 / 30 / 240 | IP 당 분당 요청 수 (순간 허용량은 절반) |
-| `MAX_BODY_BYTES` / `MAX_ADMIN_BODY_BYTES` | 64KB / 2MB | 요청 본문 상한 |
-| `ADMIN_MAX_FAILURES` / `ADMIN_LOCK_MINUTES` | 10 / 15 | 관리자 토큰 실패 잠금 |
-| `PARCEL_REFRESH_MIN_INTERVAL_S` | 600 | 같은 필지 외부 API 재조회 최소 간격 |
-| `MAX_PENDING_REVIEWS` | 500 | 대기 검토 상한 (넘으면 503) |
-| `ENABLE_DOCS` | 운영만 끔 | API 문서 공개 |
-| `FORWARDED_ALLOW_IPS` (uvicorn) | 127.0.0.1 | 프록시 헤더를 믿을 주소. AWS 는 VPC 대역 (Terraform 이 설정) |
+| B1 | **요청 제한 묶음 우회** — 필터가 원시 URI 로 경로를 분류해 `/v1;a/reviews`·`/v1/reviews;a`·`/v1/revie%77s` 가 검토 핸들러로 가면서 기본 묶음(240/분)으로 세어졌다 (검토 버킷이 다 찬 뒤에도 변형 주소는 422 로 처리됨을 실제 요청으로 확인). 관리자 경로 판별(본문 상한 2MB, `Cache-Control: no-store`)도 `/%61dmin/…` 에서 빠졌다 | `security.RoutePath`: 컨테이너가 라우팅에 쓰는 서블릿 경로(%xx 해제·`;` 매개변수 제거)로 분류. `RequestGuardFilter`·`SecurityHeadersFilter` 공통. 회귀 테스트 `SecurityApiTest.rateLimitClassificationFollowsRoutingNotRawUri` |
+| B2 | `Accept: text/html` 등 JSON 을 받지 않는 요청에 본문 없는 406 — "모든 오류는 같은 JSON" 약속 위반 | 내용 협상에서 Accept 를 무시하고 항상 JSON (FastAPI 와 같음). `/error` 를 직접 부르면 가짜 500 대신 404 |
+| B3 | **H2 AUTO_SERVER 가 모든 인터페이스에 열림** — 로컬 파일 DB 를 여러 프로세스(API·워커·CLI)가 열 때 H2 가 띄우는 TCP 서버(`-tcpAllowOthers`, sa/빈 비밀번호, 무작위 키로만 보호)가 `*:포트` 로 바인드됨을 `lsof` 로 확인 | 시작 시 `h2.bindAddress=127.0.0.1` (`Cli`). 운영(`APP_ENV=prod`)에서 H2 를 쓰면 경고 — 운영 DB 는 PostgreSQL |
+| B4 | 운영에서 외부 API·LLM 주소를 `http://` 로 주면 인증키(`confmKey`·`x-api-key`·`OC`)가 평문으로 나간다 (코드 어디서도 거부하지 않았음) | `APP_ENV=prod` 에서 `JUSO_BASE_URL`·`VWORLD_*_URL`·`BUILDING_HUB_URL`·`LAWGO_BASE_URL`·`ANTHROPIC_BASE_URL`·`OPENAI_BASE_URL` 은 https 만, 아니면 시작 거부 (이 컴퓨터 안 127.0.0.1·localhost 는 예외 — 종단 검증이 운영 설정으로 모의 서버를 쓴다) |
+| B5 | 외부 응답 본문의 크기·시간 상한 없음 — `BodyHandlers.ofByteArray` 는 무제한이고 요청 timeout 은 응답 헤더까지만 적용 → 느리게 흘려보내거나 거대한 본문을 주는 원천이 요청 스레드·힙을 붙잡는다 | `JdkHttpTransport`: 본문 32MB 상한(Content-Length 선검사 + 받으면서 계수, 넘으면 끊고 IOException), 헤더+본문 전체를 timeout×2 안에 (넘으면 `HttpTimeoutException`). 테스트 `JdkHttpTransportTest` |
+| B6 | XML 해석기: 외부 엔티티는 막았지만 DTD 처리가 켜져 있어 내부 엔티티 폭발이 JDK 기본 한도에만 의존했고, 클래스패스에 다른 StAX 구현이 들어오면 보호가 사라졌다 | `SUPPORT_DTD=false` + `XMLInputFactory.newDefaultFactory()`(JDK 구현 고정), 풀리지 않은 엔티티 null 처리. 테스트 `XmlElementSecurityTest` |
+| B7 | law.go.kr 수집기의 리다이렉트 따라가기가 호스트·스킴을 가리지 않음 — 가로채인 응답이 수집기를 내부망·다른 호스트로 보내거나(SSRF) https→http 로 내릴 수 있었다 | 같은 사이트(law.go.kr ↔ www.law.go.kr 처럼 레이블 3개 이상의 공통 상위)의 http(s) 만, https→http 내려가기 금지. 그 밖은 3xx 를 그대로 돌려줘 호출한 쪽이 `Redirect response` 오류로 알린다. 테스트 `RedirectFollowerTest` |
+| B8 | 경로 조작 — 화면에서 읽은 일련번호(`lsiSeq`)가 저장 파일 이름에 들어가 `../` 로 raw 폴더 밖에 쓸 수 있었고, 번들의 `raw_file` 이 `..` 로 폴더 밖을 읽을 수 있었다 | `LegalPy.requireSafeFileName`(수집기·DRF 클라이언트의 저장 이름), `Ingest.resolveInside`(번들·보충자료의 raw_file) |
+| B9 | 기본 주소가 잘못되면 `URI.create` 예외 메시지에 인증키가 든 전체 URL 이 실려 로그·500 처리기로 갔다 | `HttpJsonClient`: URL 없는 `UpstreamError` 로 바꿈 (DRF 클라이언트는 이미 그렇게 하고 있었다) |
+| B10 | 의존성 — `io.opentelemetry:opentelemetry-api 1.62.0` (openai-java 가 끌어옴, Spring Boot BOM 기준 버전) 에 CVE-2026-118259 (MODERATE, W3C tracestate 해석 시 CPU 소모). 추적 SDK 를 쓰지 않아 닿는 경로는 없다 | 1.67.0 으로 올림 (`ai/build.gradle.kts` constraints). OSV 조회 184개 패키지 중 이 건만 |
+| B11 | 공급망 — Gradle 배포판 체크섬을 검증하지 않았고 래퍼 jar 가 9.2.1 것이었다 | `distributionSha256Sum` 추가, 래퍼를 9.9.0 으로 재생성 (공식 체크섬과 일치). CI 의 `gradle/actions/setup-gradle` 은 래퍼 jar 를 기본으로 검증한다 |
+| B12 | 공개 조회 `GET /v1/reviews/{id}` 가 `displayable_explanation` 뷰 전체를 읽었다 — 설명이 쌓일수록 느려지는 비인증 경로 | 결과에 든 보고서 id 만 묻는다 (`WHERE … IN`) |
+| B13 | 워커 재시작 때 '오래된 running' 되돌리기가 생성 시각 기준 → 밀린 대기열에서 방금 다른 워커가 가져간 요청까지 되돌려 두 번 실행될 수 있었다 | `review_request.claimed_at`(V2 마이그레이션) 기준으로. `(status, created_at)` 색인 추가. 테스트 `reclaimStaleUsesClaimTimeNotCreationTime` |
+| B14 | 같은 필지의 첫 조회가 동시에 오면 한쪽이 기본키 충돌로 500 | 한 번 다시 시도 (두 번째는 먼저 저장된 행을 읽음) — 필지 조회·검토 생성 |
+| B15 | 작은 것들 | PDF 32MB·300쪽 상한, 부지 꼭짓점 2만 개 상한(넘으면 `SITE_GEOMETRY_INVALID`), OpenAI 빈 `choices` → LLM 실패 경로(500 아님), 경고 있는 draft 규칙은 값을 고쳐도 draft(승인 때 `acknowledge_warnings` 필요), L4 중첩 검사 실패를 로그로 남김, 우아한 종료(`server.shutdown=graceful`, ECS stopTimeout 안), Tomcat connection-timeout 20초·keep-alive 75초(ALB idle 60초보다 길게), `DB_ECHO` 가 실제로 SQL 로그를 켬, 죽은 코드 제거 |
 
-## 7. 재현
+### 4.2 점검했고 문제없던 것
 
-```bash
-python -m pytest tests/unit/test_security.py tests/integration/test_security_api.py
-```
+- 경로 변형으로 관리자 인증을 피할 수 없다 (`/%61dmin/rules`·`/admin;x=y/rules`·`/admin/rules;x=y` → 401, `/admin//rules`·`/ADMIN/rules`·`/admin/rules/`·`/v1/../admin/rules` → 404). 인터셉터는 라우팅 경로에 붙는다. 토큰을 질의 문자열로 보내도 401
+- 구문 분석기 한계: JSON 3000단계 중첩·2만 자리 숫자·거대 지수·중복 키·잘못된 UTF-8·비JSON Content-Type → 모두 422 JSON. 12KB 헤더·`%2F`·역슬래시 경로 → Tomcat 단계에서 400 JSON(`JsonErrorReportValve`). TRACE → 405 JSON
+- CORS: 허용 안 된 Origin 의 preflight 403, 자격 증명 없음, 허용 메서드 GET·POST. `Server` 헤더 없음. 404·405·500 모두 같은 JSON 형식, 보안 헤더 모든 응답에
+- 관리자 토큰: 바이트 상수 시간 비교, 비ASCII 토큰 401, IP 잠금. X-Forwarded-For 위조는 `TRUSTED_PROXY_HOPS=0` 이면 무시(제한 버킷 공유), IPv6 표기 정규화는 DNS 조회 없음
+- 외부 호출 URL 은 모두 설정의 기본 주소 + 고정 endpoint + 인코딩된 매개변수 — DB·LLM 출력·외부 JSON 에 든 URL 을 가져다 호출하는 곳이 없다. 공개 응답의 모든 `url` 은 `Sanitize.safeUrl` 을 거친다
+- LLM 출력은 저장 전에 JSON Schema(`additionalProperties: false`, 길이·패턴)와 인용 검증을 거치고, 설명은 `PASS` 판정만 저장·표시. 계산식은 화이트리스트 파서. JPQL·SQL 은 모두 바인딩 매개변수
+- 비밀값: `Redact` 로그 가림, DRF 클라이언트 예외에 URL 없음, SDK 빌더로만 키 전달, `LlmSettings.toString` 가림. 저장소와 git 이력에 비밀값 패턴(AKIA·sk-ant-·PEM·ghp_ 등) 없음, `.env` 미추적
+- JDK HttpClient: 리다이렉트 안 따라감(수집기만 `RedirectFollower`), TLS 검증 기본값, 재시도 상한(HTTP 1+retries, SDK 2, 리다이렉트 20)
+- GitHub Actions 5개의 고정 SHA 가 표기한 태그(v4.4.0·v6.1.0·v6.4.0·v5.6.0·v4.6.2)의 커밋과 일치, `permissions: contents: read`, `persist-credentials: false`
+- Terraform: 기본 보안그룹 비움, RDS 비공개·암호화·`sslmode=require`, S3 TLS 전용·공개 차단·버킷 소유자 강제, 최소 권한 IAM, ECR 태그 불변·푸시 시 검사, WAF, 컨테이너 읽기 전용 루트·capabilities 제거
 
-```bash
-python scripts/e2e_verify.py
-```
+### 4.3 남은 것 (이번에 고치지 않음)
 
-종단 검증의 '보안 (모의 공격)' 단계가 실제 서버 프로세스를 요청 제한을 켠 채로 띄워 위 공격을 다시 보냅니다.
+- `REVIEW_EXECUTOR=thread`(기본, 개발용)는 프로세스 재시작 때 진행 중이던 검토를 복구하지 않는다 — 클라이언트는 `queued`/`running` 을 계속 보고, 오래 남은 `queued` 는 대기 상한(`MAX_PENDING_REVIEWS`)에 센다. 운영은 `worker` 모드(시작 시 되돌림)를 쓴다
+- `Ingest.linkDelegations`(매일 재수집·관리자 재수집)가 모든 조문을 한 영속성 컨텍스트에 올린다 — 말뭉치가 커지면 메모리·시간이 늘어난다
+- 파이썬 호환 도우미(repr·isdigit·정규식 변환)가 `external`·`legal`·`ai` 에 비슷하게 세 벌 있다 — `common` 으로 모으는 정리는 대조 테스트 보호 아래 별도 작업
+- 실행 파일 `app.jar` 가 212MB (openai-java-core 75MB, anthropic-java-core 44MB — SDK 가 생성 코드를 모두 포함). 이미지 pull·시작 시간에 영향
+- GEOS 이식 파일의 LGPL 검토 (`THIRD_PARTY_NOTICES.md`)
+- 실제 AWS·실제 API 키로는 미검증. 컨테이너 OS 패키지 취약점은 ECR scan-on-push 에 맡긴다 (로컬 trivy 미실행)

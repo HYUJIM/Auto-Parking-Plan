@@ -1,0 +1,86 @@
+name: be-ci
+
+# 백엔드(BE/) 변경에 실행: 단위·통합 테스트 + 실행 파일, 그리고 종단 검증(모의 공공 API + 실제 법령 원문을 실제 프로세스로)을 세 OS 에서 돌린다
+on:
+  push:
+    paths: ["BE/**", ".github/workflows/be-ci.yml"]
+  pull_request:
+    paths: ["BE/**", ".github/workflows/be-ci.yml"]
+
+# GITHUB_TOKEN 은 읽기 전용 (테스트만 하므로 쓰기 권한 불필요). 비밀값(secrets.*)은 쓰지 않는다
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+    working-directory: BE
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    steps:
+      # 외부 액션은 태그 대신 커밋 SHA 로 고정 (태그를 옮겨 악성 코드를 넣는 공급망 공격 방지)
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: "21"
+      # setup-gradle 은 저장소의 Gradle 래퍼 jar 체크섬도 검증한다 (validate-wrappers 기본값)
+      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+      - name: 단위·통합 테스트 + 실행 파일
+        run: ./gradlew --no-daemon build
+      # 종단 검증: 모의 공공 API(app.jar mockserver) + bootstrap + serve 를 실제 프로세스로 띄워 543건 점검
+      - name: End-to-end (H2, 스레드 실행)
+        run: java -jar server/build/libs/app.jar e2e-verify --report var/e2e_report.json
+      - name: End-to-end, 별도 워커 프로세스 (윈도우 기본 콘솔 인코딩 그대로)
+        if: runner.os == 'Windows'
+        run: java -jar server/build/libs/app.jar e2e-verify --executor worker --report var/e2e_report_worker.json
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always()
+        with:
+          name: be-${{ matrix.os }}
+          path: |
+            BE/var/e2e_report*.json
+            BE/**/build/reports/tests/
+
+  postgres:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: app
+          POSTGRES_PASSWORD: app
+          POSTGRES_DB: app
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U app" --health-interval 3s --health-timeout 3s --health-retries 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+      - name: 실행 파일
+        run: ./gradlew --no-daemon :server:bootJar
+      - name: End-to-end on PostgreSQL (별도 워커)
+        env:
+          E2E_DATABASE_URL: postgresql+psycopg://app:app@localhost:5432/app
+        run: java -jar server/build/libs/app.jar e2e-verify --executor worker --report var/e2e_report_pg.json
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always()
+        with:
+          name: be-postgres
+          path: BE/var/e2e_report*.json

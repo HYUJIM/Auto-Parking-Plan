@@ -1,6 +1,8 @@
 # AWS 배포 절차
 
-리전 `ap-northeast-2`(서울). Terraform 1.6 이상, AWS CLI, Docker 가 필요합니다. 윈도우·맥 모두 같은 명령이며, 이미지 빌드·Docker 명령은 `BE/` 폴더에서 실행합니다.
+구성: ECR · ECS Fargate(api, worker) · ALB(+WAF) · RDS PostgreSQL 16 · S3(원문 보관) · Secrets Manager · CloudWatch · EventBridge Scheduler. 작업 메모리 기본 2GB(`task_memory`), 자원 이름 접두어 `app-spring-<env>`(`main.tf` 의 `local.name`).
+
+리전 `ap-northeast-2`(서울). Terraform 1.6 이상, AWS CLI, Docker 가 필요합니다. 윈도우·맥 모두 같은 명령이며, 이미지 빌드·Docker 명령은 `BE/` 폴더에서 실행합니다. 이미지 빌드는 Docker 안에서 Gradle 로 하므로 로컬 JDK 는 없어도 됩니다.
 
 ## 1. 인프라 생성
 
@@ -22,7 +24,8 @@ terraform apply -var env=prod -var acm_certificate_arn=<ACM 인증서 ARN> -var 
 
 생성물: VPC(퍼블릭 2·프라이빗 2 서브넷), ALB, ECS 클러스터(api·worker 서비스), RDS PostgreSQL 16(프라이빗), S3 원문 버킷(버전 관리·암호화·공개 차단), Secrets Manager(앱 키·DB URL), CloudWatch 로그, EventBridge Scheduler(매일 04:00 KST `refresh-sources`).
 
-> MVP 비용 절감을 위해 NAT 게이트웨이 없이 ECS 작업을 퍼블릭 서브넷(공인 IP, 보안그룹으로 ALB 에서만 8000 허용)에 둡니다. 운영 단계에서는 프라이빗 서브넷 + NAT 또는 VPC 엔드포인트로 옮기세요.
+> MVP 비용 절감을 위해 NAT 게이트웨이 없이 ECS 작업을 퍼블릭 서브넷(공인 IP, 보안그룹으로 ALB 에서만 8000 허용)에 둡니다.
+> JVM 은 시작에 20~40초가 걸립니다. ECS 서비스에 헬스체크 유예 120초(`health_check_grace_period_seconds`)를 두어 그동안 작업을 교체하지 않습니다. 운영 단계에서는 프라이빗 서브넷 + NAT 또는 VPC 엔드포인트로 옮기세요.
 
 ## 2. 비밀값 등록
 
@@ -35,7 +38,13 @@ terraform apply -var env=prod -var acm_certificate_arn=<ACM 인증서 ARN> -var 
 `ADMIN_TOKEN` 은 32자 이상 무작위 값이어야 합니다 (짧거나 `change-me` 가 들어 있으면 서버가 시작하지 않습니다). 만드는 법:
 
 ```bash
-python -c "import secrets; print(secrets.token_urlsafe(32))"
+openssl rand -base64 32
+```
+
+윈도우 PowerShell:
+
+```powershell
+[Convert]::ToBase64String([Security.Cryptography.RandomNumberGenerator]::GetBytes(32))
 ```
 
 - 국가법령정보 공동활용(open.law.go.kr) Open API 는 **서버 IP 등록**이 필요합니다. ECS 작업의 공인 IP 는 바뀌므로, 운영에서는 NAT 게이트웨이의 고정 EIP 를 등록하세요.

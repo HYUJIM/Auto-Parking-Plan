@@ -87,3 +87,16 @@ variable "admin_allowed_cidrs" {
   default     = []
   description = "/admin/* 에 접근할 수 있는 IPv4 CIDR (WAF 필요). 비우면 IP 제한 없이 X-Admin-Token 만으로 보호"
 }
+
+# JVM(스프링) 작업 크기. 이미지의 JAVA_TOOL_OPTIONS(-XX:MaxRAMPercentage=75)가 힙을 작업 메모리의 75% 로 잡는다.
+variable "task_cpu" {
+  type        = number
+  default     = 512
+  description = "api·worker 작업 CPU 단위 (1024 = 1 vCPU)"
+}
+
+variable "task_memory" {
+  type        = number
+  default     = 2048
+  description = "api·worker 작업 메모리 (MiB). 1024 는 JVM 에 빠듯하다"
+}

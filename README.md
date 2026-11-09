@@ -4,10 +4,9 @@
 
 | 폴더 | 내용 |
 | --- | --- |
-| [`BE/`](BE/) | 백엔드 + AI — 법규 서버, 검토 엔진, 쉬운 설명(프론티어 LLM), 주차장 배치 시뮬레이션, AWS 배포 설정 (파이썬 FastAPI) |
-| [`BE-spring/`](BE-spring/) | 같은 백엔드의 Spring Boot(Java 21) 구현 — 같은 API·같은 결과, 파이썬판 종단 검증으로 대조 |
+| [`BE/`](BE/) | 백엔드 + AI — 법규 서버, 검토 엔진, 쉬운 설명(프론티어 LLM), 주차장 배치 시뮬레이션, 모의 공공 API·종단 검증 도구, AWS 배포 설정 (Spring Boot, Java 21) |
 
-실행 방법과 서비스 설명은 [`BE/README.md`](BE/README.md), 스프링판은 [`BE-spring/README.md`](BE-spring/README.md) 를 보세요.
+실행 방법과 서비스 설명은 [`BE/README.md`](BE/README.md) 를 보세요.
 
 ```bash
 cd BE
