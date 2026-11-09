@@ -1,0 +1,12 @@
+.gradle/
+build/
+out/
+bin/
+var/
+*.log
+.env
+.env.*
+!.env.example
+*.tfstate
+*.tfstate.*
+.terraform/

@@ -1,0 +1,25 @@
+package com.autoparkingplan.server.parcels;
+
+/** 필지 서비스 예외 (파이썬 AddressNotFound / ParcelNotFound / UpstreamUnavailable). */
+public final class ParcelExceptions {
+    private ParcelExceptions() {
+    }
+
+    public static class AddressNotFound extends RuntimeException {
+        public AddressNotFound(String message) {
+            super(message);
+        }
+    }
+
+    public static class ParcelNotFound extends RuntimeException {
+        public ParcelNotFound(String message) {
+            super(message);
+        }
+    }
+
+    public static class UpstreamUnavailable extends RuntimeException {
+        public UpstreamUnavailable(String message) {
+            super(message);
+        }
+    }
+}

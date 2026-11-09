@@ -1,0 +1,51 @@
+{
+  "response": {
+    "header": {
+      "resultCode": "00",
+      "resultMsg": "NORMAL SERVICE."
+    },
+    "body": {
+      "items": {
+        "item": [
+          {
+            "rnum": 1,
+            "platPlc": "대구광역시 수성구 범어동 9001-4",
+            "sigunguCd": "27260",
+            "bjdongCd": "10100",
+            "platGbCd": "0",
+            "bun": "9001",
+            "ji": "0004",
+            "mgmBldrgstPk": "99999-1",
+            "bldNm": "[예시] 가상 건물",
+            "mainAtchGbCdNm": "주건축물",
+            "platArea": 624.1,
+            "archArea": 98.6,
+            "totArea": 182.4,
+            "mainPurpsCdNm": "단독주택",
+            "useAprDay": "19940512"
+          },
+          {
+            "rnum": 2,
+            "platPlc": "대구광역시 수성구 범어동 9001-4",
+            "sigunguCd": "27260",
+            "bjdongCd": "10100",
+            "platGbCd": "0",
+            "bun": "9001",
+            "ji": "0004",
+            "mgmBldrgstPk": "99999-1",
+            "bldNm": "[예시] 가상 건물",
+            "mainAtchGbCdNm": "부속건축물",
+            "platArea": 624.1,
+            "archArea": "35.5",
+            "totArea": "0",
+            "mainPurpsCdNm": "제1종근린생활시설",
+            "useAprDay": ""
+          }
+        ]
+      },
+      "numOfRows": 100,
+      "pageNo": 1,
+      "totalCount": 2
+    }
+  }
+}

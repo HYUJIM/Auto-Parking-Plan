@@ -1,0 +1,6 @@
+# 저장소 공통 (각 폴더의 세부 규칙은 BE/.gitignore 등에 둔다)
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+.env

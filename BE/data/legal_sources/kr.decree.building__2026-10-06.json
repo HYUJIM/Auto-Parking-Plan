@@ -1,0 +1,35 @@
+{
+  "document": {
+    "key": "kr.decree.building",
+    "layer": "L1_NATIONAL",
+    "source_type": "decree",
+    "official_title": "건축법 시행령",
+    "jurisdiction_code": "00",
+    "external_system": "law.go.kr",
+    "external_id": "002118",
+    "short_title": null,
+    "parent_key": null,
+    "homepage_url": "https://www.law.go.kr/법령/건축법시행령",
+    "aliases": {}
+  },
+  "version": {
+    "promulgation_number": "대통령령 제36746호",
+    "promulgation_date": "2026-10-06",
+    "effective_from": "2026-10-06",
+    "effective_to": null,
+    "external_version_id": "290833",
+    "source_url": "https://www.law.go.kr/LSW/lsInfoP.do?lsiSeq=290833&chrClsCd=010202&urlMode=lsInfoP&efYd=20261006&ancYnChk=0",
+    "fetched_at": "2026-11-06T12:23:39+09:00",
+    "raw_format": "html",
+    "raw_file": "raw/kr.decree.building__2026-10-06__lsInfoR-290833.html",
+    "v_source_access": "confirmed",
+    "v_version_header": "confirmed",
+    "v_text_match": "not_checked",
+    "v_current_version": "confirmed",
+    "current_checked_on": "2026-11-06",
+    "note": "선별 조문만 수집 (개발용 HTML 수집기) — 이 번들은 버전 표제만 담음(조문 없음)"
+  },
+  "articles": [],
+  "format": "app-legal-source@1",
+  "is_example": false
+}

@@ -1,0 +1,5 @@
+[
+  {"code": "00", "name": "전국", "level": 0, "parent_code": null, "is_supported": true},
+  {"code": "27", "name": "대구광역시", "level": 1, "parent_code": "00", "is_supported": false},
+  {"code": "27260", "name": "대구광역시 수성구", "level": 2, "parent_code": "27", "is_supported": true}
+]

@@ -1,0 +1,33 @@
+[versions]
+spring-boot = "4.1.2"
+jts = "1.20.0"
+proj4j = "1.4.3"
+jsoup = "1.24.1"
+pdfbox = "3.0.8"
+anthropic = "3.6.0"
+openai = "4.101.0"
+awssdk = "2.57.11"
+springdoc = "3.2.0"
+
+[libraries]
+spring-boot-bom = { module = "org.springframework.boot:spring-boot-dependencies", version.ref = "spring-boot" }
+awssdk-bom = { module = "software.amazon.awssdk:bom", version.ref = "awssdk" }
+# 버전은 Spring Boot BOM 이 정한다 (Jackson 3 = tools.jackson)
+jackson-databind = { module = "tools.jackson.core:jackson-databind" }
+slf4j-api = { module = "org.slf4j:slf4j-api" }
+jts-core = { module = "org.locationtech.jts:jts-core", version.ref = "jts" }
+proj4j = { module = "org.locationtech.proj4j:proj4j", version.ref = "proj4j" }
+proj4j-epsg = { module = "org.locationtech.proj4j:proj4j-epsg", version.ref = "proj4j" }
+jsoup = { module = "org.jsoup:jsoup", version.ref = "jsoup" }
+pdfbox = { module = "org.apache.pdfbox:pdfbox", version.ref = "pdfbox" }
+anthropic-java = { module = "com.anthropic:anthropic-java", version.ref = "anthropic" }
+openai-java = { module = "com.openai:openai-java", version.ref = "openai" }
+awssdk-s3 = { module = "software.amazon.awssdk:s3" }
+springdoc-webmvc-ui = { module = "org.springdoc:springdoc-openapi-starter-webmvc-ui", version.ref = "springdoc" }
+junit-jupiter = { module = "org.junit.jupiter:junit-jupiter" }
+junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher" }
+assertj-core = { module = "org.assertj:assertj-core" }
+slf4j-simple = { module = "org.slf4j:slf4j-simple" }
+
+[plugins]
+spring-boot = { id = "org.springframework.boot", version.ref = "spring-boot" }

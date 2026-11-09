@@ -1,0 +1,12 @@
+{
+  "results": {
+    "common": {
+      "errorMessage": "시스템에러",
+      "countPerPage": "10",
+      "totalCount": "0",
+      "errorCode": "-999",
+      "currentPage": "1"
+    },
+    "juso": null
+  }
+}

@@ -1,0 +1,1120 @@
+{
+  "format": "app-seed-extraction@1",
+  "document_key": "daegu.ord.urban_planning",
+  "effective_from": "2026-05-11",
+  "model": "scripted:build_seed_extractions@v1",
+  "prompt_version": "seed-script@v1",
+  "note": "대구광역시 도시계획 조례 제75조·제80조① 각 호",
+  "extraction": {
+    "schema_version": "rule_extraction@1.0",
+    "document_version_id": "@version",
+    "rules": [
+      {
+        "rule_key": "BCR.ZONE.R1E",
+        "category": "BUILDING_COVERAGE",
+        "title": "제1종전용주거지역 건폐율 (조례)",
+        "automation_level": "auto",
+        "conditions": [
+          {
+            "field": "zoning",
+            "operator": "eq",
+            "value": "제1종전용주거지역"
+          }
+        ],
+        "values": [
+          {
+            "value_key": "ratio",
+            "unit": "%",
+            "evidence": {
+              "provision_id": "@art75/item1",
+              "quote": "제1종전용주거지역 : 50퍼센트 이하"
+            },
+            "value_type": "max",
+            "num_max": 50.0
+          }
+        ],
+        "confidence": "high"
+      },
+      {
+        "rule_key": "BCR.ZONE.CD",
+        "category": "BUILDING_COVERAGE",
+        "title": "유통상업지역 건폐율 (조례)",
+        "automation_level": "auto",
+        "conditions": [
+          {
+            "field": "zoning",
+            "operator": "eq",
+            "value": "유통상업지역"
+          }
+        ],
+        "values": [
+          {
+            "value_key": "ratio",
+            "unit": "%",
+            "evidence": {
+              "provision_id": "@art75/item10",
+              "quote": "유통상업지역 : 70퍼센트 이하"
+            },
+            "value_type": "max",
+            "num_max": 70.0
+          }
+        ],
+        "confidence": "high"
+      },
+      {
+        "rule_key": "BCR.ZONE.IE",
+        "category": "BUILDING_COVERAGE",
+        "title": "전용공업지역 건폐율 (조례)",
+        "automation_level": "auto",
+        "conditions": [
+          {
+            "field": "zoning",
+            "operator": "eq",
+            "value": "전용공업지역"
+          }
+        ],
+        "values": [
+          {
+            "value_key": "ratio",
+            "unit": "%",
+            "evidence": {
+              "provision_id": "@art75/item11",
+              "quote": "전용공업지역 : 70퍼센트 이하"
+            },
+            "value_type": "max",
+            "num_max": 70.0
+          }
+        ],
+        "confidence": "high"
+      },
+      {
+        "rule_key": "BCR.ZONE.IG",
+        "category": "BUILDING_COVERAGE",
+        "title": "일반공업지역 건폐율 (조례)",
+        "automation_level": "auto",
+        "conditions": [
+          {
+            "field": "zoning",
+            "operator": "eq",
+            "value": "일반공업지역"
+          }
+        ],
+        "values": [
+          {
+            "value_key": "ratio",
+            "unit": "%",
+            "evidence": {
+              "provision_id": "@art75/item12",
+              "quote": "일반공업지역 : 70퍼센트 이하"
+            },
+            "value_type": "max",
+            "num_max": 70.0
+          }
+        ],
+        "confidence": "high"
+      },
+      {
+        "rule_key": "BCR.ZONE.IQ",
+        "category": "BUILDING_COVERAGE",
+        "title": "준공업지역 건폐율 (조례)",
+        "automation_level": "auto",
+        "conditions": [
+          {
+            "field": "zoning",
+            "operator": "eq",
+            "value": "준공업지역"
+          }
+        ],
+        "values": [
+          {
+            "value_key": "ratio",
+            "unit": "%",
+            "evidence": {
+              "provision_id": "@art75/item13",
+              "quote": "준공업지역 : 70퍼센트 이하"
+            },
+            "value_type": "max",
+            "num_max": 70.0
+          }
+        ],
+        "confidence": "high"
+      },
+      {
+        "rule_key": "BCR.ZONE.GC",
+        "category": "BUILDING_COVERAGE",
+        "title": "보전녹지지역 건폐율 (조례)",
+        "automation_level": "auto",
+        "conditions": [
+          {
+            "field": "zoning",
+            "operator": "eq",
+            "value": "보전녹지지역"
+          }
+        ],
+        "values": [
+          {
+            "value_key": "ratio",
+            "unit": "%",
+            "evidence": {
+              "provision_id": "@art75/item14",
+              "quote": "보전녹지지역 : 20퍼센트 이하"
+            },
+            "value_type": "max",
+            "num_max": 20.0
+          }
+        ],
+        "confidence": "high"
+      },
+      {
+        "rule_key": "BCR.ZONE.GP",
+        "category": "BUILDING_COVERAGE",
+        "title": "생산녹지지역 건폐율 (조례)",
+        "automation_level": "auto",
+        "conditions": [
+          {
+            "field": "zoning",
+            "operator": "eq",
+            "value": "생산녹지지역"
+          }
+        ],
+        "values": [
+          {
+            "value_key": "ratio",
+            "unit": "%",
+            "evidence": {
+              "provision_id": "@art75/item15",
+              "quote": "생산녹지지역 : 20퍼센트 이하"
+            },
+            "value_type": "max",
+            "num_max": 20.0
+          }
+        ],
+        "confidence": "high"
+      },
+      {
+        "rule_key": "BCR.ZONE.GN",
+        "category": "BUILDING_COVERAGE",
+        "title": "자연녹지지역 건폐율 (조례)",
+        "automation_level": "auto",
+        "conditions": [
+          {
+            "field": "zoning",
+            "operator": "eq",
+            "value": "자연녹지지역"
+          }
+        ],
+        "values": [
+          {
+            "value_key": "ratio",
+            "unit": "%",
+            "evidence": {
+              "provision_id": "@art75/item16",
+              "quote": "자연녹지지역 : 20퍼센트 이하"
+            },
+            "value_type": "max",
+            "num_max": 20.0
+          }
+        ],
+        "confidence": "high"
+      },
+      {
+        "rule_key": "BCR.ZONE.MC",
+        "category": "BUILDING_COVERAGE",
+        "title": "보전관리지역 건폐율 (조례)",
+        "automation_level": "auto",
+        "conditions": [
+          {
+            "field": "zoning",
+            "operator": "eq",
+            "value": "보전관리지역"
+          }
+        ],
+        "values": [
+          {
+            "value_key": "ratio",
+            "unit": "%",
+            "evidence": {
+              "provision_id": "@art75/item17",
+              "quote": "보전관리지역 : 20퍼센트 이하"
+            },
+            "value_type": "max",
+            "num_max": 20.0
+          }
+        ],
+        "confidence": "high"
+      },
+      {
+        "rule_key": "BCR.ZONE.MP",
+        "category": "BUILDING_COVERAGE",
+        "title": "생산관리지역 건폐율 (조례)",
+        "automation_level": "auto",
+        "conditions": [
+          {
+            "field": "zoning",
+            "operator": "eq",
+            "value": "생산관리지역"
+          }
+        ],
+        "values": [
+          {
+            "value_key": "ratio",
+            "unit": "%",
+            "evidence": {
+              "provision_id": "@art75/item18",
+              "quote": "생산관리지역 : 20퍼센트 이하"
+            },
+            "value_type": "max",
+            "num_max": 20.0
+          }
+        ],
+        "confidence": "high"
+      },
+      {
+        "rule_key": "BCR.ZONE.MPL",
+        "category": "BUILDING_COVERAGE",
+        "title": "계획관리지역 건폐율 (조례)",
+        "automation_level": "auto",
+        "conditions": [
+          {
+            "field": "zoning",
+            "operator": "eq",
+            "value": "계획관리지역"
+          }
+        ],
+        "values": [
+          {
+            "value_key": "ratio",
+            "unit": "%",
+            "evidence": {
+              "provision_id": "@art75/item19",
+              "quote": "계획관리지역 : 40퍼센트 이하 <개정 2014.5.20,, 2017.4.10.>"
+            },
+            "value_type": "max",
+            "num_max": 40.0
+          }
+        ],
+        "confidence": "high"
+      },
+      {
+        "rule_key": "BCR.ZONE.R2E",
+        "category": "BUILDING_COVERAGE",
+        "title": "제2종전용주거지역 건폐율 (조례)",
+        "automation_level": "auto",
+        "conditions": [
+          {
+            "field": "zoning",
+            "operator": "eq",
+            "value": "제2종전용주거지역"
+          }
+        ],
+        "values": [
+          {
+            "value_key": "ratio",
+            "unit": "%",
+            "evidence": {
+              "provision_id": "@art75/item2",
+              "quote": "제2종전용주거지역 : 40퍼센트 이하"
+            },
+            "value_type": "max",
+            "num_max": 40.0
+          }
+        ],
+        "confidence": "high"
+      },
+      {
+        "rule_key": "BCR.ZONE.AG",
+        "category": "BUILDING_COVERAGE",
+        "title": "농림지역 건폐율 (조례)",
+        "automation_level": "auto",
+        "conditions": [
+          {
+            "field": "zoning",
+            "operator": "eq",
+            "value": "농림지역"
+          }
+        ],
+        "values": [
+          {
+            "value_key": "ratio",
+            "unit": "%",
+            "evidence": {
+              "provision_id": "@art75/item20",
+              "quote": "농림지역 : 20퍼센트 이하"
+            },
+            "value_type": "max",
+            "num_max": 20.0
+          }
+        ],
+        "confidence": "high"
+      },
+      {
+        "rule_key": "BCR.ZONE.NC",
+        "category": "BUILDING_COVERAGE",
+        "title": "자연환경보전지역 건폐율 (조례)",
+        "automation_level": "auto",
+        "conditions": [
+          {
+            "field": "zoning",
+            "operator": "eq",
+            "value": "자연환경보전지역"
+          }
+        ],
+        "values": [
+          {
+            "value_key": "ratio",
+            "unit": "%",
+            "evidence": {
+              "provision_id": "@art75/item21",
+              "quote": "자연환경보전지역 : 20퍼센트 이하"
+            },
+            "value_type": "max",
+            "num_max": 20.0
+          }
+        ],
+        "confidence": "high"
+      },
+      {
+        "rule_key": "BCR.ZONE.R1G",
+        "category": "BUILDING_COVERAGE",
+        "title": "제1종일반주거지역 건폐율 (조례)",
+        "automation_level": "auto",
+        "conditions": [
+          {
+            "field": "zoning",
+            "operator": "eq",
+            "value": "제1종일반주거지역"
+          }
+        ],
+        "values": [
+          {
+            "value_key": "ratio",
+            "unit": "%",
+            "evidence": {
+              "provision_id": "@art75/item3",
+              "quote": "제1종일반주거지역 : 60퍼센트 이하"
+            },
+            "value_type": "max",
+            "num_max": 60.0
+          }
+        ],
+        "confidence": "high"
+      },
+      {
+        "rule_key": "BCR.ZONE.R2G",
+        "category": "BUILDING_COVERAGE",
+        "title": "제2종일반주거지역 건폐율 (조례)",
+        "automation_level": "auto",
+        "conditions": [
+          {
+            "field": "zoning",
+            "operator": "eq",
+            "value": "제2종일반주거지역"
+          }
+        ],
+        "values": [
+          {
+            "value_key": "ratio",
+            "unit": "%",
+            "evidence": {
+              "provision_id": "@art75/item4",
+              "quote": "제2종일반주거지역 : 60퍼센트 이하"
+            },
+            "value_type": "max",
+            "num_max": 60.0
+          }
+        ],
+        "confidence": "high"
+      },
+      {
+        "rule_key": "BCR.ZONE.R3G",
+        "category": "BUILDING_COVERAGE",
+        "title": "제3종일반주거지역 건폐율 (조례)",
+        "automation_level": "auto",
+        "conditions": [
+          {
+            "field": "zoning",
+            "operator": "eq",
+            "value": "제3종일반주거지역"
+          }
+        ],
+        "values": [
+          {
+            "value_key": "ratio",
+            "unit": "%",
+            "evidence": {
+              "provision_id": "@art75/item5",
+              "quote": "제3종일반주거지역 : 50퍼센트 이하"
+            },
+            "value_type": "max",
+            "num_max": 50.0
+          }
+        ],
+        "confidence": "high"
+      },
+      {
+        "rule_key": "BCR.ZONE.RQ",
+        "category": "BUILDING_COVERAGE",
+        "title": "준주거지역 건폐율 (조례)",
+        "automation_level": "auto",
+        "conditions": [
+          {
+            "field": "zoning",
+            "operator": "eq",
+            "value": "준주거지역"
+          }
+        ],
+        "values": [
+          {
+            "value_key": "ratio",
+            "unit": "%",
+            "evidence": {
+              "provision_id": "@art75/item6",
+              "quote": "준주거지역 : 60퍼센트 이하"
+            },
+            "value_type": "max",
+            "num_max": 60.0
+          }
+        ],
+        "confidence": "high"
+      },
+      {
+        "rule_key": "BCR.ZONE.CC",
+        "category": "BUILDING_COVERAGE",
+        "title": "중심상업지역 건폐율 (조례)",
+        "automation_level": "auto",
+        "conditions": [
+          {
+            "field": "zoning",
+            "operator": "eq",
+            "value": "중심상업지역"
+          }
+        ],
+        "values": [
+          {
+            "value_key": "ratio",
+            "unit": "%",
+            "evidence": {
+              "provision_id": "@art75/item7",
+              "quote": "중심상업지역 : 80퍼센트 이하"
+            },
+            "value_type": "max",
+            "num_max": 80.0
+          }
+        ],
+        "confidence": "high"
+      },
+      {
+        "rule_key": "BCR.ZONE.CG",
+        "category": "BUILDING_COVERAGE",
+        "title": "일반상업지역 건폐율 (조례)",
+        "automation_level": "auto",
+        "conditions": [
+          {
+            "field": "zoning",
+            "operator": "eq",
+            "value": "일반상업지역"
+          }
+        ],
+        "values": [
+          {
+            "value_key": "ratio",
+            "unit": "%",
+            "evidence": {
+              "provision_id": "@art75/item8",
+              "quote": "일반상업지역 : 70퍼센트 이하"
+            },
+            "value_type": "max",
+            "num_max": 70.0
+          }
+        ],
+        "confidence": "high"
+      },
+      {
+        "rule_key": "BCR.ZONE.CN",
+        "category": "BUILDING_COVERAGE",
+        "title": "근린상업지역 건폐율 (조례)",
+        "automation_level": "auto",
+        "conditions": [
+          {
+            "field": "zoning",
+            "operator": "eq",
+            "value": "근린상업지역"
+          }
+        ],
+        "values": [
+          {
+            "value_key": "ratio",
+            "unit": "%",
+            "evidence": {
+              "provision_id": "@art75/item9",
+              "quote": "근린상업지역 : 70퍼센트 이하"
+            },
+            "value_type": "max",
+            "num_max": 70.0
+          }
+        ],
+        "confidence": "high"
+      },
+      {
+        "rule_key": "FAR.ZONE.R1E",
+        "category": "FLOOR_AREA_RATIO",
+        "title": "제1종전용주거지역 용적률 (조례)",
+        "automation_level": "auto",
+        "conditions": [
+          {
+            "field": "zoning",
+            "operator": "eq",
+            "value": "제1종전용주거지역"
+          }
+        ],
+        "values": [
+          {
+            "value_key": "ratio",
+            "unit": "%",
+            "evidence": {
+              "provision_id": "@art80/para1/item1",
+              "quote": "제1종전용주거지역 : 100퍼센트 이하"
+            },
+            "value_type": "max",
+            "num_max": 100.0
+          }
+        ],
+        "confidence": "high"
+      },
+      {
+        "rule_key": "FAR.ZONE.CD",
+        "category": "FLOOR_AREA_RATIO",
+        "title": "유통상업지역 용적률 (조례)",
+        "automation_level": "auto",
+        "conditions": [
+          {
+            "field": "zoning",
+            "operator": "eq",
+            "value": "유통상업지역"
+          }
+        ],
+        "values": [
+          {
+            "value_key": "ratio",
+            "unit": "%",
+            "evidence": {
+              "provision_id": "@art80/para1/item10",
+              "quote": "유통상업지역 : 900퍼센트 이하"
+            },
+            "value_type": "max",
+            "num_max": 900.0
+          }
+        ],
+        "confidence": "high"
+      },
+      {
+        "rule_key": "FAR.ZONE.IE",
+        "category": "FLOOR_AREA_RATIO",
+        "title": "전용공업지역 용적률 (조례)",
+        "automation_level": "auto",
+        "conditions": [
+          {
+            "field": "zoning",
+            "operator": "eq",
+            "value": "전용공업지역"
+          }
+        ],
+        "values": [
+          {
+            "value_key": "ratio",
+            "unit": "%",
+            "evidence": {
+              "provision_id": "@art80/para1/item11",
+              "quote": "전용공업지역 : 300퍼센트 이하"
+            },
+            "value_type": "max",
+            "num_max": 300.0
+          }
+        ],
+        "confidence": "high"
+      },
+      {
+        "rule_key": "FAR.ZONE.IG",
+        "category": "FLOOR_AREA_RATIO",
+        "title": "일반공업지역 용적률 (조례)",
+        "automation_level": "auto",
+        "conditions": [
+          {
+            "field": "zoning",
+            "operator": "eq",
+            "value": "일반공업지역"
+          }
+        ],
+        "values": [
+          {
+            "value_key": "ratio",
+            "unit": "%",
+            "evidence": {
+              "provision_id": "@art80/para1/item12",
+              "quote": "일반공업지역 : 350퍼센트 이하"
+            },
+            "value_type": "max",
+            "num_max": 350.0
+          }
+        ],
+        "confidence": "high"
+      },
+      {
+        "rule_key": "FAR.ZONE.IQ",
+        "category": "FLOOR_AREA_RATIO",
+        "title": "준공업지역 용적률 (조례)",
+        "automation_level": "auto",
+        "conditions": [
+          {
+            "field": "zoning",
+            "operator": "eq",
+            "value": "준공업지역"
+          }
+        ],
+        "values": [
+          {
+            "value_key": "ratio",
+            "unit": "%",
+            "evidence": {
+              "provision_id": "@art80/para1/item13",
+              "quote": "준공업지역 : 400퍼센트 이하"
+            },
+            "value_type": "max",
+            "num_max": 400.0
+          }
+        ],
+        "confidence": "high"
+      },
+      {
+        "rule_key": "FAR.ZONE.GC",
+        "category": "FLOOR_AREA_RATIO",
+        "title": "보전녹지지역 용적률 (조례)",
+        "automation_level": "auto",
+        "conditions": [
+          {
+            "field": "zoning",
+            "operator": "eq",
+            "value": "보전녹지지역"
+          }
+        ],
+        "values": [
+          {
+            "value_key": "ratio",
+            "unit": "%",
+            "evidence": {
+              "provision_id": "@art80/para1/item14",
+              "quote": "보전녹지지역 : 60퍼센트 이하"
+            },
+            "value_type": "max",
+            "num_max": 60.0
+          }
+        ],
+        "confidence": "high"
+      },
+      {
+        "rule_key": "FAR.ZONE.GP",
+        "category": "FLOOR_AREA_RATIO",
+        "title": "생산녹지지역 용적률 (조례)",
+        "automation_level": "auto",
+        "conditions": [
+          {
+            "field": "zoning",
+            "operator": "eq",
+            "value": "생산녹지지역"
+          }
+        ],
+        "values": [
+          {
+            "value_key": "ratio",
+            "unit": "%",
+            "evidence": {
+              "provision_id": "@art80/para1/item15",
+              "quote": "생산녹지지역 : 100퍼센트 이하"
+            },
+            "value_type": "max",
+            "num_max": 100.0
+          }
+        ],
+        "confidence": "high"
+      },
+      {
+        "rule_key": "FAR.ZONE.GN",
+        "category": "FLOOR_AREA_RATIO",
+        "title": "자연녹지지역 용적률 (조례)",
+        "automation_level": "auto",
+        "conditions": [
+          {
+            "field": "zoning",
+            "operator": "eq",
+            "value": "자연녹지지역"
+          }
+        ],
+        "values": [
+          {
+            "value_key": "ratio",
+            "unit": "%",
+            "evidence": {
+              "provision_id": "@art80/para1/item16",
+              "quote": "자연녹지지역 : 100퍼센트 이하"
+            },
+            "value_type": "max",
+            "num_max": 100.0
+          }
+        ],
+        "confidence": "high"
+      },
+      {
+        "rule_key": "FAR.ZONE.MC",
+        "category": "FLOOR_AREA_RATIO",
+        "title": "보전관리지역 용적률 (조례)",
+        "automation_level": "auto",
+        "conditions": [
+          {
+            "field": "zoning",
+            "operator": "eq",
+            "value": "보전관리지역"
+          }
+        ],
+        "values": [
+          {
+            "value_key": "ratio",
+            "unit": "%",
+            "evidence": {
+              "provision_id": "@art80/para1/item17",
+              "quote": "보전관리지역 : 80퍼센트 이하"
+            },
+            "value_type": "max",
+            "num_max": 80.0
+          }
+        ],
+        "confidence": "high"
+      },
+      {
+        "rule_key": "FAR.ZONE.MP",
+        "category": "FLOOR_AREA_RATIO",
+        "title": "생산관리지역 용적률 (조례)",
+        "automation_level": "auto",
+        "conditions": [
+          {
+            "field": "zoning",
+            "operator": "eq",
+            "value": "생산관리지역"
+          }
+        ],
+        "values": [
+          {
+            "value_key": "ratio",
+            "unit": "%",
+            "evidence": {
+              "provision_id": "@art80/para1/item18",
+              "quote": "생산관리지역 : 80퍼센트 이하"
+            },
+            "value_type": "max",
+            "num_max": 80.0
+          }
+        ],
+        "confidence": "high"
+      },
+      {
+        "rule_key": "FAR.ZONE.MPL",
+        "category": "FLOOR_AREA_RATIO",
+        "title": "계획관리지역 용적률 (조례)",
+        "automation_level": "auto",
+        "conditions": [
+          {
+            "field": "zoning",
+            "operator": "eq",
+            "value": "계획관리지역"
+          }
+        ],
+        "values": [
+          {
+            "value_key": "ratio",
+            "unit": "%",
+            "evidence": {
+              "provision_id": "@art80/para1/item19",
+              "quote": "계획관리지역 : 100퍼센트 이하"
+            },
+            "value_type": "max",
+            "num_max": 100.0
+          }
+        ],
+        "confidence": "high",
+        "exceptions_mentioned": [
+          {
+            "provision_id": "@art80/para1/item19",
+            "quote": "(다만, 법 제75조의3제3항에 따른 성장관리계획구역을 수립한 지역의 경우 125퍼센트 이하)"
+          }
+        ]
+      },
+      {
+        "rule_key": "FAR.ZONE.R2E",
+        "category": "FLOOR_AREA_RATIO",
+        "title": "제2종전용주거지역 용적률 (조례)",
+        "automation_level": "auto",
+        "conditions": [
+          {
+            "field": "zoning",
+            "operator": "eq",
+            "value": "제2종전용주거지역"
+          }
+        ],
+        "values": [
+          {
+            "value_key": "ratio",
+            "unit": "%",
+            "evidence": {
+              "provision_id": "@art80/para1/item2",
+              "quote": "제2종전용주거지역 : 120퍼센트 이하"
+            },
+            "value_type": "max",
+            "num_max": 120.0
+          }
+        ],
+        "confidence": "high"
+      },
+      {
+        "rule_key": "FAR.ZONE.AG",
+        "category": "FLOOR_AREA_RATIO",
+        "title": "농림지역 용적률 (조례)",
+        "automation_level": "auto",
+        "conditions": [
+          {
+            "field": "zoning",
+            "operator": "eq",
+            "value": "농림지역"
+          }
+        ],
+        "values": [
+          {
+            "value_key": "ratio",
+            "unit": "%",
+            "evidence": {
+              "provision_id": "@art80/para1/item20",
+              "quote": "농림지역 : 80퍼센트 이하"
+            },
+            "value_type": "max",
+            "num_max": 80.0
+          }
+        ],
+        "confidence": "high"
+      },
+      {
+        "rule_key": "FAR.ZONE.NC",
+        "category": "FLOOR_AREA_RATIO",
+        "title": "자연환경보전지역 용적률 (조례)",
+        "automation_level": "auto",
+        "conditions": [
+          {
+            "field": "zoning",
+            "operator": "eq",
+            "value": "자연환경보전지역"
+          }
+        ],
+        "values": [
+          {
+            "value_key": "ratio",
+            "unit": "%",
+            "evidence": {
+              "provision_id": "@art80/para1/item21",
+              "quote": "자연환경보전지역 : 80퍼센트 이하"
+            },
+            "value_type": "max",
+            "num_max": 80.0
+          }
+        ],
+        "confidence": "high"
+      },
+      {
+        "rule_key": "FAR.ZONE.R1G",
+        "category": "FLOOR_AREA_RATIO",
+        "title": "제1종일반주거지역 용적률 (조례)",
+        "automation_level": "auto",
+        "conditions": [
+          {
+            "field": "zoning",
+            "operator": "eq",
+            "value": "제1종일반주거지역"
+          }
+        ],
+        "values": [
+          {
+            "value_key": "ratio",
+            "unit": "%",
+            "evidence": {
+              "provision_id": "@art80/para1/item3",
+              "quote": "제1종일반주거지역 : 200퍼센트 이하"
+            },
+            "value_type": "max",
+            "num_max": 200.0
+          }
+        ],
+        "confidence": "high"
+      },
+      {
+        "rule_key": "FAR.ZONE.R2G",
+        "category": "FLOOR_AREA_RATIO",
+        "title": "제2종일반주거지역 용적률 (조례)",
+        "automation_level": "auto",
+        "conditions": [
+          {
+            "field": "zoning",
+            "operator": "eq",
+            "value": "제2종일반주거지역"
+          }
+        ],
+        "values": [
+          {
+            "value_key": "ratio",
+            "unit": "%",
+            "evidence": {
+              "provision_id": "@art80/para1/item4",
+              "quote": "제2종일반주거지역 : 220퍼센트 이하"
+            },
+            "value_type": "max",
+            "num_max": 220.0
+          }
+        ],
+        "confidence": "high"
+      },
+      {
+        "rule_key": "FAR.ZONE.R3G",
+        "category": "FLOOR_AREA_RATIO",
+        "title": "제3종일반주거지역 용적률 (조례)",
+        "automation_level": "auto",
+        "conditions": [
+          {
+            "field": "zoning",
+            "operator": "eq",
+            "value": "제3종일반주거지역"
+          }
+        ],
+        "values": [
+          {
+            "value_key": "ratio",
+            "unit": "%",
+            "evidence": {
+              "provision_id": "@art80/para1/item5",
+              "quote": "제3종일반주거지역 : 250퍼센트 이하"
+            },
+            "value_type": "max",
+            "num_max": 250.0
+          }
+        ],
+        "confidence": "high"
+      },
+      {
+        "rule_key": "FAR.ZONE.RQ",
+        "category": "FLOOR_AREA_RATIO",
+        "title": "준주거지역 용적률 (조례)",
+        "automation_level": "auto",
+        "conditions": [
+          {
+            "field": "zoning",
+            "operator": "eq",
+            "value": "준주거지역"
+          }
+        ],
+        "values": [
+          {
+            "value_key": "ratio",
+            "unit": "%",
+            "evidence": {
+              "provision_id": "@art80/para1/item6",
+              "quote": "준주거지역 : 400퍼센트 이하"
+            },
+            "value_type": "max",
+            "num_max": 400.0
+          }
+        ],
+        "confidence": "high",
+        "exceptions_mentioned": [
+          {
+            "provision_id": "@art80/para1/item6",
+            "quote": "(다만, 공동주택은 250퍼센트 이하, 주거복합건축물은 300퍼센트 이하로 한다)"
+          }
+        ]
+      },
+      {
+        "rule_key": "FAR.ZONE.CC",
+        "category": "FLOOR_AREA_RATIO",
+        "title": "중심상업지역 용적률 (조례)",
+        "automation_level": "auto",
+        "conditions": [
+          {
+            "field": "zoning",
+            "operator": "eq",
+            "value": "중심상업지역"
+          }
+        ],
+        "values": [
+          {
+            "value_key": "ratio",
+            "unit": "%",
+            "evidence": {
+              "provision_id": "@art80/para1/item7",
+              "quote": "중심상업지역 : 1천 300퍼센트 이하"
+            },
+            "value_type": "max",
+            "num_max": 1300.0
+          }
+        ],
+        "confidence": "high"
+      },
+      {
+        "rule_key": "FAR.ZONE.CG",
+        "category": "FLOOR_AREA_RATIO",
+        "title": "일반상업지역 용적률 (조례)",
+        "automation_level": "auto",
+        "conditions": [
+          {
+            "field": "zoning",
+            "operator": "eq",
+            "value": "일반상업지역"
+          }
+        ],
+        "values": [
+          {
+            "value_key": "ratio",
+            "unit": "%",
+            "evidence": {
+              "provision_id": "@art80/para1/item8",
+              "quote": "일반상업지역 : 1천 퍼센트 이하"
+            },
+            "value_type": "max",
+            "num_max": 1000.0
+          }
+        ],
+        "confidence": "high"
+      },
+      {
+        "rule_key": "FAR.ZONE.CN",
+        "category": "FLOOR_AREA_RATIO",
+        "title": "근린상업지역 용적률 (조례)",
+        "automation_level": "auto",
+        "conditions": [
+          {
+            "field": "zoning",
+            "operator": "eq",
+            "value": "근린상업지역"
+          }
+        ],
+        "values": [
+          {
+            "value_key": "ratio",
+            "unit": "%",
+            "evidence": {
+              "provision_id": "@art80/para1/item9",
+              "quote": "근린상업지역 : 800퍼센트 이하"
+            },
+            "value_type": "max",
+            "num_max": 800.0
+          }
+        ],
+        "confidence": "high"
+      }
+    ],
+    "delegations": [],
+    "unresolved": []
+  }
+}

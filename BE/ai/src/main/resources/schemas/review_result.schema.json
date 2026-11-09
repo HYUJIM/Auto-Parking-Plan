@@ -1,0 +1,230 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://app.local/schemas/review_result.schema.json",
+  "title": "필지 검토 결과 (review_result@1.0)",
+  "description": "GET /v1/reviews/{id} 응답. 검토 엔진이 결정적으로 만든 결과이며, 쉬운 설명 AI의 유일한 입력이기도 하다. 숫자·근거는 모두 이 객체에서만 나온다.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "review_id", "as_of_date", "parcel", "items", "manual_checks", "data_notices", "disclaimer"],
+  "properties": {
+    "schema_version": { "const": "review_result@1.0" },
+    "review_id": { "type": "string", "format": "uuid" },
+    "as_of_date": { "type": "string", "format": "date" },
+    "engine_version": { "type": "string" },
+    "ruleset_hash": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+
+    "parcel": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["pnu", "jibun_address", "jurisdiction", "land_area_m2", "land_category", "designations", "location"],
+      "properties": {
+        "pnu": { "type": "string", "pattern": "^[0-9]{19}$" },
+        "road_address": { "type": ["string", "null"] },
+        "jibun_address": { "type": "string" },
+        "jurisdiction": {
+          "type": "object", "additionalProperties": false,
+          "required": ["sido", "sigungu", "supported"],
+          "properties": {
+            "sido": { "type": "string" },
+            "sigungu": { "type": ["string", "null"] },
+            "supported": { "type": "boolean", "description": "법규 데이터 준비 지역 여부 (MVP: 수성구만 true)" }
+          }
+        },
+        "land_area_m2": { "type": ["number", "null"], "description": "null = 미확인" },
+        "land_category": { "type": ["string", "null"] },
+        "designations": {
+          "type": ["array", "null"],
+          "description": "null = 조회 실패/미확인, [] = 조회했으나 지정 없음",
+          "items": {
+            "type": "object", "additionalProperties": false,
+            "required": ["kind", "name", "conflict"],
+            "properties": {
+              "kind": { "enum": ["zoning", "district", "zone", "other"] },
+              "name": { "type": "string" },
+              "conflict": { "enum": ["included", "partially_included", "adjacent", "unknown"] }
+            }
+          }
+        },
+        "location": {
+          "type": "object", "additionalProperties": false,
+          "required": ["centroid", "geometry"],
+          "properties": {
+            "centroid": { "type": ["array", "null"], "items": { "type": "number" }, "minItems": 2, "maxItems": 2, "description": "[경도, 위도] WGS84" },
+            "geometry": { "type": ["object", "null"], "description": "GeoJSON MultiPolygon (지도 표시용)" }
+          }
+        },
+        "sources": {
+          "type": "array",
+          "items": {
+            "type": "object", "additionalProperties": false,
+            "required": ["field", "source", "fetched_at"],
+            "properties": {
+              "field": { "type": "string" },
+              "source": { "type": "string" },
+              "fetched_at": { "type": "string", "format": "date-time" }
+            }
+          }
+        }
+      }
+    },
+
+    "items": {
+      "description": "자동 검토 항목 (용도지역/용도/건폐율/용적률/주차 기준). 화면의 '핵심 법규 카드' 1장 = item 1개.",
+      "type": "array",
+      "items": { "$ref": "#/$defs/item" }
+    },
+
+    "manual_checks": {
+      "description": "자동 판단하지 않는 항목 (도로·진출입, 건축선, 높이·일조, 지역 추가 규제)",
+      "type": "array",
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["category", "title", "why", "what_to_check"],
+        "properties": {
+          "category": { "enum": ["ROAD_ACCESS", "SETBACK", "HEIGHT_SUNLIGHT", "SPECIAL_ZONE"] },
+          "title": { "type": "string" },
+          "why": { "type": "string" },
+          "what_to_check": { "type": "array", "items": { "type": "string" } },
+          "related_basis": { "type": "array", "items": { "$ref": "#/$defs/basis_node" } },
+          "triggered_by": { "type": ["string", "null"], "description": "예: '지구단위계획구역 중첩 확인'" }
+        }
+      }
+    },
+
+    "data_notices": {
+      "type": "array",
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["code", "message"],
+        "properties": {
+          "code": { "enum": ["REGION_NOT_SUPPORTED", "PARCEL_PARTIAL", "DESIGNATION_UNAVAILABLE", "PENDING_AMENDMENT", "RULE_NOT_APPROVED"] },
+          "message": { "type": "string" }
+        }
+      }
+    },
+
+    "disclaimer": { "type": "string" }
+  },
+
+  "$defs": {
+    "status": {
+      "enum": ["REVIEWABLE", "CONDITIONAL", "MANUAL_CHECK"],
+      "description": "검토 가능 / 조건부 검토 / 별도 확인 필요"
+    },
+
+    "basis_node": {
+      "description": "근거 트리의 한 단(上→下: L1 법률 → L1 시행령 → L3 조례 → L4 고시)",
+      "type": "object", "additionalProperties": false,
+      "required": ["layer", "document_title", "article_label", "effective_from", "quote", "url"],
+      "properties": {
+        "layer": { "enum": ["L1_NATIONAL", "L2_LAND_USE", "L3_LOCAL", "L4_SPECIAL_ZONE"] },
+        "document_title": { "type": "string" },
+        "article_label": { "type": ["string", "null"], "description": "'제77조제1항제1호' / '별표 1'" },
+        "effective_from": { "type": ["string", "null"], "format": "date" },
+        "quote": { "type": ["string", "null"], "maxLength": 400 },
+        "url": { "type": ["string", "null"], "format": "uri", "pattern": "^https?://" },
+        "rule_id": { "type": ["string", "null"], "format": "uuid" }
+      }
+    },
+
+    "item": {
+      "type": "object", "additionalProperties": false,
+      "required": ["category", "title", "status", "reason_code", "applied", "basis", "explanation"],
+      "properties": {
+        "category": { "enum": ["ZONING_USE", "BUILDING_COVERAGE", "FLOOR_AREA_RATIO", "PARKING_REQUIREMENT", "PARKING_STALL_SIZE", "DRIVE_AISLE_WIDTH"] },
+        "title": { "type": "string" },
+        "status": { "$ref": "#/$defs/status" },
+        "reason_code": {
+          "type": ["string", "null"],
+          "enum": ["NO_LOCAL_VALUE", "ZONE_OVERLAY", "OUT_OF_RANGE", "DATA_MISSING", "EXCEPTION_CLAUSE", "NEEDS_USE_INPUT", null]
+        },
+        "applied": {
+          "description": "적용 기준 + 이 필지에 적용한 결과 (기능정의서 7-1 ①③)",
+          "type": "object", "additionalProperties": false,
+          "properties": {
+            "criteria_text": { "type": ["string", "null"], "description": "'60% 이하'" },
+            "value_type": { "type": ["string", "null"] },
+            "value": { "type": ["number", "null"] },
+            "national_range": {
+              "type": ["object", "null"], "additionalProperties": false,
+              "properties": { "min": { "type": ["number", "null"] }, "max": { "type": ["number", "null"] } }
+            },
+            "unit": { "type": ["string", "null"] },
+            "reference_value": {
+              "description": "대지면적 × 비율 같은 참고값",
+              "type": ["object", "null"], "additionalProperties": false,
+              "required": ["label", "value", "unit", "formula"],
+              "properties": {
+                "label": { "type": "string" },
+                "value": { "type": "number" },
+                "unit": { "type": "string" },
+                "formula": { "type": "string" }
+              }
+            },
+            "uses": {
+              "description": "ZONING_USE 전용: 검토 가능한 주요 용도",
+              "type": ["array", "null"],
+              "items": {
+                "type": "object", "additionalProperties": false,
+                "required": ["use_name", "use_group", "status"],
+                "properties": {
+                  "use_name": { "type": "string" },
+                  "use_group": { "type": "string", "description": "화면 묶음: 주거/근린생활/업무/기타" },
+                  "status": { "$ref": "#/$defs/status" },
+                  "condition_note": { "type": ["string", "null"] }
+                }
+              }
+            },
+            "table": {
+              "description": "주차구획·차로 폭처럼 값 여러 개를 표로 보여줄 때",
+              "type": ["array", "null"],
+              "items": {
+                "type": "object", "additionalProperties": false,
+                "required": ["label", "value", "unit"],
+                "properties": {
+                  "label": { "type": "string" },
+                  "value": { "type": ["number", "string"] },
+                  "unit": { "type": ["string", "null"] }
+                }
+              }
+            }
+          }
+        },
+        "basis": {
+          "description": "적용 근거 트리 (기능정의서 7-1 ②, 12장). 상위 → 하위 순서.",
+          "type": "array", "items": { "$ref": "#/$defs/basis_node" }
+        },
+        "explanation": {
+          "description": "쉬운 설명. 사후 검증기를 통과(PASS)한 설명만 들어간다. 통과 설명이 없으면 display_source=basis_only 이고 웹은 근거 원문만 보여준다.",
+          "type": "object", "additionalProperties": false,
+          "required": ["display_source", "content", "verification"],
+          "properties": {
+            "display_source": { "enum": ["ai_verified", "template_fallback", "basis_only"] },
+            "content": {
+              "oneOf": [
+                { "type": "null" },
+                { "$ref": "https://app.local/schemas/explanation.schema.json" }
+              ]
+            },
+            "verification": {
+              "type": "object", "additionalProperties": false,
+              "required": ["verdict", "report_id", "checked_at", "must_mention_total", "must_mention_covered"],
+              "properties": {
+                "verdict": { "enum": ["PASS", "NOT_AVAILABLE"] },
+                "report_id": { "type": ["string", "null"] },
+                "checked_at": { "type": ["string", "null"], "format": "date-time" },
+                "must_mention_total": { "type": "integer", "minimum": 0 },
+                "must_mention_covered": { "type": "integer", "minimum": 0 }
+              }
+            }
+          },
+          "allOf": [
+            { "if": { "properties": { "display_source": { "const": "basis_only" } } },
+              "then": { "properties": { "content": { "type": "null" }, "verification": { "properties": { "verdict": { "const": "NOT_AVAILABLE" } } } } },
+              "else": { "properties": { "content": { "type": "object" }, "verification": { "properties": { "verdict": { "const": "PASS" } } } } } }
+          ]
+        }
+      }
+    }
+  }
+}

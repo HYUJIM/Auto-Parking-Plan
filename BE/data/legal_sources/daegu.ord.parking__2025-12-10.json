@@ -1,0 +1,67 @@
+{
+  "document": {
+    "key": "daegu.ord.parking",
+    "layer": "L3_LOCAL",
+    "source_type": "ordinance",
+    "official_title": "대구광역시 주차장 설치 및 관리 조례",
+    "jurisdiction_code": "27",
+    "external_system": "law.go.kr",
+    "external_id": "2145152",
+    "short_title": null,
+    "parent_key": null,
+    "homepage_url": "https://www.law.go.kr/자치법규/대구광역시주차장설치및관리조례",
+    "aliases": {
+      "법": "kr.law.parking",
+      "시행규칙": "kr.rule.parking",
+      "영": "kr.decree.parking"
+    }
+  },
+  "version": {
+    "promulgation_number": "대구광역시조례 제6420호",
+    "promulgation_date": "2025-12-10",
+    "effective_from": "2025-12-10",
+    "effective_to": null,
+    "external_version_id": "2091151",
+    "source_url": "https://www.law.go.kr/LSW/ordinInfoP.do?ordinSeq=2091151&chrClsCd=010202&gubun=ELIS",
+    "fetched_at": "2026-11-06T12:23:24+09:00",
+    "raw_format": "html",
+    "raw_file": "raw/daegu.ord.parking__2025-12-10__ordinInfoR-2091151.html",
+    "v_source_access": "confirmed",
+    "v_version_header": "confirmed",
+    "v_text_match": "not_checked",
+    "v_current_version": "confirmed",
+    "current_checked_on": "2026-11-06",
+    "note": "선별 조문만 수집 (개발용 HTML 수집기)"
+  },
+  "articles": [
+    {
+      "kind": "article",
+      "label": "제1조",
+      "path": "art1",
+      "heading": "목적",
+      "text": "제1조(목적) 이 조례는 「주차장법」, 같은 법 시행령 및 같은 법 시행규칙에서 위임한 사항과 그 시행에 필요한 사항을 규정함을 목적으로 한다. <개정 2016.10.31., 2018.2.28.>",
+      "table_json": null,
+      "effective_from": null
+    },
+    {
+      "kind": "article",
+      "label": "제1조의2",
+      "path": "art1-2",
+      "heading": "주차장수급실태조사",
+      "text": "제1조의2(주차장수급실태조사) ① 구청장·군수는 「주차장법」(이하 \"법\"이라 한다) 제3조 및 「주차장법 시행규칙」(이하 \"시행규칙\"이라 한다) 제1조의2에 따라 다음 각 호와 같이 주차장수급실태조사(이하 \"실태조사\"라 한다)를 실시하여야 한다.\n1. 실태조사 대상\n가.법에 따른 주차시설과 통상적으로 자동차가 주차하는 모든 공간에 대하여 주차시설현황을 조사하되, 적법하지 아니한 공간은 실태조사 대상에서 제외한다.\n나.「주차장법」제2조제5호에 따른 자동차의 주차수요\n2. 실태조사 시기：연중 주차수요의 변화가 적은 시기를 택하되 세부일정은 대구광역시장(이하 \"시장\"이라 한다)이 따로 정한다.\n3. 실태조사 내용\n가.건축물의 종류별로 주차장의 형태, 소재지, 규모, 주차요금 및 운영방법 등에 관한 사항\n나.시간대별로 주차차종, 주차위치, 주차대수, 주차장 회전율, 적법 주차여부 등의 주차실태\n다.그 밖에 시장이 필요하다고 정하는 사항\n4. 실태조사 방법\n가.주차시설현황조사는 시행규칙 별지 제1호서식에 따른 주차시설로 구분 조사\n나.주차수요조사는 주간·야간, 적법주차·불법주차로 각각 구분조사\n② 제1항에 따른 실태조사는 전수조사를 원칙으로 한다. 다만, 구청장·군수가 실태조사 직전에 실시한 조사와 비교하여 주차시설 및 주차수요에 큰 변동이 없다고 판단되는 경우에는 관련 공부 등을 확인하여 처리하거나 표본조사 등을 통하여 처리할 수 있다.\n③ 실태조사를 하는 사람은 실태조사원증표를 지참하여 이를 주차시설관리자에게 제시하여야 하고, 구청장·군수가 수집 자료의 적정성을 검증하되, 선량한 관리자의 주의 의무로서 수집정보를 유지·관리해야 한다.\n④ 그 밖에 실태조사와 관련하여 필요한 사항은 시장이 따로 정한다.\n[전문개정 2019.10.10.]",
+      "table_json": null,
+      "effective_from": null
+    },
+    {
+      "kind": "article",
+      "label": "제15조",
+      "path": "art15",
+      "heading": "부설주차장의 설치기준 등",
+      "text": "제15조(부설주차장의 설치기준 등) 「주차장법 시행령」(이하 “영”이라 한다) 제6조에 따라 부설주차장을 설치하여야 할 시설물의 종류와 설치기준은 별표 2와 같다. <개정 2016.10.31., 2018.2.28. 2024.7.10.>\n② 삭제 <2024.7.10.>\n③ 삭제 <2024.7.10.>\n④ 삭제 <2024.7.10.>\n[제목개정 2024.7.10.]",
+      "table_json": null,
+      "effective_from": null
+    }
+  ],
+  "format": "app-legal-source@1",
+  "is_example": false
+}

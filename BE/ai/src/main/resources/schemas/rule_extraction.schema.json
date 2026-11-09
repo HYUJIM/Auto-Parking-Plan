@@ -1,0 +1,163 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://app.local/schemas/rule_extraction.schema.json",
+  "title": "AI 조문 → 규칙 추출 결과 (rule_extraction@1.0)",
+  "description": "AI가 조문 묶음을 읽고 돌려주는 출력. 모든 값은 evidence(조문 id + 원문 인용)를 가져야 하며, 인용문이 원문에 그대로 없으면 서버가 폐기한다. 원문에 없는 값은 만들지 말고 null 또는 unresolved 로 남긴다.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "document_version_id", "rules", "delegations", "unresolved"],
+  "properties": {
+    "schema_version": { "const": "rule_extraction@1.0" },
+    "document_version_id": { "type": "string", "format": "uuid" },
+
+    "rules": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/rule" }
+    },
+
+    "delegations": {
+      "description": "\"~조례로 정한다\" 같은 위임 문구. 하위 조문을 아직 모르면 target_hint 만 채운다.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["from_provision_id", "relation", "target_hint", "evidence"],
+        "properties": {
+          "from_provision_id": { "type": "string", "format": "uuid" },
+          "relation": { "enum": ["delegates", "implements", "references"] },
+          "target_hint": {
+            "description": "위임 대상 (예: '특별시·광역시 도시계획조례', '대통령령')",
+            "type": "string", "maxLength": 200
+          },
+          "evidence": { "$ref": "#/$defs/evidence" }
+        }
+      }
+    },
+
+    "unresolved": {
+      "description": "읽었지만 규칙으로 만들 수 없었던 부분과 이유. 빈 배열은 '해당 없음'이 아니라 '보고할 것 없음'.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["provision_id", "reason"],
+        "properties": {
+          "provision_id": { "type": "string", "format": "uuid" },
+          "reason": {
+            "enum": ["ambiguous_condition", "refers_to_other_law", "needs_table", "exception_clause", "transitional_clause", "out_of_scope", "other"]
+          },
+          "note": { "type": "string", "maxLength": 300 }
+        }
+      }
+    }
+  },
+
+  "$defs": {
+    "category": {
+      "enum": [
+        "ZONING_USE", "BUILDING_COVERAGE", "FLOOR_AREA_RATIO",
+        "PARKING_REQUIREMENT", "PARKING_STALL_SIZE", "DRIVE_AISLE_WIDTH",
+        "ROAD_ACCESS", "SETBACK", "HEIGHT_SUNLIGHT", "SPECIAL_ZONE"
+      ]
+    },
+
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["provision_id", "quote"],
+      "properties": {
+        "provision_id": { "type": "string", "format": "uuid" },
+        "quote": {
+          "description": "원문 그대로의 연속 구간. 공백·기호 포함 정확히 일치해야 함. 서버가 char_start/char_end 를 계산한다.",
+          "type": "string", "minLength": 2, "maxLength": 400
+        }
+      }
+    },
+
+    "condition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["field", "operator", "value"],
+      "properties": {
+        "field": {
+          "enum": ["zoning", "district", "zone", "land_category", "building_use",
+                   "gross_floor_area", "households", "site_area", "road_width", "special_zone_type"]
+        },
+        "operator": { "enum": ["eq", "in", "gte", "lte", "between", "exists"] },
+        "value": {
+          "oneOf": [
+            { "type": "string" },
+            { "type": "number" },
+            { "type": "boolean" },
+            { "type": "array", "items": { "type": ["string", "number"] }, "minItems": 1 }
+          ]
+        },
+        "unit": { "type": ["string", "null"] }
+      }
+    },
+
+    "value": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value_key", "value_type", "evidence"],
+      "properties": {
+        "value_key": { "type": "string", "pattern": "^[a-z0-9_.:가-힣]+$", "maxLength": 80 },
+        "value_type": {
+          "enum": ["max", "min", "range", "exact", "enum_allowed", "enum_conditional",
+                   "enum_prohibited", "formula", "text_only"]
+        },
+        "num_min":   { "type": ["number", "null"] },
+        "num_max":   { "type": ["number", "null"] },
+        "num_exact": { "type": ["number", "null"] },
+        "enum_value": { "type": ["string", "null"], "description": "건축물 용도명 (건축법 시행령 별표 1 용어)" },
+        "formula": {
+          "type": ["string", "null"],
+          "description": "허용 변수: gross_floor_area, facility_area, households, site_area. 허용 연산: + - * / ceil floor min max. 예: 'ceil(facility_area / 150)'",
+          "pattern": "^[a-z_0-9 +\\-*/().,]*$"
+        },
+        "unit": { "type": ["string", "null"], "enum": ["%", "m", "㎡", "대", "대/㎡", "대/세대", null] },
+        "condition_note": { "type": ["string", "null"], "maxLength": 300 },
+        "evidence": { "$ref": "#/$defs/evidence" }
+      },
+      "allOf": [
+        { "if": { "properties": { "value_type": { "const": "max" } } },
+          "then": { "required": ["num_max"], "properties": { "num_max": { "type": "number" } } } },
+        { "if": { "properties": { "value_type": { "const": "min" } } },
+          "then": { "required": ["num_min"], "properties": { "num_min": { "type": "number" } } } },
+        { "if": { "properties": { "value_type": { "const": "range" } } },
+          "then": { "required": ["num_min", "num_max"],
+                    "properties": { "num_min": { "type": "number" }, "num_max": { "type": "number" } } } },
+        { "if": { "properties": { "value_type": { "const": "exact" } } },
+          "then": { "required": ["num_exact"], "properties": { "num_exact": { "type": "number" } } } },
+        { "if": { "properties": { "value_type": { "enum": ["enum_allowed", "enum_conditional", "enum_prohibited"] } } },
+          "then": { "required": ["enum_value"], "properties": { "enum_value": { "type": "string" } } } },
+        { "if": { "properties": { "value_type": { "const": "enum_conditional" } } },
+          "then": { "required": ["condition_note"], "properties": { "condition_note": { "type": "string" } } } },
+        { "if": { "properties": { "value_type": { "const": "formula" } } },
+          "then": { "required": ["formula"], "properties": { "formula": { "type": "string" } } } }
+      ]
+    },
+
+    "rule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rule_key", "category", "title", "automation_level", "conditions", "values", "confidence"],
+      "properties": {
+        "rule_key": {
+          "description": "버전이 바뀌어도 같은 규칙이면 같은 키. 형식: <CATEGORY약어>.<대상>.<세부>",
+          "type": "string", "pattern": "^[A-Z]+(\\.[A-Z0-9_]+)+$", "maxLength": 80
+        },
+        "category": { "$ref": "#/$defs/category" },
+        "title": { "type": "string", "maxLength": 120 },
+        "automation_level": { "enum": ["auto", "reference_only", "manual_check"] },
+        "conditions": { "type": "array", "items": { "$ref": "#/$defs/condition" } },
+        "values": { "type": "array", "items": { "$ref": "#/$defs/value" }, "minItems": 1 },
+        "exceptions_mentioned": {
+          "description": "조문 안의 단서·예외 문구가 있으면 그 인용. 규칙은 만들되 엔진이 '조건부'로 처리한다.",
+          "type": "array", "items": { "$ref": "#/$defs/evidence" }
+        },
+        "confidence": { "enum": ["high", "medium", "low"] }
+      }
+    }
+  }
+}

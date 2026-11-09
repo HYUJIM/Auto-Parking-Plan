@@ -1,0 +1,1365 @@
+{
+  "_meta": {
+    "is_example": true,
+    "description": "APP mock 서버용 예시 필지 12건. 실제 필지가 아니다. 법정동코드/법정동명만 실제 값이다.",
+    "sources": {
+      "법정동코드": "행정표준코드관리시스템 https://www.code.go.kr/stdcodesrch/codeNMSearchL.do (코드명 '법정동', '대구광역시 수성구' = 2726000000 등, 2026-11-06 조회)",
+      "용도지역지구코드": "행정표준코드관리시스템 코드명 '용도지역지구구분'(00316) + 브이월드 국가중점데이터 컬럼정의서(UQA01X)"
+    },
+    "invented": [
+      "지번(9001~9201)",
+      "경계 좌표",
+      "도로명(…예시로/예시길)",
+      "우편번호",
+      "건물",
+      "공시지가",
+      "지정 목록"
+    ],
+    "geometry_crs": "EPSG:4326 [lng, lat]",
+    "area_basis": "land.area_m2 = 경계의 EPSG:5179 평면 면적(소수 1자리)"
+  },
+  "parcels": [
+    {
+      "id": "S01",
+      "is_example": true,
+      "note": "예시 데이터(실재하지 않는 필지): 법정동코드·법정동명만 실제이고 지번·경계·도로명·건물·지정 내용은 가상. 지구단위계획구역(zone)에 포함된 예시. 같은 코드가 도면번호별로 중복 반환되는 원천 특성도 재현.",
+      "tags": [
+        "district_unit_plan_zone"
+      ],
+      "pnu": "2726010100190010000",
+      "adm_cd": "2726010100",
+      "sido": "대구광역시",
+      "sigungu": "수성구",
+      "emd": "범어동",
+      "mt_yn": "0",
+      "bonbun": 9001,
+      "bubun": 0,
+      "jibun": "9001",
+      "jibun_address": "대구광역시 수성구 범어동 9001",
+      "road_name": "범어예시로",
+      "building_main_no": 12,
+      "building_sub_no": 0,
+      "road_address": "대구광역시 수성구 범어예시로 12",
+      "zip_code": "42999",
+      "building_name": "[예시] 범어동 가상필지 S01 (실재하지 않음)",
+      "zone": "제2종일반주거지역",
+      "behavior": {
+        "land_use": "ok",
+        "land_characteristics": "ok"
+      },
+      "land": {
+        "category_code": "08",
+        "category": "대",
+        "category_symbol": "대",
+        "area_m2": 624.1,
+        "road_side_code": "08",
+        "road_side": "세로한면(가)",
+        "land_use_status_code": "110",
+        "land_use_status": "단독",
+        "height_code": "02",
+        "height": "평지",
+        "form_code": "01",
+        "form": "정방형",
+        "zoning_char_code": "14",
+        "price_by_year": {
+          "2025": 3620000,
+          "2026": 3850000
+        },
+        "owner_code": "1",
+        "owner": "개인"
+      },
+      "designations": [
+        {
+          "code": "UQA01X",
+          "name": "도시지역",
+          "conflict_code": "1",
+          "conflict": "포함"
+        },
+        {
+          "code": "UQA122",
+          "name": "제2종일반주거지역",
+          "conflict_code": "1",
+          "conflict": "포함"
+        },
+        {
+          "code": "UQQ300",
+          "name": "지구단위계획구역",
+          "conflict_code": "1",
+          "conflict": "포함"
+        },
+        {
+          "code": "UMZ100",
+          "name": "가축사육제한구역",
+          "conflict_code": "1",
+          "conflict": "포함"
+        },
+        {
+          "code": "UOA120",
+          "name": "상대보호구역",
+          "conflict_code": "2",
+          "conflict": "저촉"
+        },
+        {
+          "code": "UQA122",
+          "name": "제2종일반주거지역",
+          "conflict_code": "1",
+          "conflict": "포함"
+        },
+        {
+          "code": "UOA120",
+          "name": "상대보호구역",
+          "conflict_code": "3",
+          "conflict": "접함"
+        }
+      ],
+      "buildings": [
+        {
+          "main_use": "단독주택",
+          "main_use_code": "01000",
+          "etc_use": null,
+          "total_area_m2": 182.4,
+          "building_area_m2": 98.6,
+          "use_approval_day": "19940512",
+          "ground_floors": 2
+        }
+      ],
+      "geometry": {
+        "type": "MultiPolygon",
+        "coordinates": [
+          [
+            [
+              [
+                128.6260866,
+                35.8603699
+              ],
+              [
+                128.6263502,
+                35.8603976
+              ],
+              [
+                128.6263134,
+                35.8606301
+              ],
+              [
+                128.6260498,
+                35.8606024
+              ],
+              [
+                128.6260866,
+                35.8603699
+              ]
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "id": "S02",
+      "is_example": true,
+      "note": "예시 데이터(실재하지 않는 필지): 법정동코드·법정동명만 실제이고 지번·경계·도로명·건물·지정 내용은 가상. 부번이 있는 일반 예시(사다리꼴, 도로 접함).",
+      "tags": [
+        "baseline"
+      ],
+      "pnu": "2726010200190020003",
+      "adm_cd": "2726010200",
+      "sido": "대구광역시",
+      "sigungu": "수성구",
+      "emd": "만촌동",
+      "mt_yn": "0",
+      "bonbun": 9002,
+      "bubun": 3,
+      "jibun": "9002-3",
+      "jibun_address": "대구광역시 수성구 만촌동 9002-3",
+      "road_name": "만촌예시로",
+      "building_main_no": 34,
+      "building_sub_no": 0,
+      "road_address": "대구광역시 수성구 만촌예시로 34",
+      "zip_code": "42999",
+      "building_name": "[예시] 만촌동 가상필지 S02 (실재하지 않음)",
+      "zone": "제2종일반주거지역",
+      "behavior": {
+        "land_use": "ok",
+        "land_characteristics": "ok"
+      },
+      "land": {
+        "category_code": "08",
+        "category": "대",
+        "category_symbol": "대",
+        "area_m2": 526.8,
+        "road_side_code": "09",
+        "road_side": "세로각지(가)",
+        "land_use_status_code": "130",
+        "land_use_status": "다세대",
+        "height_code": "02",
+        "height": "평지",
+        "form_code": "04",
+        "form": "사다리형",
+        "zoning_char_code": "14",
+        "price_by_year": {
+          "2025": 2980000,
+          "2026": 3120000
+        },
+        "owner_code": "1",
+        "owner": "개인"
+      },
+      "designations": [
+        {
+          "code": "UQA01X",
+          "name": "도시지역",
+          "conflict_code": "1",
+          "conflict": "포함"
+        },
+        {
+          "code": "UQA122",
+          "name": "제2종일반주거지역",
+          "conflict_code": "1",
+          "conflict": "포함"
+        },
+        {
+          "code": "UQS121",
+          "name": "소로2류(폭 8M~10M)",
+          "conflict_code": "3",
+          "conflict": "접함"
+        },
+        {
+          "code": "UMZ100",
+          "name": "가축사육제한구역",
+          "conflict_code": "1",
+          "conflict": "포함"
+        }
+      ],
+      "buildings": [
+        {
+          "main_use": "공동주택",
+          "main_use_code": "02000",
+          "etc_use": "다세대주택",
+          "total_area_m2": 612.3,
+          "building_area_m2": 289.1,
+          "use_approval_day": "20030820",
+          "ground_floors": 4
+        }
+      ],
+      "geometry": {
+        "type": "MultiPolygon",
+        "coordinates": [
+          [
+            [
+              [
+                128.6438445,
+                35.8694192
+              ],
+              [
+                128.6441306,
+                35.869392
+              ],
+              [
+                128.6441411,
+                35.8695816
+              ],
+              [
+                128.6438894,
+                35.8696146
+              ],
+              [
+                128.6438445,
+                35.8694192
+              ]
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "id": "S03",
+      "is_example": true,
+      "note": "예시 데이터(실재하지 않는 필지): 법정동코드·법정동명만 실제이고 지번·경계·도로명·건물·지정 내용은 가상. 폭 약 8m, 길이 45m 의 좁고 긴 예시 필지(주거나지).",
+      "tags": [
+        "narrow_lot"
+      ],
+      "pnu": "2726010700190030000",
+      "adm_cd": "2726010700",
+      "sido": "대구광역시",
+      "sigungu": "수성구",
+      "emd": "황금동",
+      "mt_yn": "0",
+      "bonbun": 9003,
+      "bubun": 0,
+      "jibun": "9003",
+      "jibun_address": "대구광역시 수성구 황금동 9003",
+      "road_name": "황금예시로",
+      "building_main_no": 7,
+      "building_sub_no": 0,
+      "road_address": "대구광역시 수성구 황금예시로 7",
+      "zip_code": "42999",
+      "building_name": "[예시] 황금동 가상필지 S03 (실재하지 않음)",
+      "zone": "제2종일반주거지역",
+      "behavior": {
+        "land_use": "ok",
+        "land_characteristics": "ok"
+      },
+      "land": {
+        "category_code": "08",
+        "category": "대",
+        "category_symbol": "대",
+        "area_m2": 360.0,
+        "road_side_code": "08",
+        "road_side": "세로한면(가)",
+        "land_use_status_code": "150",
+        "land_use_status": "주거나지",
+        "height_code": "02",
+        "height": "평지",
+        "form_code": "03",
+        "form": "세로장방",
+        "zoning_char_code": "14",
+        "price_by_year": {
+          "2025": 2450000,
+          "2026": 2560000
+        },
+        "owner_code": "1",
+        "owner": "개인"
+      },
+      "designations": [
+        {
+          "code": "UQA01X",
+          "name": "도시지역",
+          "conflict_code": "1",
+          "conflict": "포함"
+        },
+        {
+          "code": "UQA122",
+          "name": "제2종일반주거지역",
+          "conflict_code": "1",
+          "conflict": "포함"
+        },
+        {
+          "code": "UMZ100",
+          "name": "가축사육제한구역",
+          "conflict_code": "1",
+          "conflict": "포함"
+        }
+      ],
+      "buildings": [],
+      "geometry": {
+        "type": "MultiPolygon",
+        "coordinates": [
+          [
+            [
+              [
+                128.6268407,
+                35.8472967
+              ],
+              [
+                128.6269243,
+                35.8473206
+              ],
+              [
+                128.6267593,
+                35.8477033
+              ],
+              [
+                128.6266757,
+                35.8476794
+              ],
+              [
+                128.6268407,
+                35.8472967
+              ]
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "id": "S04",
+      "is_example": true,
+      "note": "예시 데이터(실재하지 않는 필지): 법정동코드·법정동명만 실제이고 지번·경계·도로명·건물·지정 내용은 가상. 근린상업지역 예시.",
+      "tags": [],
+      "pnu": "2726010300190040000",
+      "adm_cd": "2726010300",
+      "sido": "대구광역시",
+      "sigungu": "수성구",
+      "emd": "수성동1가",
+      "mt_yn": "0",
+      "bonbun": 9004,
+      "bubun": 0,
+      "jibun": "9004",
+      "jibun_address": "대구광역시 수성구 수성동1가 9004",
+      "road_name": "수성예시로",
+      "building_main_no": 56,
+      "building_sub_no": 0,
+      "road_address": "대구광역시 수성구 수성예시로 56",
+      "zip_code": "42999",
+      "building_name": "[예시] 수성동1가 가상필지 S04 (실재하지 않음)",
+      "zone": "근린상업지역",
+      "behavior": {
+        "land_use": "ok",
+        "land_characteristics": "ok"
+      },
+      "land": {
+        "category_code": "08",
+        "category": "대",
+        "category_symbol": "대",
+        "area_m2": 599.9,
+        "road_side_code": "04",
+        "road_side": "중로한면",
+        "land_use_status_code": "210",
+        "land_use_status": "상업용",
+        "height_code": "02",
+        "height": "평지",
+        "form_code": "02",
+        "form": "가로장방",
+        "zoning_char_code": "23",
+        "price_by_year": {
+          "2025": 5900000,
+          "2026": 6200000
+        },
+        "owner_code": "1",
+        "owner": "개인"
+      },
+      "designations": [
+        {
+          "code": "UQA01X",
+          "name": "도시지역",
+          "conflict_code": "1",
+          "conflict": "포함"
+        },
+        {
+          "code": "UQA230",
+          "name": "근린상업지역",
+          "conflict_code": "1",
+          "conflict": "포함"
+        },
+        {
+          "code": "UOA120",
+          "name": "상대보호구역",
+          "conflict_code": "1",
+          "conflict": "포함"
+        }
+      ],
+      "buildings": [
+        {
+          "main_use": "제2종근린생활시설",
+          "main_use_code": "04000",
+          "etc_use": null,
+          "total_area_m2": 1480.0,
+          "building_area_m2": 352.5,
+          "use_approval_day": "20110315",
+          "ground_floors": 5
+        }
+      ],
+      "geometry": {
+        "type": "MultiPolygon",
+        "coordinates": [
+          [
+            [
+              [
+                128.6124022,
+                35.8590583
+              ],
+              [
+                128.612623,
+                35.859072
+              ],
+              [
+                128.6125978,
+                35.8593417
+              ],
+              [
+                128.612377,
+                35.859328
+              ],
+              [
+                128.6124022,
+                35.8590583
+              ]
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "id": "S05",
+      "is_example": true,
+      "note": "예시 데이터(실재하지 않는 필지): 법정동코드·법정동명만 실제이고 지번·경계·도로명·건물·지정 내용은 가상. ㄱ자(L자) 부정형 예시 필지.",
+      "tags": [
+        "l_shaped"
+      ],
+      "pnu": "2726010800190050012",
+      "adm_cd": "2726010800",
+      "sido": "대구광역시",
+      "sigungu": "수성구",
+      "emd": "중동",
+      "mt_yn": "0",
+      "bonbun": 9005,
+      "bubun": 12,
+      "jibun": "9005-12",
+      "jibun_address": "대구광역시 수성구 중동 9005-12",
+      "road_name": "중동예시로",
+      "building_main_no": 21,
+      "building_sub_no": 0,
+      "road_address": "대구광역시 수성구 중동예시로 21",
+      "zip_code": "42999",
+      "building_name": "[예시] 중동 가상필지 S05 (실재하지 않음)",
+      "zone": "제3종일반주거지역",
+      "behavior": {
+        "land_use": "ok",
+        "land_characteristics": "ok"
+      },
+      "land": {
+        "category_code": "08",
+        "category": "대",
+        "category_symbol": "대",
+        "area_m2": 672.2,
+        "road_side_code": "06",
+        "road_side": "소로한면",
+        "land_use_status_code": "120",
+        "land_use_status": "연립",
+        "height_code": "03",
+        "height": "완경사",
+        "form_code": "05",
+        "form": "부정형",
+        "zoning_char_code": "15",
+        "price_by_year": {
+          "2025": 2700000,
+          "2026": 2840000
+        },
+        "owner_code": "1",
+        "owner": "개인"
+      },
+      "designations": [
+        {
+          "code": "UQA01X",
+          "name": "도시지역",
+          "conflict_code": "1",
+          "conflict": "포함"
+        },
+        {
+          "code": "UQA123",
+          "name": "제3종일반주거지역",
+          "conflict_code": "1",
+          "conflict": "포함"
+        },
+        {
+          "code": "UMZ100",
+          "name": "가축사육제한구역",
+          "conflict_code": "1",
+          "conflict": "포함"
+        }
+      ],
+      "buildings": [
+        {
+          "main_use": "공동주택",
+          "main_use_code": "02000",
+          "etc_use": "연립주택",
+          "total_area_m2": 1320.5,
+          "building_area_m2": 401.2,
+          "use_approval_day": "19980630",
+          "ground_floors": 4
+        }
+      ],
+      "geometry": {
+        "type": "MultiPolygon",
+        "coordinates": [
+          [
+            [
+              [
+                128.6083935,
+                35.8473661
+              ],
+              [
+                128.6087368,
+                35.8474376
+              ],
+              [
+                128.6086983,
+                35.8475599
+              ],
+              [
+                128.6085052,
+                35.8475197
+              ],
+              [
+                128.6084613,
+                35.8476594
+              ],
+              [
+                128.6083111,
+                35.8476282
+              ],
+              [
+                128.6083935,
+                35.8473661
+              ]
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "id": "S06",
+      "is_example": true,
+      "note": "예시 데이터(실재하지 않는 필지): 법정동코드·법정동명만 실제이고 지번·경계·도로명·건물·지정 내용은 가상. 용도지구(자연경관지구, district)가 걸린 예시.",
+      "tags": [
+        "landscape_district"
+      ],
+      "pnu": "2726011100190060000",
+      "adm_cd": "2726011100",
+      "sido": "대구광역시",
+      "sigungu": "수성구",
+      "emd": "두산동",
+      "mt_yn": "0",
+      "bonbun": 9006,
+      "bubun": 0,
+      "jibun": "9006",
+      "jibun_address": "대구광역시 수성구 두산동 9006",
+      "road_name": "두산예시로",
+      "building_main_no": 88,
+      "building_sub_no": 0,
+      "road_address": "대구광역시 수성구 두산예시로 88",
+      "zip_code": "42999",
+      "building_name": "[예시] 두산동 가상필지 S06 (실재하지 않음)",
+      "zone": "제1종일반주거지역",
+      "behavior": {
+        "land_use": "ok",
+        "land_characteristics": "ok"
+      },
+      "land": {
+        "category_code": "08",
+        "category": "대",
+        "category_symbol": "대",
+        "area_m2": 396.0,
+        "road_side_code": "10",
+        "road_side": "세로한면(불)",
+        "land_use_status_code": "110",
+        "land_use_status": "단독",
+        "height_code": "03",
+        "height": "완경사",
+        "form_code": "02",
+        "form": "가로장방",
+        "zoning_char_code": "13",
+        "price_by_year": {
+          "2025": 2100000,
+          "2026": 2210000
+        },
+        "owner_code": "1",
+        "owner": "개인"
+      },
+      "designations": [
+        {
+          "code": "UQA01X",
+          "name": "도시지역",
+          "conflict_code": "1",
+          "conflict": "포함"
+        },
+        {
+          "code": "UQA121",
+          "name": "제1종일반주거지역",
+          "conflict_code": "1",
+          "conflict": "포함"
+        },
+        {
+          "code": "UQF110",
+          "name": "자연경관지구",
+          "conflict_code": "1",
+          "conflict": "포함"
+        },
+        {
+          "code": "UMZ100",
+          "name": "가축사육제한구역",
+          "conflict_code": "1",
+          "conflict": "포함"
+        }
+      ],
+      "buildings": [
+        {
+          "main_use": "단독주택",
+          "main_use_code": "01000",
+          "etc_use": null,
+          "total_area_m2": 145.0,
+          "building_area_m2": 88.0,
+          "use_approval_day": "19870410",
+          "ground_floors": 1
+        }
+      ],
+      "geometry": {
+        "type": "MultiPolygon",
+        "coordinates": [
+          [
+            [
+              [
+                128.6233796,
+                35.8304176
+              ],
+              [
+                128.6235754,
+                35.8303875
+              ],
+              [
+                128.6236204,
+                35.8305824
+              ],
+              [
+                128.6234246,
+                35.8306125
+              ],
+              [
+                128.6233796,
+                35.8304176
+              ]
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "id": "S07",
+      "is_example": true,
+      "note": "예시 데이터(실재하지 않는 필지): 법정동코드·법정동명만 실제이고 지번·경계·도로명·건물·지정 내용은 가상. 약 3,000㎡ 직사각형 나대지(주차장 배치 시험용).",
+      "tags": [
+        "large_rectangular"
+      ],
+      "pnu": "2726010100190070000",
+      "adm_cd": "2726010100",
+      "sido": "대구광역시",
+      "sigungu": "수성구",
+      "emd": "범어동",
+      "mt_yn": "0",
+      "bonbun": 9007,
+      "bubun": 0,
+      "jibun": "9007",
+      "jibun_address": "대구광역시 수성구 범어동 9007",
+      "road_name": "범어예시로",
+      "building_main_no": 120,
+      "building_sub_no": 0,
+      "road_address": "대구광역시 수성구 범어예시로 120",
+      "zip_code": "42999",
+      "building_name": "[예시] 범어동 가상필지 S07 (실재하지 않음)",
+      "zone": "일반상업지역",
+      "behavior": {
+        "land_use": "ok",
+        "land_characteristics": "ok"
+      },
+      "land": {
+        "category_code": "08",
+        "category": "대",
+        "category_symbol": "대",
+        "area_m2": 2999.8,
+        "road_side_code": "02",
+        "road_side": "광대소각",
+        "land_use_status_code": "230",
+        "land_use_status": "상업나지",
+        "height_code": "02",
+        "height": "평지",
+        "form_code": "02",
+        "form": "가로장방",
+        "zoning_char_code": "22",
+        "price_by_year": {
+          "2025": 7800000,
+          "2026": 8150000
+        },
+        "owner_code": "1",
+        "owner": "개인"
+      },
+      "designations": [
+        {
+          "code": "UQA01X",
+          "name": "도시지역",
+          "conflict_code": "1",
+          "conflict": "포함"
+        },
+        {
+          "code": "UQA220",
+          "name": "일반상업지역",
+          "conflict_code": "1",
+          "conflict": "포함"
+        },
+        {
+          "code": "UQS100",
+          "name": "도로",
+          "conflict_code": "3",
+          "conflict": "접함"
+        }
+      ],
+      "buildings": [],
+      "geometry": {
+        "type": "MultiPolygon",
+        "coordinates": [
+          [
+            [
+              [
+                128.6297193,
+                35.8577322
+              ],
+              [
+                128.630273,
+                35.857727
+              ],
+              [
+                128.6302807,
+                35.8582678
+              ],
+              [
+                128.629727,
+                35.858273
+              ],
+              [
+                128.6297193,
+                35.8577322
+              ]
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "id": "S08",
+      "is_example": true,
+      "note": "예시 데이터(실재하지 않는 필지): 법정동코드·법정동명만 실제이고 지번·경계·도로명·건물·지정 내용은 가상. 지목 '전'인 자연녹지지역 예시. 개발제한구역에 접함(adjacent).",
+      "tags": [
+        "adjacent_zone"
+      ],
+      "pnu": "2726011400190080000",
+      "adm_cd": "2726011400",
+      "sido": "대구광역시",
+      "sigungu": "수성구",
+      "emd": "시지동",
+      "mt_yn": "0",
+      "bonbun": 9008,
+      "bubun": 0,
+      "jibun": "9008",
+      "jibun_address": "대구광역시 수성구 시지동 9008",
+      "road_name": "시지예시로",
+      "building_main_no": 5,
+      "building_sub_no": 0,
+      "road_address": "대구광역시 수성구 시지예시로 5",
+      "zip_code": "42999",
+      "building_name": "[예시] 시지동 가상필지 S08 (실재하지 않음)",
+      "zone": "자연녹지지역",
+      "behavior": {
+        "land_use": "ok",
+        "land_characteristics": "ok"
+      },
+      "land": {
+        "category_code": "01",
+        "category": "전",
+        "category_symbol": "전",
+        "area_m2": 1970.1,
+        "road_side_code": "10",
+        "road_side": "세로한면(불)",
+        "land_use_status_code": "510",
+        "land_use_status": "전",
+        "height_code": "02",
+        "height": "평지",
+        "form_code": "05",
+        "form": "부정형",
+        "zoning_char_code": "43",
+        "price_by_year": {
+          "2025": 420000,
+          "2026": 445000
+        },
+        "owner_code": "1",
+        "owner": "개인"
+      },
+      "designations": [
+        {
+          "code": "UQA01X",
+          "name": "도시지역",
+          "conflict_code": "1",
+          "conflict": "포함"
+        },
+        {
+          "code": "UQA430",
+          "name": "자연녹지지역",
+          "conflict_code": "1",
+          "conflict": "포함"
+        },
+        {
+          "code": "UDV100",
+          "name": "개발제한구역",
+          "conflict_code": "3",
+          "conflict": "접함"
+        },
+        {
+          "code": "UMZ100",
+          "name": "가축사육제한구역",
+          "conflict_code": "1",
+          "conflict": "포함"
+        }
+      ],
+      "buildings": [],
+      "geometry": {
+        "type": "MultiPolygon",
+        "coordinates": [
+          [
+            [
+              [
+                128.7017928,
+                35.8417865
+              ],
+              [
+                128.7023139,
+                35.8418713
+              ],
+              [
+                128.7023097,
+                35.8420728
+              ],
+              [
+                128.7020231,
+                35.8422285
+              ],
+              [
+                128.7016713,
+                35.8420977
+              ],
+              [
+                128.7017928,
+                35.8417865
+              ]
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "id": "S09",
+      "is_example": true,
+      "note": "예시 데이터(실재하지 않는 필지): 법정동코드·법정동명만 실제이고 지번·경계·도로명·건물·지정 내용은 가상. 토지이용계획(getLandUseAttr) 호출이 항상 HTTP 500 을 돌려주는 예시(부분 조회 실패 시험용).",
+      "tags": [
+        "land_use_server_error"
+      ],
+      "pnu": "2726011200190090000",
+      "adm_cd": "2726011200",
+      "sido": "대구광역시",
+      "sigungu": "수성구",
+      "emd": "지산동",
+      "mt_yn": "0",
+      "bonbun": 9009,
+      "bubun": 0,
+      "jibun": "9009",
+      "jibun_address": "대구광역시 수성구 지산동 9009",
+      "road_name": "지산예시로",
+      "building_main_no": 40,
+      "building_sub_no": 0,
+      "road_address": "대구광역시 수성구 지산예시로 40",
+      "zip_code": "42999",
+      "building_name": "[예시] 지산동 가상필지 S09 (실재하지 않음)",
+      "zone": "제2종일반주거지역",
+      "behavior": {
+        "land_use": "server_error",
+        "land_characteristics": "ok"
+      },
+      "land": {
+        "category_code": "08",
+        "category": "대",
+        "category_symbol": "대",
+        "area_m2": 525.0,
+        "road_side_code": "08",
+        "road_side": "세로한면(가)",
+        "land_use_status_code": "110",
+        "land_use_status": "단독",
+        "height_code": "02",
+        "height": "평지",
+        "form_code": "01",
+        "form": "정방형",
+        "zoning_char_code": "14",
+        "price_by_year": {
+          "2025": 2600000,
+          "2026": 2750000
+        },
+        "owner_code": "1",
+        "owner": "개인"
+      },
+      "designations": [
+        {
+          "code": "UQA01X",
+          "name": "도시지역",
+          "conflict_code": "1",
+          "conflict": "포함"
+        },
+        {
+          "code": "UQA122",
+          "name": "제2종일반주거지역",
+          "conflict_code": "1",
+          "conflict": "포함"
+        }
+      ],
+      "buildings": [
+        {
+          "main_use": "단독주택",
+          "main_use_code": "01000",
+          "etc_use": null,
+          "total_area_m2": 160.2,
+          "building_area_m2": 92.3,
+          "use_approval_day": "19910722",
+          "ground_floors": 2
+        }
+      ],
+      "geometry": {
+        "type": "MultiPolygon",
+        "coordinates": [
+          [
+            [
+              [
+                128.6343729,
+                35.8238954
+              ],
+              [
+                128.6346046,
+                35.82388
+              ],
+              [
+                128.6346271,
+                35.8241046
+              ],
+              [
+                128.6343954,
+                35.82412
+              ],
+              [
+                128.6343729,
+                35.8238954
+              ]
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "id": "S10",
+      "is_example": true,
+      "note": "예시 데이터(실재하지 않는 필지): 법정동코드·법정동명만 실제이고 지번·경계·도로명·건물·지정 내용은 가상. 토지특성(getLandCharacteristics) 응답이 3초 넘게 지연되는 예시(시간 초과 시험용).",
+      "tags": [
+        "land_characteristics_slow"
+      ],
+      "pnu": "2726011500190100000",
+      "adm_cd": "2726011500",
+      "sido": "대구광역시",
+      "sigungu": "수성구",
+      "emd": "매호동",
+      "mt_yn": "0",
+      "bonbun": 9010,
+      "bubun": 0,
+      "jibun": "9010",
+      "jibun_address": "대구광역시 수성구 매호동 9010",
+      "road_name": "매호예시로",
+      "building_main_no": 15,
+      "building_sub_no": 0,
+      "road_address": "대구광역시 수성구 매호예시로 15",
+      "zip_code": "42999",
+      "building_name": "[예시] 매호동 가상필지 S10 (실재하지 않음)",
+      "zone": "준주거지역",
+      "behavior": {
+        "land_use": "ok",
+        "land_characteristics": "slow"
+      },
+      "land": {
+        "category_code": "08",
+        "category": "대",
+        "category_symbol": "대",
+        "area_m2": 840.0,
+        "road_side_code": "07",
+        "road_side": "소로각지",
+        "land_use_status_code": "310",
+        "land_use_status": "주상용",
+        "height_code": "02",
+        "height": "평지",
+        "form_code": "02",
+        "form": "가로장방",
+        "zoning_char_code": "16",
+        "price_by_year": {
+          "2025": 3300000,
+          "2026": 3450000
+        },
+        "owner_code": "1",
+        "owner": "개인"
+      },
+      "designations": [
+        {
+          "code": "UQA01X",
+          "name": "도시지역",
+          "conflict_code": "1",
+          "conflict": "포함"
+        },
+        {
+          "code": "UQA130",
+          "name": "준주거지역",
+          "conflict_code": "1",
+          "conflict": "포함"
+        },
+        {
+          "code": "UMZ100",
+          "name": "가축사육제한구역",
+          "conflict_code": "1",
+          "conflict": "포함"
+        }
+      ],
+      "buildings": [
+        {
+          "main_use": "공동주택",
+          "main_use_code": "02000",
+          "etc_use": "다세대주택",
+          "total_area_m2": 1950.0,
+          "building_area_m2": 480.0,
+          "use_approval_day": "20150925",
+          "ground_floors": 5
+        }
+      ],
+      "geometry": {
+        "type": "MultiPolygon",
+        "coordinates": [
+          [
+            [
+              [
+                128.7148402,
+                35.8443685
+              ],
+              [
+                128.7151721,
+                35.8443793
+              ],
+              [
+                128.7151598,
+                35.8446315
+              ],
+              [
+                128.7148279,
+                35.8446207
+              ],
+              [
+                128.7148402,
+                35.8443685
+              ]
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "id": "U01",
+      "is_example": true,
+      "note": "예시 데이터(실재하지 않는 필지): 법정동코드·법정동명만 실제이고 지번·경계·도로명·건물·지정 내용은 가상. MVP 미지원 지역(대구 중구) 예시.",
+      "tags": [
+        "unsupported_region"
+      ],
+      "pnu": "2711010100191010000",
+      "adm_cd": "2711010100",
+      "sido": "대구광역시",
+      "sigungu": "중구",
+      "emd": "동인동1가",
+      "mt_yn": "0",
+      "bonbun": 9101,
+      "bubun": 0,
+      "jibun": "9101",
+      "jibun_address": "대구광역시 중구 동인동1가 9101",
+      "road_name": "동인예시로",
+      "building_main_no": 3,
+      "building_sub_no": 0,
+      "road_address": "대구광역시 중구 동인예시로 3",
+      "zip_code": "41999",
+      "building_name": "[예시] 동인동1가 가상필지 U01 (실재하지 않음)",
+      "zone": "일반상업지역",
+      "behavior": {
+        "land_use": "ok",
+        "land_characteristics": "ok"
+      },
+      "land": {
+        "category_code": "08",
+        "category": "대",
+        "category_symbol": "대",
+        "area_m2": 499.7,
+        "road_side_code": "05",
+        "road_side": "중로각지",
+        "land_use_status_code": "210",
+        "land_use_status": "상업용",
+        "height_code": "02",
+        "height": "평지",
+        "form_code": "03",
+        "form": "세로장방",
+        "zoning_char_code": "22",
+        "price_by_year": {
+          "2025": 9100000,
+          "2026": 9500000
+        },
+        "owner_code": "1",
+        "owner": "개인"
+      },
+      "designations": [
+        {
+          "code": "UQA01X",
+          "name": "도시지역",
+          "conflict_code": "1",
+          "conflict": "포함"
+        },
+        {
+          "code": "UQA220",
+          "name": "일반상업지역",
+          "conflict_code": "1",
+          "conflict": "포함"
+        },
+        {
+          "code": "UQI100",
+          "name": "방화지구",
+          "conflict_code": "1",
+          "conflict": "포함"
+        }
+      ],
+      "buildings": [
+        {
+          "main_use": "업무시설",
+          "main_use_code": "14000",
+          "etc_use": null,
+          "total_area_m2": 2450.0,
+          "building_area_m2": 395.0,
+          "use_approval_day": "20080101",
+          "ground_floors": 7
+        }
+      ],
+      "geometry": {
+        "type": "MultiPolygon",
+        "coordinates": [
+          [
+            [
+              [
+                128.607383,
+                35.8698916
+              ],
+              [
+                128.6076042,
+                35.8698833
+              ],
+              [
+                128.607617,
+                35.8701084
+              ],
+              [
+                128.6073958,
+                35.8701167
+              ],
+              [
+                128.607383,
+                35.8698916
+              ]
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "id": "U02",
+      "is_example": true,
+      "note": "예시 데이터(실재하지 않는 필지): 법정동코드·법정동명만 실제이고 지번·경계·도로명·건물·지정 내용은 가상. MVP 미지원 지역(서울 종로구) 예시.",
+      "tags": [
+        "unsupported_region"
+      ],
+      "pnu": "1111010100192010000",
+      "adm_cd": "1111010100",
+      "sido": "서울특별시",
+      "sigungu": "종로구",
+      "emd": "청운동",
+      "mt_yn": "0",
+      "bonbun": 9201,
+      "bubun": 0,
+      "jibun": "9201",
+      "jibun_address": "서울특별시 종로구 청운동 9201",
+      "road_name": "청운예시길",
+      "building_main_no": 9,
+      "building_sub_no": 0,
+      "road_address": "서울특별시 종로구 청운예시길 9",
+      "zip_code": "03999",
+      "building_name": "[예시] 청운동 가상필지 U02 (실재하지 않음)",
+      "zone": "제1종일반주거지역",
+      "behavior": {
+        "land_use": "ok",
+        "land_characteristics": "ok"
+      },
+      "land": {
+        "category_code": "08",
+        "category": "대",
+        "category_symbol": "대",
+        "area_m2": 300.0,
+        "road_side_code": "08",
+        "road_side": "세로한면(가)",
+        "land_use_status_code": "110",
+        "land_use_status": "단독",
+        "height_code": "03",
+        "height": "완경사",
+        "form_code": "03",
+        "form": "세로장방",
+        "zoning_char_code": "13",
+        "price_by_year": {
+          "2025": 8700000,
+          "2026": 9050000
+        },
+        "owner_code": "1",
+        "owner": "개인"
+      },
+      "designations": [
+        {
+          "code": "UQA01X",
+          "name": "도시지역",
+          "conflict_code": "1",
+          "conflict": "포함"
+        },
+        {
+          "code": "UQA121",
+          "name": "제1종일반주거지역",
+          "conflict_code": "1",
+          "conflict": "포함"
+        },
+        {
+          "code": "UQF110",
+          "name": "자연경관지구",
+          "conflict_code": "1",
+          "conflict": "포함"
+        },
+        {
+          "code": "UQH110",
+          "name": "최고고도지구",
+          "conflict_code": "1",
+          "conflict": "포함"
+        }
+      ],
+      "buildings": [
+        {
+          "main_use": "단독주택",
+          "main_use_code": "01000",
+          "etc_use": null,
+          "total_area_m2": 210.0,
+          "building_area_m2": 120.0,
+          "use_approval_day": "19780606",
+          "ground_floors": 2
+        }
+      ],
+      "geometry": {
+        "type": "MultiPolygon",
+        "coordinates": [
+          [
+            [
+              [
+                126.9691302,
+                37.587902
+              ],
+              [
+                126.9692987,
+                37.5879192
+              ],
+              [
+                126.9692698,
+                37.588098
+              ],
+              [
+                126.9691013,
+                37.5880808
+              ],
+              [
+                126.9691302,
+                37.587902
+              ]
+            ]
+          ]
+        ]
+      }
+    }
+  ]
+}
