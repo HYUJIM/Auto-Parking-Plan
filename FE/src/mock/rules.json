@@ -1,0 +1,120 @@
+{
+  "_note": "1차 목업. 사업계획서의 대구·경북 법규 정리본을 옮긴 예시값이며 실제 기준값·시행일은 자체 법규 DB 연동 시 교체합니다. basis=decree 항목은 국토계획법 시행령 상한값으로, 대구 조례 확인 전까지 '확인 필요'로 표시합니다. 판정에 쓰는 숫자(road·parking)는 여기서만 바꾸면 화면 문구(ko.json 템플릿)도 같이 바뀝니다. 모양은 src/lib/rules/types.ts (RulesFile).",
+  "queriedAt": "2026-11-07",
+  "providers": ["목업 법규 DB"],
+  "zoning": {
+    "제1종전용주거지역": { "bcr": 50, "far": 100, "basis": "decree" },
+    "제2종전용주거지역": { "bcr": 50, "far": 150, "basis": "decree" },
+    "제1종일반주거지역": { "bcr": 60, "far": 200 },
+    "제2종일반주거지역": { "bcr": 60, "far": 250 },
+    "제3종일반주거지역": { "bcr": 50, "far": 280 },
+    "준주거지역": { "bcr": 70, "far": 400 },
+    "중심상업지역": { "bcr": 90, "far": 1500, "basis": "decree" },
+    "일반상업지역": { "bcr": 80, "far": 800 },
+    "근린상업지역": { "bcr": 70, "far": 900, "basis": "decree" },
+    "유통상업지역": { "bcr": 80, "far": 1100, "basis": "decree" },
+    "전용공업지역": { "bcr": 70, "far": 300, "basis": "decree" },
+    "일반공업지역": { "bcr": 70, "far": 350, "basis": "decree" },
+    "준공업지역": { "bcr": 70, "far": 400, "basis": "decree" },
+    "보전녹지지역": { "bcr": 20, "far": 80, "basis": "decree" },
+    "생산녹지지역": { "bcr": 20, "far": 100, "basis": "decree" },
+    "자연녹지지역": { "bcr": 20, "far": 80 }
+  },
+  "parking": {
+    "slot": { "width": 2.5, "length": 5.0 },
+    "slotAreaIncludingLane": 30,
+    "usableRatio": 0.85,
+    "laneWidthRequired": 6.0,
+    "arterialWidth": 20
+  },
+  "road": {
+    "minWidth": 4,
+    "minFrontage": 2,
+    "inferredOkWidth": 8,
+    "intersectionClearance": 5
+  },
+  "roadAccess": [
+    { "match": "광대", "width": 25, "label": "광대로 (폭 25m 이상)" },
+    { "match": "중로", "width": 12, "label": "중로 (폭 12~25m)" },
+    { "match": "소로", "width": 8, "label": "소로 (폭 8~12m)" },
+    { "match": "(가)", "width": 5, "label": "세로(가) — 폭 8m 미만, 자동차 통행 가능" },
+    { "match": "(불)", "width": 3, "label": "세로(불) — 자동차 통행 불가" },
+    { "match": "맹지", "width": 0, "label": "맹지 — 도로에 접하지 않음" }
+  ],
+  "evidence": {
+    "bcr": {
+      "law": "대구광역시 도시계획 조례",
+      "article": "제52조 (용도지역안에서의 건폐율)",
+      "effective": "2025-01-01",
+      "url": "https://www.law.go.kr/자치법규/대구광역시도시계획조례"
+    },
+    "far": {
+      "law": "대구광역시 도시계획 조례",
+      "article": "제53조 (용도지역안에서의 용적률)",
+      "effective": "2025-01-01",
+      "url": "https://www.law.go.kr/자치법규/대구광역시도시계획조례"
+    },
+    "bcrDecree": {
+      "law": "국토의 계획 및 이용에 관한 법률 시행령",
+      "article": "제84조 (용도지역안에서의 건폐율) — 상한",
+      "effective": "2024-02-13",
+      "url": "https://www.law.go.kr/법령/국토의계획및이용에관한법률시행령/제84조"
+    },
+    "farDecree": {
+      "law": "국토의 계획 및 이용에 관한 법률 시행령",
+      "article": "제85조 (용도지역 안에서의 용적률) — 상한",
+      "effective": "2024-02-13",
+      "url": "https://www.law.go.kr/법령/국토의계획및이용에관한법률시행령/제85조"
+    },
+    "road": {
+      "law": "건축법",
+      "article": "제44조 (대지와 도로의 관계)",
+      "effective": "2024-03-27",
+      "url": "https://www.law.go.kr/법령/건축법/제44조"
+    },
+    "parking": {
+      "law": "대구광역시 주차장 설치 및 관리 조례",
+      "article": "제20조 (부설주차장의 설치기준) 및 별표",
+      "effective": "2024-07-01",
+      "url": "https://www.law.go.kr/자치법규/대구광역시주차장설치및관리조례"
+    },
+    "laneWidth": {
+      "law": "주차장법 시행규칙",
+      "article": "제6조 (노외주차장의 구조·설비기준)",
+      "effective": "2024-07-10",
+      "url": "https://www.law.go.kr/법령/주차장법시행규칙/제6조"
+    },
+    "access": {
+      "law": "주차장법 시행규칙",
+      "article": "제5조 (노외주차장의 설치에 대한 계획기준)",
+      "effective": "2024-07-10",
+      "url": "https://www.law.go.kr/법령/주차장법시행규칙/제5조"
+    }
+  },
+  "manualChecks": [
+    {
+      "id": "district-plan",
+      "title": "지구단위계획구역",
+      "desc": "구역 지정 여부와 지침(건축한계선·차량 출입 불허 구간)은 토지이용계획확인서로 확인",
+      "keywords": ["지구단위계획"]
+    },
+    {
+      "id": "heritage",
+      "title": "문화재 보호구역·현상변경 허용기준",
+      "desc": "보호구역 반경 안이면 현상변경 허가 대상 — 문화재청·구청 문화예술과 확인",
+      "keywords": ["문화재", "문화유산", "국가유산", "역사문화환경", "역사문화", "전통사찰"]
+    },
+    {
+      "id": "landscape",
+      "title": "경관지구·고도지구",
+      "desc": "건축물 높이·외관 제한이 있을 수 있음 — 도시계획과 확인",
+      "keywords": ["경관지구", "고도지구", "경관"]
+    },
+    {
+      "id": "flight-safety",
+      "title": "비행안전구역 (대구 K-2 공군기지)",
+      "desc": "고도 제한 구역에 해당하면 군 당국 협의 대상",
+      "keywords": ["비행안전", "군사", "중요시설물보호"]
+    }
+  ]
+}

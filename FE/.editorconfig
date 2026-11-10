@@ -1,0 +1,3 @@
+# FE 는 웹 관례(Prettier 기본값)대로 2칸 들여쓰기를 씁니다. 나머지 규칙(utf-8, LF, 마지막 줄바꿈 등)은 저장소 공통 .editorconfig 를 그대로 따릅니다.
+[*.{ts,tsx,js,mjs,cjs,css,html,svg}]
+indent_size = 2

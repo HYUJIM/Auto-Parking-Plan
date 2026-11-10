@@ -1,0 +1,63 @@
+.bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: var(--z-map-overlay);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  height: 32px;
+  padding: 0 var(--space-4);
+  /* 위성사진 위에서도 글자 대비가 유지되도록 거의 불투명한 표면 */
+  background: color-mix(in srgb, var(--color-surface) 96%, transparent);
+  border-top: 1px solid var(--color-border);
+  font-size: var(--text-xs);
+  color: var(--color-text-2);
+  pointer-events: none;
+}
+
+.coords {
+  color: var(--color-text-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.right {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+  white-space: nowrap;
+  min-width: 0;
+}
+.disclaimer {
+  padding-left: var(--space-3);
+  border-left: 1px solid var(--color-border);
+}
+
+@media (max-width: 900px) {
+  /* 하단 시트 바로 위에 붙이고, 좌표 대신 출처·고지를 보여 줍니다 */
+  .bar {
+    bottom: var(--sheet-height, 50%);
+    height: auto;
+    min-height: 28px;
+    padding: 4px var(--space-3);
+    justify-content: center;
+  }
+  .coords {
+    display: none;
+  }
+  .right {
+    flex-wrap: wrap;
+    justify-content: center;
+    white-space: normal;
+    gap: var(--space-2);
+    text-align: center;
+  }
+  .disclaimer {
+    padding-left: 0;
+    border-left: 0;
+  }
+}

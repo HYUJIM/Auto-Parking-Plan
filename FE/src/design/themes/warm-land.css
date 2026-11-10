@@ -1,0 +1,82 @@
+/*
+ * C안 · 웜 랜드 (3순위)
+ * 샌드 바탕 + 테라코타 버튼, 둥근 모서리, 대지는 주황 실선.
+ */
+:root[data-theme='warm-land'] {
+  --color-primary: #c25a24;
+  --color-primary-hover: #a84c1c;
+  --color-primary-active: #8e3f16;
+  --color-primary-soft: #f8e6dc;
+  --color-on-primary: #ffffff;
+  --color-on-primary-soft: #a84c1c;
+
+  --color-accent: #6b7b3a;
+  --color-accent-soft: #e9edd9;
+
+  --color-bg: #faf6ef;
+  --color-surface: #fffdf9;
+  --color-surface-2: #f3ede2;
+  --color-surface-hover: #f7f2e9;
+
+  --color-text: #2a2119;
+  --color-text-2: #5a4c3f;
+  --color-text-muted: #6b5b4e;
+  --color-text-on-dark: #ffffff;
+
+  --color-border: #e6dccd;
+  --color-border-strong: #c9b9a4;
+  --color-focus: #c25a24;
+
+  --color-success: #3f6b2a;
+  --color-success-soft: #e4efdb;
+  --color-warning: #9a5b00;
+  --color-warning-soft: #fde9c8;
+  --color-neutral: #6f655b;
+  --color-neutral-soft: #ece6dc;
+  --color-danger: #a8321f;
+  --color-danger-soft: #f9dcd6;
+
+  --shadow-sm: 0 1px 3px rgba(42, 33, 25, 0.08);
+  --shadow-md: 0 8px 24px rgba(42, 33, 25, 0.12);
+  --shadow-lg: 0 -8px 32px rgba(42, 33, 25, 0.16);
+  --shadow-button: 0 3px 10px rgba(194, 90, 36, 0.3);
+
+  --radius: 16px;
+  --radius-sm: 10px;
+  --radius-lg: 20px;
+  --radius-pill: 999px;
+
+  --button-radius: 14px;
+  --button-radius-sm: 10px;
+  --button-height-sm: 40px;
+  --button-height-md: 46px;
+  --button-height-lg: 54px;
+  --button-font-sm: 13px;
+  --button-font-md: 15px;
+  --button-font-lg: 16px;
+
+  --font-family:
+    'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, system-ui, Roboto, 'Helvetica Neue', 'Segoe UI',
+    'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', sans-serif;
+  --font-family-mono: ui-monospace, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+  --font-numeric: var(--font-family);
+
+  --map-site-stroke: #e0702f;
+  --map-site-stroke-width: 3;
+  --map-site-fill: #e0702f;
+  --map-site-fill-opacity: 0.16;
+  --map-road-stroke: #6b7b3a;
+  --map-road-stroke-width: 5;
+  --map-marker: #c25a24;
+  --map-marker-ring: #fffdf9;
+  --map-marker-preview: #6b7b3a;
+  --map-label-bg: #fffdf9;
+  --map-label-text: #2a2119;
+
+  --map-bg-normal: #f3ede2;
+  --map-grid: #e2d8c7;
+  --map-grid-major: #cfc2ad;
+  --map-bg-satellite: #3a3a2c;
+  --map-bg-satellite-2: #55553c;
+  --map-cadastral: #fffdf9;
+}

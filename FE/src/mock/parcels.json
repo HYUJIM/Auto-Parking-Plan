@@ -1,0 +1,326 @@
+[
+  {
+    "pnu": "2726010600101770003",
+    "address": { "gu": "수성구", "dong": "범어동", "jibun": "대구 수성구 범어동 177-3", "road": "대구 수성구 달구벌대로 2420" },
+    "inSuseong": true,
+    "center": { "lat": 35.8585, "lng": 128.6268 },
+    "polygon": [
+      { "lat": 35.858601, "lng": 128.626678 },
+      { "lat": 35.858606, "lng": 128.626922 },
+      { "lat": 35.858399, "lng": 128.626928 },
+      { "lat": 35.858396, "lng": 128.626684 }
+    ],
+    "road": {
+      "side": "남측",
+      "width": 8,
+      "frontage": 22,
+      "path": [
+        { "lat": 35.858349, "lng": 128.6264 },
+        { "lat": 35.858349, "lng": 128.6272 }
+      ]
+    },
+    "area": 495.0,
+    "zoning": "제3종일반주거지역",
+    "jimok": "대",
+    "landPrice": 3850000,
+    "land": { "baseYear": "2025" },
+    "nearIntersection": false
+  },
+  {
+    "pnu": "2726010700110080012",
+    "address": { "gu": "수성구", "dong": "만촌동", "jibun": "대구 수성구 만촌동 1008-12", "road": "대구 수성구 동원로 55" },
+    "inSuseong": true,
+    "center": { "lat": 35.86, "lng": 128.648 },
+    "polygon": [
+      { "lat": 35.860126, "lng": 128.647839 },
+      { "lat": 35.860122, "lng": 128.648161 },
+      { "lat": 35.859874, "lng": 128.648166 },
+      { "lat": 35.859878, "lng": 128.647835 }
+    ],
+    "road": {
+      "side": "동측",
+      "width": 6,
+      "frontage": 28,
+      "path": [
+        { "lat": 35.8597, "lng": 128.648221 },
+        { "lat": 35.8603, "lng": 128.648221 }
+      ]
+    },
+    "area": 812.5,
+    "zoning": "제2종일반주거지역",
+    "jimok": "대",
+    "landPrice": 2420000,
+    "land": { "baseYear": "2025" },
+    "nearIntersection": false
+  },
+  {
+    "pnu": "2726010400111160002",
+    "address": { "gu": "수성구", "dong": "수성동4가", "jibun": "대구 수성구 수성동4가 1116-2", "road": "대구 수성구 수성로 300" },
+    "inSuseong": true,
+    "center": { "lat": 35.854, "lng": 128.615 },
+    "polygon": [
+      { "lat": 35.854155, "lng": 128.614806 },
+      { "lat": 35.854158, "lng": 128.615194 },
+      { "lat": 35.853845, "lng": 128.6152 },
+      { "lat": 35.853842, "lng": 128.61481 }
+    ],
+    "road": {
+      "side": "남측",
+      "width": 12,
+      "frontage": 35,
+      "path": [
+        { "lat": 35.853795, "lng": 128.6143 },
+        { "lat": 35.853795, "lng": 128.6157 }
+      ]
+    },
+    "area": 1203.0,
+    "zoning": "일반상업지역",
+    "jimok": "대",
+    "landPrice": 6120000,
+    "land": { "baseYear": "2025" },
+    "nearIntersection": true
+  },
+  {
+    "pnu": "2726010800106010007",
+    "address": { "gu": "수성구", "dong": "황금동", "jibun": "대구 수성구 황금동 601-7", "road": "대구 수성구 청수로 120" },
+    "inSuseong": true,
+    "center": { "lat": 35.845, "lng": 128.63 },
+    "polygon": [
+      { "lat": 35.845083, "lng": 128.6299 },
+      { "lat": 35.845083, "lng": 128.6301 },
+      { "lat": 35.844917, "lng": 128.630104 },
+      { "lat": 35.844914, "lng": 128.629904 }
+    ],
+    "road": {
+      "side": "북측",
+      "width": 4,
+      "frontage": 18,
+      "path": [
+        { "lat": 35.845133, "lng": 128.6296 },
+        { "lat": 35.845133, "lng": 128.6304 }
+      ]
+    },
+    "area": 330.6,
+    "zoning": "제2종일반주거지역",
+    "jimok": "대",
+    "landPrice": 2870000,
+    "land": { "baseYear": "2025" },
+    "nearIntersection": false
+  },
+  {
+    "pnu": "2726010900104000021",
+    "address": { "gu": "수성구", "dong": "중동", "jibun": "대구 수성구 중동 400-21", "road": "대구 수성구 희망로 50" },
+    "inSuseong": true,
+    "center": { "lat": 35.844, "lng": 128.61 },
+    "polygon": [
+      { "lat": 35.844114, "lng": 128.609856 },
+      { "lat": 35.844118, "lng": 128.610144 },
+      { "lat": 35.843886, "lng": 128.610148 },
+      { "lat": 35.843882, "lng": 128.60986 }
+    ],
+    "road": {
+      "side": "서측",
+      "width": 8,
+      "frontage": 25,
+      "path": [
+        { "lat": 35.8437, "lng": 128.609796 },
+        { "lat": 35.8443, "lng": 128.609796 }
+      ]
+    },
+    "area": 658.0,
+    "zoning": "준주거지역",
+    "jimok": "잡종지",
+    "landPrice": 3100000,
+    "land": { "baseYear": "2025" },
+    "nearIntersection": false
+  },
+  {
+    "pnu": "2726011000103200005",
+    "address": { "gu": "수성구", "dong": "상동", "jibun": "대구 수성구 상동 320-5", "road": "대구 수성구 상화로 70" },
+    "inSuseong": true,
+    "center": { "lat": 35.837, "lng": 128.619 },
+    "polygon": [
+      { "lat": 35.837094, "lng": 128.618889 },
+      { "lat": 35.837094, "lng": 128.619111 },
+      { "lat": 35.836906, "lng": 128.619115 },
+      { "lat": 35.836903, "lng": 128.618893 }
+    ],
+    "road": {
+      "side": "남측",
+      "width": 6,
+      "frontage": 20,
+      "path": [
+        { "lat": 35.836856, "lng": 128.6186 },
+        { "lat": 35.836856, "lng": 128.6194 }
+      ]
+    },
+    "area": 421.3,
+    "zoning": "제1종일반주거지역",
+    "jimok": "대",
+    "landPrice": 2050000,
+    "land": { "baseYear": "2025" },
+    "nearIntersection": false
+  },
+  {
+    "pnu": "2726011300112000003",
+    "address": { "gu": "수성구", "dong": "지산동", "jibun": "대구 수성구 지산동 1200-3", "road": "대구 수성구 지범로 180" },
+    "inSuseong": true,
+    "center": { "lat": 35.83, "lng": 128.638 },
+    "polygon": [
+      { "lat": 35.83021, "lng": 128.637745 },
+      { "lat": 35.830216, "lng": 128.638255 },
+      { "lat": 35.82979, "lng": 128.638262 },
+      { "lat": 35.829786, "lng": 128.637752 }
+    ],
+    "road": {
+      "side": "동측",
+      "width": 10,
+      "frontage": 46,
+      "path": [
+        { "lat": 35.8296, "lng": 128.638315 },
+        { "lat": 35.8304, "lng": 128.638315 }
+      ]
+    },
+    "area": 2150.0,
+    "zoning": "자연녹지지역",
+    "jimok": "전",
+    "landPrice": 980000,
+    "land": { "baseYear": "2025" },
+    "nearIntersection": false
+  },
+  {
+    "pnu": "2726011400113500008",
+    "address": { "gu": "수성구", "dong": "범물동", "jibun": "대구 수성구 범물동 1350-8", "road": "대구 수성구 용지로 40" },
+    "inSuseong": true,
+    "center": { "lat": 35.822, "lng": 128.645 },
+    "polygon": [
+      { "lat": 35.822105, "lng": 128.644867 },
+      { "lat": 35.822108, "lng": 128.645133 },
+      { "lat": 35.821895, "lng": 128.645137 },
+      { "lat": 35.821892, "lng": 128.644871 }
+    ],
+    "road": {
+      "side": "북측",
+      "width": 8,
+      "frontage": 24,
+      "path": [
+        { "lat": 35.822155, "lng": 128.6445 },
+        { "lat": 35.822155, "lng": 128.6455 }
+      ]
+    },
+    "area": 560.2,
+    "zoning": "제2종일반주거지역",
+    "jimok": "대",
+    "landPrice": 2230000,
+    "land": { "baseYear": "2025" },
+    "nearIntersection": false
+  },
+  {
+    "pnu": "2726011200105500004",
+    "address": { "gu": "수성구", "dong": "두산동", "jibun": "대구 수성구 두산동 550-4", "road": "대구 수성구 무학로 150" },
+    "inSuseong": true,
+    "center": { "lat": 35.83, "lng": 128.62 },
+    "polygon": [
+      { "lat": 35.830122, "lng": 128.619845 },
+      { "lat": 35.830126, "lng": 128.620155 },
+      { "lat": 35.829878, "lng": 128.62016 },
+      { "lat": 35.829874, "lng": 128.61985 }
+    ],
+    "road": {
+      "side": "남측",
+      "width": 15,
+      "frontage": 28,
+      "path": [
+        { "lat": 35.829828, "lng": 128.6195 },
+        { "lat": 35.829828, "lng": 128.6205 }
+      ]
+    },
+    "area": 760.8,
+    "zoning": "제3종일반주거지역",
+    "jimok": "대",
+    "landPrice": 3420000,
+    "land": { "baseYear": "2025" },
+    "nearIntersection": true
+  },
+  {
+    "pnu": "2726011500100770001",
+    "address": { "gu": "수성구", "dong": "시지동", "jibun": "대구 수성구 시지동 77-1", "road": "대구 수성구 달구벌대로 3100" },
+    "inSuseong": true,
+    "center": { "lat": 35.839, "lng": 128.7 },
+    "polygon": [
+      { "lat": 35.839193, "lng": 128.699756 },
+      { "lat": 35.839198, "lng": 128.700244 },
+      { "lat": 35.838807, "lng": 128.70025 },
+      { "lat": 35.838803, "lng": 128.699762 }
+    ],
+    "road": {
+      "side": "서측",
+      "width": 25,
+      "frontage": 43,
+      "path": [
+        { "lat": 35.8386, "lng": 128.699696 },
+        { "lat": 35.8394, "lng": 128.699696 }
+      ]
+    },
+    "area": 1890.4,
+    "zoning": "일반상업지역",
+    "jimok": "대",
+    "landPrice": 4560000,
+    "land": { "baseYear": "2025" },
+    "nearIntersection": false
+  },
+  {
+    "pnu": "2711011000100630012",
+    "address": { "gu": "중구", "dong": "삼덕동2가", "jibun": "대구 중구 삼덕동2가 63-12", "road": "대구 중구 달구벌대로 2109" },
+    "inSuseong": false,
+    "center": { "lat": 35.866, "lng": 128.602 },
+    "polygon": [
+      { "lat": 35.86609, "lng": 128.601895 },
+      { "lat": 35.86609, "lng": 128.602105 },
+      { "lat": 35.86591, "lng": 128.602109 },
+      { "lat": 35.865907, "lng": 128.601899 }
+    ],
+    "road": {
+      "side": "남측",
+      "width": 8,
+      "frontage": 19,
+      "path": [
+        { "lat": 35.86586, "lng": 128.6016 },
+        { "lat": 35.86586, "lng": 128.6024 }
+      ]
+    },
+    "area": 380.0,
+    "zoning": "일반상업지역",
+    "jimok": "대",
+    "landPrice": 7800000,
+    "land": { "baseYear": "2025" },
+    "nearIntersection": false
+  },
+  {
+    "pnu": "2729011000115200003",
+    "address": { "gu": "달서구", "dong": "상인동", "jibun": "대구 달서구 상인동 1520-3", "road": "대구 달서구 월배로 100" },
+    "inSuseong": false,
+    "center": { "lat": 35.814, "lng": 128.535 },
+    "polygon": [
+      { "lat": 35.814133, "lng": 128.534828 },
+      { "lat": 35.814137, "lng": 128.535172 },
+      { "lat": 35.813867, "lng": 128.535176 },
+      { "lat": 35.813863, "lng": 128.534832 }
+    ],
+    "road": {
+      "side": "동측",
+      "width": 10,
+      "frontage": 29,
+      "path": [
+        { "lat": 35.8137, "lng": 128.535232 },
+        { "lat": 35.8143, "lng": 128.535232 }
+      ]
+    },
+    "area": 920.0,
+    "zoning": "제2종일반주거지역",
+    "jimok": "대",
+    "landPrice": 2100000,
+    "land": { "baseYear": "2025" },
+    "nearIntersection": false
+  }
+]

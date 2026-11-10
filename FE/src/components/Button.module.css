@@ -1,0 +1,153 @@
+.button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  height: var(--button-height-md);
+  min-width: var(--button-height-md);
+  padding: 0 var(--space-4);
+  border-radius: var(--button-radius);
+  border: 1px solid transparent;
+  font-size: var(--button-font-md);
+  font-weight: var(--weight-semibold);
+  line-height: 1;
+  white-space: nowrap;
+  user-select: none;
+  transition:
+    background-color var(--duration-fast) var(--ease),
+    color var(--duration-fast) var(--ease),
+    border-color var(--duration-fast) var(--ease),
+    box-shadow var(--duration-fast) var(--ease),
+    transform var(--duration-fast) var(--ease);
+}
+
+/* 작은 버튼도 터치 영역은 가로·세로 44px 이상 (버튼보다 작게 줄어들지는 않음) */
+.button::after {
+  content: '';
+  position: absolute;
+  inset: min(0px, calc((var(--tap-min) - 100%) / -2));
+}
+
+.content {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.label {
+  display: inline-block;
+}
+
+/* ── 크기 ─────────────────────────────── */
+.sm {
+  height: var(--button-height-sm);
+  min-width: var(--button-height-sm);
+  padding: 0 var(--space-3);
+  font-size: var(--button-font-sm);
+  border-radius: var(--button-radius-sm);
+}
+.lg {
+  height: var(--button-height-lg);
+  min-width: var(--button-height-lg);
+  padding: 0 var(--space-6);
+  font-size: var(--button-font-lg);
+}
+.block {
+  display: flex;
+  width: 100%;
+}
+
+/* ── 종류 ─────────────────────────────── */
+.primary {
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  border-color: var(--color-primary);
+  box-shadow: var(--shadow-button);
+}
+.primary:hover:not(:disabled),
+.primary.hover {
+  background: var(--color-primary-hover);
+  border-color: var(--color-primary-hover);
+}
+.primary:active:not(:disabled) {
+  background: var(--color-primary-active);
+  border-color: var(--color-primary-active);
+  transform: translateY(1px);
+}
+
+.secondary {
+  background: var(--color-surface);
+  color: var(--color-text);
+  border-color: var(--color-border-strong);
+}
+.secondary:hover:not(:disabled),
+.secondary.hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  background: var(--color-surface-hover);
+}
+.secondary.active {
+  background: var(--color-primary-soft);
+  border-color: var(--color-primary);
+  color: var(--color-on-primary-soft);
+}
+
+.ghost {
+  background: transparent;
+  color: var(--color-text-2);
+}
+.ghost:hover:not(:disabled),
+.ghost.hover {
+  background: var(--color-primary-soft);
+  color: var(--color-on-primary-soft);
+}
+.ghost.active {
+  background: var(--color-primary-soft);
+  color: var(--color-on-primary-soft);
+}
+
+.icon {
+  width: var(--button-height-md);
+  padding: 0;
+  background: var(--color-surface);
+  color: var(--color-text-2);
+  border-color: var(--color-border);
+  box-shadow: var(--shadow-sm);
+}
+.icon.sm {
+  width: var(--button-height-sm);
+}
+.icon.lg {
+  width: var(--button-height-lg);
+}
+.icon:hover:not(:disabled),
+.icon.hover {
+  color: var(--color-primary);
+  border-color: var(--color-primary);
+}
+.icon.active {
+  background: var(--color-primary-soft);
+  color: var(--color-on-primary-soft);
+  border-color: var(--color-primary);
+}
+
+/* ── 상태 ─────────────────────────────── */
+.button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+  box-shadow: none;
+}
+.loading .content {
+  visibility: hidden;
+}
+.spinner {
+  position: absolute;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

@@ -1,0 +1,98 @@
+/*
+ * A안 · 클리어 블루프린트 (1순위, 확정)
+ * 하양 바탕 + 선명한 블루, 대지는 블루 실선·연한 블루 채움, 접도 구간은 청록.
+ *
+ * 메인 색을 바꾸려면 --color-primary 한 줄만 고치면 됩니다.
+ * 컴포넌트 코드에는 색 코드를 직접 쓰지 않습니다 — 색은 이 파일에서만 정의합니다.
+ */
+:root[data-theme='clear-blue'] {
+  /* 메인 */
+  --color-primary: #1e5eff;
+  --color-primary-hover: #174bd6;
+  --color-primary-active: #123cb0;
+  --color-primary-soft: #e8eeff;
+  --color-on-primary: #ffffff;
+  /* 연한 메인색 바탕 위 글자 (배지·활성 토글) — 4.5:1 이상 */
+  --color-on-primary-soft: #174bd6;
+
+  /* 보조 (접도·강조) */
+  --color-accent: #0ea5c6;
+  --color-accent-soft: #e0f6fa;
+
+  /* 바탕·표면 */
+  --color-bg: #f5f7fb;
+  --color-surface: #ffffff;
+  --color-surface-2: #f0f3f9;
+  --color-surface-hover: #f6f8fc;
+
+  /* 글자 */
+  --color-text: #0f1b33;
+  --color-text-2: #4b5775;
+  --color-text-muted: #5f6a85;
+  --color-text-on-dark: #ffffff;
+
+  /* 선 */
+  --color-border: #dde3ee;
+  --color-border-strong: #b9c3d6;
+  --color-focus: #1e5eff;
+
+  /* 상태 */
+  --color-success: #15803d;
+  --color-success-soft: #dcfce7;
+  --color-warning: #b45309;
+  --color-warning-soft: #fef3c7;
+  --color-neutral: #5b6678;
+  --color-neutral-soft: #e9edf3;
+  --color-danger: #b91c1c;
+  --color-danger-soft: #fee2e2;
+
+  /* 그림자 */
+  --shadow-sm: 0 1px 2px rgba(15, 27, 51, 0.06);
+  --shadow-md: 0 6px 20px rgba(15, 27, 51, 0.1);
+  --shadow-lg: 0 -8px 32px rgba(15, 27, 51, 0.14);
+  --shadow-button: 0 2px 6px rgba(30, 94, 255, 0.28);
+
+  /* 둥글기 */
+  --radius: 12px;
+  --radius-sm: 8px;
+  --radius-lg: 16px;
+  --radius-pill: 999px;
+
+  /* 버튼 */
+  --button-radius: 10px;
+  --button-radius-sm: 8px;
+  --button-height-sm: 40px;
+  --button-height-md: 44px;
+  --button-height-lg: 52px;
+  --button-font-sm: 13px;
+  --button-font-md: 15px;
+  --button-font-lg: 16px;
+
+  /* 글꼴 */
+  --font-family:
+    'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, system-ui, Roboto, 'Helvetica Neue', 'Segoe UI',
+    'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', sans-serif;
+  --font-family-mono: ui-monospace, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+  --font-numeric: var(--font-family);
+
+  /* 지도 위 대지·도로 표시 */
+  --map-site-stroke: #1e5eff;
+  --map-site-stroke-width: 3;
+  --map-site-fill: #1e5eff;
+  --map-site-fill-opacity: 0.18;
+  --map-road-stroke: #0ea5c6;
+  --map-road-stroke-width: 5;
+  --map-marker: #1e5eff;
+  --map-marker-ring: #ffffff;
+  --map-marker-preview: #0ea5c6;
+  --map-label-bg: #ffffff;
+  --map-label-text: #0f1b33;
+
+  /* 미리보기 지도(네이버 지도 키가 없을 때) 배경 */
+  --map-bg-normal: #eef2f8;
+  --map-grid: #d7deea;
+  --map-grid-major: #c3cbdb;
+  --map-bg-satellite: #2f3a31;
+  --map-bg-satellite-2: #46543f;
+  --map-cadastral: #ffffff;
+}

@@ -1,0 +1,82 @@
+/*
+ * B안 · 드래프팅 모노 (2순위)
+ * 종이색 바탕 + 먹색 버튼, 대지는 시그널 오렌지, 숫자·라벨은 고정폭 글꼴로 도면 느낌.
+ */
+:root[data-theme='drafting-mono'] {
+  --color-primary: #141414;
+  --color-primary-hover: #2b2b2b;
+  --color-primary-active: #000000;
+  --color-primary-soft: #e9e7e0;
+  --color-on-primary: #ffffff;
+  --color-on-primary-soft: #141414;
+
+  --color-accent: #ff5a1f;
+  --color-accent-soft: #ffe7dc;
+
+  --color-bg: #f2f1ec;
+  --color-surface: #fbfaf7;
+  --color-surface-2: #ebe9e2;
+  --color-surface-hover: #f0eee8;
+
+  --color-text: #141414;
+  --color-text-2: #3f3f3b;
+  --color-text-muted: #5f5f58;
+  --color-text-on-dark: #ffffff;
+
+  --color-border: #d6d3c8;
+  --color-border-strong: #a9a69a;
+  --color-focus: #ff5a1f;
+
+  --color-success: #2f6b2f;
+  --color-success-soft: #e2eedd;
+  --color-warning: #a84a00;
+  --color-warning-soft: #ffe2cc;
+  --color-neutral: #5f5f58;
+  --color-neutral-soft: #e6e4dc;
+  --color-danger: #a11a1a;
+  --color-danger-soft: #f7dcdc;
+
+  --shadow-sm: 0 1px 0 rgba(20, 20, 20, 0.12);
+  --shadow-md: 0 4px 0 rgba(20, 20, 20, 0.12);
+  --shadow-lg: 0 -4px 0 rgba(20, 20, 20, 0.12);
+  --shadow-button: none;
+
+  --radius: 4px;
+  --radius-sm: 2px;
+  --radius-lg: 6px;
+  --radius-pill: 4px;
+
+  --button-radius: 4px;
+  --button-radius-sm: 2px;
+  --button-height-sm: 40px;
+  --button-height-md: 44px;
+  --button-height-lg: 52px;
+  --button-font-sm: 13px;
+  --button-font-md: 15px;
+  --button-font-lg: 16px;
+
+  --font-family:
+    'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, system-ui, Roboto, 'Helvetica Neue', 'Segoe UI',
+    'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', sans-serif;
+  --font-family-mono: ui-monospace, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+  --font-numeric: var(--font-family-mono);
+
+  --map-site-stroke: #ff5a1f;
+  --map-site-stroke-width: 2;
+  --map-site-fill: #ff5a1f;
+  --map-site-fill-opacity: 0.14;
+  --map-road-stroke: #141414;
+  --map-road-stroke-width: 4;
+  --map-marker: #141414;
+  --map-marker-ring: #fbfaf7;
+  --map-marker-preview: #ff5a1f;
+  --map-label-bg: #fbfaf7;
+  --map-label-text: #141414;
+
+  --map-bg-normal: #efeee8;
+  --map-grid: #dbd8cd;
+  --map-grid-major: #c4c0b3;
+  --map-bg-satellite: #34352f;
+  --map-bg-satellite-2: #4a4b42;
+  --map-cadastral: #fbfaf7;
+}

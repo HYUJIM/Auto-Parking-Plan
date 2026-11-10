@@ -1,0 +1,10 @@
+.icon {
+  display: inline-block;
+  flex-shrink: 0;
+  width: var(--icon-px, var(--icon-size));
+  height: var(--icon-px, var(--icon-size));
+  background-color: currentColor;
+  -webkit-mask: var(--icon-url) no-repeat center / contain;
+  mask: var(--icon-url) no-repeat center / contain;
+  vertical-align: middle;
+}

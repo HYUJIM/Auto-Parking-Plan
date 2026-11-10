@@ -1,0 +1,128 @@
+.item {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: var(--space-3) var(--space-4) var(--space-4);
+  transition: border-color var(--duration-fast) var(--ease);
+}
+.item.open {
+  border-color: var(--color-primary);
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  min-height: var(--tap-min);
+  text-align: left;
+}
+button.head {
+  cursor: pointer;
+}
+.title {
+  flex: 1;
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  color: var(--color-text);
+}
+.chevron {
+  color: var(--color-text-muted);
+  transition: transform var(--duration) var(--ease);
+}
+.open .chevron {
+  transform: rotate(180deg);
+  color: var(--color-primary);
+}
+
+.values {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+  margin: var(--space-1) 0 0;
+}
+.values dt,
+.evidence dt {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  margin-bottom: 2px;
+}
+.values dd,
+.evidence dd {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-text);
+  word-break: keep-all;
+}
+
+.evidence {
+  margin: var(--space-3) 0 0;
+  padding: var(--space-3) var(--space-4);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+  background: var(--color-surface-2);
+  border-radius: var(--radius-sm);
+}
+.evidence > div:first-child {
+  grid-column: 1 / -1;
+}
+.link {
+  grid-column: 1 / -1;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  justify-self: start;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--color-primary);
+  min-height: var(--tap-min);
+}
+.link:hover {
+  text-decoration: underline;
+}
+
+.manual {
+  background: var(--color-surface-2);
+  border-style: dashed;
+}
+.manual .title {
+  color: var(--color-text-2);
+}
+.manualDesc {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  word-break: keep-all;
+}
+
+.note {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: var(--space-2);
+  font-size: var(--text-xs);
+  color: var(--color-warning);
+}
+
+.hits {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px dashed var(--color-border);
+}
+.hit {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--color-text);
+}
+
+@media (max-width: 420px) {
+  .values,
+  .evidence {
+    grid-template-columns: 1fr;
+  }
+}

@@ -1,0 +1,5 @@
+{
+  "//": "브라우저 코드(src)와 Node 코드(server)는 전역·lib 가 다르므로 두 프로젝트로 검사합니다. npm run typecheck 참고.",
+  "files": [],
+  "references": [{ "path": "./tsconfig.app.json" }, { "path": "./tsconfig.node.json" }]
+}

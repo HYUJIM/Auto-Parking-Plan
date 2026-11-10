@@ -1,0 +1,183 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.field {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: var(--button-height-lg);
+  padding: 0 var(--space-3) 0 var(--space-4);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius);
+  transition:
+    border-color var(--duration-fast) var(--ease),
+    box-shadow var(--duration-fast) var(--ease);
+}
+.field:focus-within {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-soft);
+}
+.compact .field {
+  height: var(--button-height-md);
+  padding-left: var(--space-3);
+  border-radius: var(--button-radius);
+}
+
+.leading {
+  color: var(--color-text-muted);
+  margin-right: var(--space-2);
+}
+.field:focus-within .leading {
+  color: var(--color-primary);
+}
+
+.input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  font-size: var(--text-md);
+  color: var(--color-text);
+}
+.input::placeholder {
+  color: var(--color-text-muted);
+}
+.compact .input {
+  font-size: var(--text-sm);
+}
+
+/* 입력 지우기 — Button(ghost·sm) 을 입력창 안에 맞춰 작게 */
+.clear {
+  width: var(--button-height-sm);
+  min-width: var(--button-height-sm);
+  padding: 0;
+  color: var(--color-text-muted);
+}
+.compact .clear {
+  width: 36px;
+  min-width: 36px;
+  height: 36px;
+}
+
+.kbd {
+  font-family: var(--font-family);
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  border: 1px solid var(--color-border);
+  border-bottom-width: 2px;
+  border-radius: 6px;
+  padding: 2px 6px;
+  background: var(--color-surface-2);
+}
+
+/* ── 자동완성 목록 ───────────────────────── */
+.dropdown {
+  position: absolute;
+  left: -1px;
+  right: -1px;
+  top: calc(100% + 6px);
+  z-index: var(--z-dropdown);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+}
+.list {
+  max-height: 320px;
+  overflow-y: auto;
+  padding: var(--space-1);
+}
+.sourceLine {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: var(--space-2) var(--space-3);
+  border-top: 1px solid var(--color-border);
+  background: var(--color-surface-2);
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+.sourceMock {
+  color: var(--color-warning);
+  background: var(--color-warning-soft);
+}
+
+.option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: var(--tap-min);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.optionActive {
+  background: var(--color-primary-soft);
+}
+.optionIcon {
+  color: var(--color-text-muted);
+}
+.optionActive .optionIcon {
+  color: var(--color-on-primary-soft);
+}
+.optionActive .jibun {
+  color: var(--color-text-2);
+}
+.optionText {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+.road {
+  font-size: var(--text-md);
+  font-weight: var(--weight-medium);
+  color: var(--color-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.jibun {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+/* ── 안내 문구 ──────────────────────────── */
+.message {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  padding-left: var(--space-1);
+}
+.messageWarn {
+  color: var(--color-warning);
+}
+.messageSub {
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+}
+
+.cta {
+  margin-top: var(--space-1);
+}
+
+/* 모바일: 하단 시트 안에서 잘리지 않도록 목록을 흐름 안에 둡니다 */
+@media (max-width: 900px) {
+  .dropdown {
+    position: static;
+    margin-top: var(--space-2);
+    box-shadow: none;
+  }
+  .list {
+    max-height: 240px;
+  }
+}
