@@ -1,0 +1,86 @@
+.shell {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--color-bg);
+}
+
+.body {
+  position: relative;
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.panel {
+  position: relative;
+  z-index: var(--z-panel);
+  display: flex;
+  flex-direction: column;
+  width: var(--panel-width);
+  flex-shrink: 0;
+  min-height: 0;
+  background: var(--color-surface);
+  border-right: 1px solid var(--color-border);
+  overflow: hidden;
+}
+
+/* 시트 손잡이 — 데스크톱에서는 숨김 */
+.handle {
+  display: none;
+}
+
+.map {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+
+@media (max-width: 900px) {
+  .map {
+    position: absolute;
+    inset: 0;
+  }
+  .panel {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: auto;
+    max-height: 50%;
+    border-right: 0;
+    border-top: 1px solid var(--color-border);
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    box-shadow: var(--shadow-lg);
+    transition: max-height var(--duration) var(--ease);
+  }
+  .panelExpanded {
+    max-height: 88%;
+  }
+  .handle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 100%;
+    height: 28px;
+    min-height: 28px;
+    position: relative;
+  }
+  /* 손잡이의 터치 영역은 44px */
+  .handle::after {
+    content: '';
+    position: absolute;
+    inset: -8px 0;
+  }
+  .handleBar {
+    display: block;
+    width: 40px;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--color-border-strong);
+  }
+  .handle:focus-visible .handleBar {
+    background: var(--color-primary);
+  }
+}

@@ -1,6 +1,12 @@
-# 저장소 공통 (각 폴더의 세부 규칙은 BE/.gitignore 등에 둔다)
+# 저장소 공통 (각 폴더의 세부 규칙은 BE/.gitignore, FE/.gitignore 에 둔다)
 .DS_Store
 Thumbs.db
 .idea/
 .vscode/
-.env
+
+# 환경 변수 — 모든 변형을 막고 템플릿만 남긴다 (키는 절대 커밋하지 않음)
+.env*
+!.env.example
+
+# Claude Code 로컬 설정 (절대 경로·사용자 이름이 들어가는 machine-specific 파일)
+.claude/

@@ -1,0 +1,44 @@
+.controls {
+  position: absolute;
+  top: var(--space-3);
+  right: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-3);
+  z-index: var(--z-map-overlay);
+}
+
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-1);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+}
+
+.group > button {
+  justify-content: flex-start;
+  box-shadow: none;
+}
+
+@media (max-width: 900px) {
+  .group:first-child {
+    flex-direction: row;
+  }
+  /* 모바일: 레이어 버튼은 아이콘만 보이되, 라벨은 보조기술에 남겨 둡니다 (button > .content > .label) */
+  .group:first-child > button > span > span:last-child {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+  .group:first-child > button {
+    padding: 0 var(--space-3);
+  }
+}

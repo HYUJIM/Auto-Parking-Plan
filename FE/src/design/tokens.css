@@ -1,0 +1,59 @@
+/*
+ * 디자인 안과 무관한 공통 토큰 (레이아웃·간격·글자 크기·모션).
+ * 색·둥글기·글꼴 같은 "디자인 안에 따라 바뀌는 값"은 themes/*.css 에 있습니다.
+ */
+:root {
+  /* 레이아웃 */
+  --topbar-height: 56px;
+  --panel-width: 400px;
+  --panel-padding: 24px;
+
+  /* 간격 */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+
+  /* 글자 크기 */
+  --text-xs: 12px;
+  --text-sm: 13px;
+  --text-md: 15px;
+  --text-lg: 17px;
+  --text-xl: 20px;
+  --text-2xl: 26px;
+  --text-3xl: 32px;
+  --text-stat: 28px;
+
+  --leading-tight: 1.25;
+  --leading-normal: 1.5;
+
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+
+  /* 아이콘 */
+  --icon-size: 24px;
+  --icon-size-sm: 18px;
+  --icon-size-lg: 32px;
+
+  /* 모션 */
+  --duration-fast: 120ms;
+  --duration: 200ms;
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+
+  /* 쌓임 순서 */
+  --z-map-overlay: 10;
+  --z-panel: 20;
+  --z-topbar: 30;
+  --z-dropdown: 40;
+  --z-toast: 50;
+
+  /* 최소 터치 영역 */
+  --tap-min: 44px;
+}

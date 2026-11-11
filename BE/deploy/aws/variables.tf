@@ -46,7 +46,7 @@ variable "llm_provider" {
 
 variable "cors_origins" {
   type    = list(string)
-  default = ["http://localhost:3000"]
+  default = ["http://localhost:3000", "http://localhost:5173"] # 운영은 FE 배포 도메인(https://…)으로 바꿀 것
 }
 
 variable "vworld_domain" {

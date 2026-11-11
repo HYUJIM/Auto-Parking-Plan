@@ -1,0 +1,50 @@
+.skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+}
+.bone {
+  display: block;
+  height: 14px;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(90deg, var(--color-surface-2) 25%, var(--color-border) 50%, var(--color-surface-2) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+@keyframes shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+
+.error {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+}
+.errorIcon {
+  color: var(--color-warning);
+  margin-top: 2px;
+}
+.errorBody {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--text-sm);
+}
+.errorBody strong {
+  display: block;
+  color: var(--color-text);
+  font-weight: var(--weight-semibold);
+}
+.errorBody p {
+  color: var(--color-text-muted);
+  margin-top: 2px;
+}

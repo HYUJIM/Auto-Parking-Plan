@@ -152,7 +152,7 @@ public final class AppSettings {
 
         String tok = r.opt("ADMIN_TOKEN");
         adminToken = tok == null || tok.isBlank() ? null : tok; // 공백만 있는 토큰 = 미설정
-        corsOrigins = r.list("CORS_ORIGINS", List.of("http://localhost:3000"));
+        corsOrigins = r.list("CORS_ORIGINS", List.of("http://localhost:3000", "http://localhost:5173")); // 5173 = FE 개발 서버(Vite)
 
         enableDocs = r.optBool("ENABLE_DOCS");
         trustedProxyHops = r.integer("TRUSTED_PROXY_HOPS", 0, 0, 5);

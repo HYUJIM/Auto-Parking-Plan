@@ -1,0 +1,290 @@
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+.wrap[hidden] {
+  display: none;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+.running {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+}
+.cardLabel {
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  color: var(--color-text-muted);
+}
+.eligibility {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+.eligibilityText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: var(--text-sm);
+  color: var(--color-text);
+  word-break: keep-all;
+}
+.muted {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.notSimulated strong {
+  display: block;
+}
+.notSimulatedBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+.unverifiedBtn {
+  align-self: flex-start;
+}
+
+.referenceOnly {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  font-size: var(--text-xs);
+  color: var(--color-warning);
+  word-break: keep-all;
+}
+
+/* 배치안 목록 */
+.alts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.alt {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  text-align: left;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition:
+    border-color var(--duration-fast) var(--ease),
+    box-shadow var(--duration-fast) var(--ease);
+}
+.alt:hover {
+  border-color: var(--color-border-strong);
+}
+.altActive,
+.altActive:hover {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-soft);
+}
+.altCode {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-2);
+  color: var(--color-text-2);
+  font-size: var(--text-md);
+  font-weight: var(--weight-bold);
+}
+.altActive .altCode {
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+}
+.altMain {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.altTitle {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  color: var(--color-text);
+}
+.altBadge {
+  height: 20px;
+}
+.altMeta {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+}
+.altCount {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-bold);
+  color: var(--color-text);
+}
+
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-2) var(--space-3);
+  margin: var(--space-2) 0 0;
+  padding-top: var(--space-2);
+  border-top: 1px dashed var(--color-border);
+}
+.metrics dt {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  margin-bottom: 2px;
+}
+.metrics dd {
+  margin: 0;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--color-text);
+  white-space: nowrap;
+}
+.selectedTag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: var(--space-1);
+  font-size: var(--text-xs);
+  color: var(--color-primary);
+}
+
+.reasons {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: var(--text-xs);
+  color: var(--color-warning);
+}
+.reasons li {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  word-break: keep-all;
+}
+.reasons li > :first-child {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+/* 범례 — 색은 지도와 같은 --map-layout-* 토큰 */
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+  font-size: var(--text-xs);
+  color: var(--color-text-2);
+}
+.legendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.swatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  box-sizing: border-box;
+}
+.swatchStall {
+  background: color-mix(in srgb, var(--map-layout-stall-fill) 60%, var(--map-bg-satellite));
+  border: 1px solid var(--map-layout-stall-stroke);
+}
+.swatchAisle {
+  background: color-mix(in srgb, var(--map-layout-aisle-fill) 30%, var(--map-bg-satellite));
+  border: 1px solid var(--map-layout-usable-stroke);
+}
+.swatchGate {
+  border-radius: 50%;
+  background: var(--map-layout-gate-stroke);
+  border: 2px solid var(--map-marker-ring);
+}
+.swatchUsable {
+  background: var(--map-bg-satellite);
+  border: 1.5px dashed var(--map-layout-usable-stroke);
+}
+
+.basisList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.basisRow {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--color-text);
+  word-break: keep-all;
+}
+.basisBadge {
+  flex-shrink: 0;
+  height: 20px;
+  margin-top: 1px;
+}
+
+.disclaimer {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  word-break: keep-all;
+}
+
+.noticeText {
+  font-size: var(--text-sm);
+  color: var(--color-text-2);
+  word-break: keep-all;
+}
+.errorBody {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.retry {
+  align-self: flex-start;
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 420px) {
+  .metrics {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}

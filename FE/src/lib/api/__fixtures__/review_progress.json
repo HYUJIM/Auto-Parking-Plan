@@ -1,0 +1,1 @@
+{"review_id":"01a1c5d1-634e-700f-a709-3d7e6f1c6ea5","status":"running","steps":[{"step":"parcel","label":"대지정보 조회","state":"done"},{"step":"zoning","label":"용도지역 확인","state":"done"},{"step":"building","label":"건축 법규 검토","state":"running"},{"step":"parking","label":"주차 기준 확인","state":"pending"},{"step":"explain","label":"쉬운 설명 확인","state":"pending"}],"error":null}

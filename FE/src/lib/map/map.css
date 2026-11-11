@@ -1,0 +1,251 @@
+/*
+ * 지도 위 요소 공용 스타일 — 네이버 지도(HTML 마커)와 미리보기 지도(SVG)가 함께 씁니다.
+ * 색·두께는 전부 --map-* 토큰에서 옵니다.
+ */
+
+/* ── 필지 마커 (네이버 지도 HTML 콘텐츠) ───────────────────────── */
+.map-marker {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--map-marker);
+  border: 2.5px solid var(--map-marker-ring);
+  box-shadow: 0 0 0 6px color-mix(in srgb, var(--map-marker) 18%, transparent);
+  cursor: pointer;
+  transition: transform var(--duration-fast) var(--ease);
+}
+.map-marker:hover {
+  transform: scale(1.2);
+}
+.map-marker.preview {
+  background: var(--map-marker-preview);
+  box-shadow: 0 0 0 6px color-mix(in srgb, var(--map-marker-preview) 22%, transparent);
+}
+
+/* ── 배치안 출입구 점 (네이버 지도 HTML 콘텐츠) ───────────────────── */
+.map-gate-marker {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--map-layout-gate-stroke);
+  border: 2.5px solid var(--map-marker-ring);
+  box-shadow: 0 0 0 5px color-mix(in srgb, var(--map-layout-gate-stroke) 25%, transparent);
+  pointer-events: none;
+}
+
+/* ── 대지면적 말풍선 ─────────────────────────────────────────── */
+.map-area-label {
+  position: relative;
+  width: max-content;
+  transform: translate(-50%, calc(-100% - 16px));
+  background: var(--map-label-bg);
+  color: var(--map-label-text);
+  font-family: var(--font-numeric);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  line-height: 1;
+  padding: 9px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--map-site-stroke);
+  box-shadow: var(--shadow-md);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+.map-area-label::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -6px;
+  width: 10px;
+  height: 10px;
+  background: var(--map-label-bg);
+  border-right: 1px solid var(--map-site-stroke);
+  border-bottom: 1px solid var(--map-site-stroke);
+  transform: translateX(-50%) rotate(45deg);
+}
+
+/* ── 미리보기 지도 (네이버 키가 없을 때 자체 렌더) ───────────────── */
+.mock-map {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  touch-action: none;
+  cursor: grab;
+  user-select: none;
+  background: var(--map-bg-normal);
+}
+.mock-map.is-dragging {
+  cursor: grabbing;
+}
+.mock-map svg {
+  /* 배경 타일(absolute) 위에 오도록 */
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* 배경 타일 층 — 실제 지도(OSM·Esri) 위에 SVG 표시를 겹칩니다 (tileLayer.ts) */
+.mock-map .mm-tiles {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+.mock-map .mm-tile {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 256px;
+  height: 256px;
+  opacity: 0;
+  transition: opacity var(--duration-fast) var(--ease);
+  pointer-events: none;
+  user-select: none;
+}
+.mock-map .mm-tile.is-loaded {
+  opacity: 1;
+}
+.mock-map .mm-tile.is-error {
+  display: none;
+}
+.mock-map[data-tiles='true'] .mm-bg,
+.mock-map[data-tiles='true'] .mm-grid {
+  display: none;
+}
+.mock-map[data-tiles='true'][data-type='satellite'] {
+  background: var(--map-bg-satellite);
+}
+.mock-map .mm-bg {
+  fill: var(--map-bg-normal);
+}
+.mock-map[data-type='satellite'] .mm-bg {
+  fill: url(#mm-satellite);
+}
+.mock-map .mm-sat-1 {
+  stop-color: var(--map-bg-satellite);
+}
+.mock-map .mm-sat-2 {
+  stop-color: var(--map-bg-satellite-2);
+}
+
+.mock-map .mm-minor {
+  stroke: var(--map-grid);
+  stroke-width: 1;
+}
+.mock-map .mm-street {
+  stroke: var(--map-grid-major);
+  stroke-width: 3;
+  stroke-linecap: square;
+}
+.mock-map .mm-block {
+  fill: var(--map-grid-major);
+  opacity: 0.45;
+}
+.mock-map[data-type='satellite'] .mm-minor {
+  stroke: var(--map-bg-satellite-2);
+  opacity: 0.5;
+}
+.mock-map[data-type='satellite'] .mm-street {
+  stroke: var(--map-bg-satellite-2);
+  stroke-width: 4;
+}
+.mock-map[data-type='satellite'] .mm-block {
+  fill: var(--map-bg-satellite-2);
+  opacity: 0.9;
+}
+
+.mock-map .mm-cadastral-layer {
+  display: none;
+}
+.mock-map[data-cadastral='true'] .mm-cadastral-layer {
+  display: block;
+}
+.mock-map .mm-cadastral {
+  stroke: var(--map-cadastral);
+  stroke-width: 1;
+  stroke-dasharray: 4 4;
+  opacity: 0.6;
+}
+.mock-map[data-type='normal'] .mm-cadastral {
+  stroke: var(--map-grid-major);
+  opacity: 0.9;
+}
+
+.mock-map .mm-site {
+  fill: var(--map-site-fill);
+  fill-opacity: var(--map-site-fill-opacity);
+  stroke: var(--map-site-stroke);
+  stroke-width: calc(var(--map-site-stroke-width) * 1px);
+  stroke-linejoin: round;
+}
+.mock-map .mm-road {
+  fill: none;
+  stroke: var(--map-road-stroke);
+  stroke-width: calc(var(--map-road-stroke-width) * 1px);
+  stroke-linecap: round;
+  opacity: 0.9;
+}
+
+/* 주차장 배치안 — 색은 --map-layout-* 토큰 (네이버 지도는 mapStyle.ts 가 같은 토큰을 읽습니다) */
+.mock-map .mm-layout-usable_area {
+  fill: none;
+  stroke: var(--map-layout-usable-stroke);
+  stroke-width: 1.5;
+  stroke-dasharray: 5 4;
+  opacity: 0.9;
+}
+.mock-map .mm-layout-aisle {
+  fill: var(--map-layout-aisle-fill);
+  fill-opacity: var(--map-layout-aisle-fill-opacity);
+  stroke: var(--map-layout-usable-stroke);
+  stroke-width: 1;
+  stroke-opacity: 0.6;
+}
+.mock-map .mm-layout-stall {
+  fill: var(--map-layout-stall-fill);
+  fill-opacity: var(--map-layout-stall-fill-opacity);
+  stroke: var(--map-layout-stall-stroke);
+  stroke-width: 1.2;
+  stroke-linejoin: round;
+}
+.mock-map .mm-layout-gate_opening {
+  fill: none;
+  stroke: var(--map-layout-gate-stroke);
+  stroke-width: calc(var(--map-layout-gate-stroke-width) * 1px);
+  stroke-linecap: round;
+}
+.mock-map .mm-layout-gate {
+  fill: var(--map-layout-gate-stroke);
+  stroke: var(--map-marker-ring);
+  stroke-width: 2.5;
+}
+
+.mock-map .mm-marker {
+  cursor: pointer;
+}
+.mock-map .mm-marker .halo {
+  fill: var(--map-marker);
+  opacity: 0.18;
+  transition: r var(--duration-fast) var(--ease);
+}
+.mock-map .mm-marker .dot {
+  fill: var(--map-marker);
+  stroke: var(--map-marker-ring);
+  stroke-width: 2.5;
+}
+.mock-map .mm-marker.preview .halo {
+  fill: var(--map-marker-preview);
+  opacity: 0.24;
+}
+.mock-map .mm-marker.preview .dot {
+  fill: var(--map-marker-preview);
+}
+.mock-map .mm-marker:hover .halo {
+  r: 16;
+}
+
+.mock-map .mm-label {
+  overflow: visible;
+}

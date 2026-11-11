@@ -158,7 +158,8 @@ public class ParkingBridge {
             base.put("simulated", false);
             base.putNull("result");
             base.putArray("constraint_reasons").add("PARKING_USE_NOT_CONFIRMED");
-            base.put("message", "주차장 설치 가능 여부가 확인되지 않아 배치를 계산하지 않았습니다. 참고 배치를 보려면 include_unverified=true 로 요청하세요.");
+            // message 는 화면에 그대로 나가는 사용자용 문장이다 (요청 파라미터 이름은 넣지 않는다 — 참고 배치 요청 방법은 위 Javadoc)
+            base.put("message", "주차장 설치 가능 여부가 확인되지 않아 배치를 계산하지 않았습니다. 참고용 배치는 따로 요청해 볼 수 있습니다.");
             return base;
         }
         ParkingEngineAdapter.SimOut sim = engine.simulate(geom, stallRules, aisleRules, params);
