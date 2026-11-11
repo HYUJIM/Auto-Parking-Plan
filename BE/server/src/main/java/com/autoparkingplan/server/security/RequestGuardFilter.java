@@ -63,6 +63,9 @@ public class RequestGuardFilter extends OncePerRequestFilter {
         if (path.startsWith("/v1/parcels")) {
             return p.get("parcels");
         }
+        if (path.startsWith("/v1/map/tiles/")) {
+            return p.get("tiles"); // 지도 타일: 화면 하나가 수십 장을 부르므로 전용 묶음 (기본 묶음을 태우지 않게)
+        }
         return p.get("default");
     }
 

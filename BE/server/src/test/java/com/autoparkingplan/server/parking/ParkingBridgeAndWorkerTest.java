@@ -103,6 +103,52 @@ class ParkingBridgeAndWorkerTest {
                 .isEqualTo("MANUAL_CHECK");
     }
 
+    /** 주차장 건설 불가(NOT_PERMITTED): 공공시설 용지 지목, 또는 승인된 용도 목록에 주차장 관련 용도가 없음 */
+    @Test
+    void eligibilityNotPermitted() {
+        // 승인된 용도 목록은 있는데 주차장 관련 용도가 없다 → 건설 불가
+        ObjectNode listed = resultWithUses(uses("단독주택", "주거", "REVIEWABLE", null), null);
+        JsonNode e = ParkingBridge.eligibilityFromReview(listed);
+        assertThat(e.get("status").stringValue()).isEqualTo("NOT_PERMITTED");
+        assertThat(e.get("reason").stringValue()).contains("주차장 관련 용도가 없습니다");
+        // 자리 표시('○○ 용도')만 있으면 승인된 용도 규칙이 없는 것 → 미확인 (건설 불가로 단정하지 않는다)
+        JsonNode placeholder = ParkingBridge.eligibilityFromReview(resultWithUses(uses("주거 용도", "주거", "MANUAL_CHECK", null), null));
+        assertThat(placeholder.get("status").stringValue()).isEqualTo("MANUAL_CHECK");
+        assertThat(placeholder.get("reason").stringValue()).contains("승인된 용도 규칙이 없어");
+        // 지목이 도로·하천 등 공공시설 용지 → 용도 목록에 주차장이 있어도 건설 불가
+        for (String category : List.of("도로", "하천", "구거", "철도용지")) {
+            ObjectNode road = resultWithUses(uses("자동차 관련 시설 중 주차장", "기타", "REVIEWABLE", null), null);
+            road.putObject("parcel").put("land_category", category);
+            JsonNode r = ParkingBridge.eligibilityFromReview(road);
+            assertThat(r.get("status").stringValue()).isEqualTo("NOT_PERMITTED");
+            assertThat(r.get("reason").stringValue()).contains("'" + category + "'");
+        }
+        // 대(垈)·잡종지 등은 지목만으로 막지 않는다
+        ObjectNode lot = resultWithUses(uses("자동차 관련 시설 중 주차장", "기타", "REVIEWABLE", null), null);
+        lot.putObject("parcel").put("land_category", "대");
+        assertThat(ParkingBridge.eligibilityFromReview(lot).get("status").stringValue()).isEqualTo("REVIEWABLE");
+    }
+
+    /** 건설 불가 필지는 참고 배치(include_unverified)도 계산하지 않고 경고 문구를 돌려준다 */
+    @Test
+    void simulationRefusedWhenParkingNotPermitted() {
+        UUID rid = app.bean(ReviewService.class).submit(PNU_R2G, null, "owner", null);
+        app.tx(em -> {
+            ReviewRequest req = em.find(ReviewRequest.class, rid);
+            ObjectNode result = (ObjectNode) req.getResultJson().deepCopy();
+            ((ObjectNode) result.get("parcel")).put("land_category", "도로");
+            req.setResultJson(result);
+            return null;
+        });
+        ParkingBridge.Request params = new ParkingBridge.Request(null, "general", 0.5, null, 1, 3, true);
+        ObjectNode out = app.tx(em -> app.bean(ParkingBridge.class).simulateForReview(em, rid, params));
+        assertThat(out.get("simulated").booleanValue()).isFalse();
+        assertThat(out.get("result").isNull()).isTrue();
+        assertThat(out.get("constraint_reasons")).isEqualTo(Json.parse("[\"PARKING_NOT_PERMITTED\"]"));
+        assertThat(out.get("eligibility").get("status").stringValue()).isEqualTo("NOT_PERMITTED");
+        assertThat(out.get("message").stringValue()).startsWith(ParkingBridge.NOT_PERMITTED_MESSAGE).contains("'도로'");
+    }
+
     /** test_simulation_gated_when_parking_use_unconfirmed */
     @Test
     void simulationGatedWhenParkingUseUnconfirmed() {

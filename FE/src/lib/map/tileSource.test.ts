@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_TILE_SOURCE, TILE_MAX_ZOOM, tileSourceFromEnv, tileUrl, visibleTiles } from './tileSource';
+import { DEFAULT_TILE_SOURCE, TILE_MAX_ZOOM, tileChoiceFromEnv, tileSourceFromEnv, tileUrl, visibleTiles } from './tileSource';
 
 describe('tileSourceFromEnv', () => {
   it('비우면 기본값(OSM · Esri)', () => {
@@ -21,10 +21,34 @@ describe('tileSourceFromEnv', () => {
   });
 });
 
+describe('tileChoiceFromEnv', () => {
+  it('.env 에 아무것도 없으면 null — BE 에 물어본다', () => {
+    expect(tileChoiceFromEnv({})).toBeNull();
+    expect(tileChoiceFromEnv({ VITE_MAP_TILE_URL: '  ', VITE_MAP_TILE_URL_SATELLITE: '' })).toBeNull();
+  });
+
+  it('템플릿을 적으면 그대로 쓴다 (custom) — 위성만 적어도 .env 설정으로 본다', () => {
+    const custom = 'https://tiles.example/{z}/{x}/{y}.png';
+    expect(tileChoiceFromEnv({ VITE_MAP_TILE_URL: custom })).toEqual({
+      provider: 'custom',
+      source: { normal: custom, satellite: DEFAULT_TILE_SOURCE.satellite },
+    });
+    expect(tileChoiceFromEnv({ VITE_MAP_TILE_URL_SATELLITE: custom })).toEqual({
+      provider: 'custom',
+      source: { normal: DEFAULT_TILE_SOURCE.normal, satellite: custom },
+    });
+  });
+
+  it('off 면 타일 없음 (none)', () => {
+    expect(tileChoiceFromEnv({ VITE_MAP_TILE_URL: 'off' })).toEqual({ provider: 'none', source: null });
+  });
+});
+
 describe('tileUrl', () => {
   it('{z} {x} {y} 자리표시자를 순서와 무관하게 바꾼다', () => {
     expect(tileUrl('https://a/{z}/{x}/{y}.png', 15, 27966, 12876)).toBe('https://a/15/27966/12876.png');
     expect(tileUrl('https://b/tile/{z}/{y}/{x}', 3, 1, 2)).toBe('https://b/tile/3/2/1');
+    expect(tileUrl('/v1/map/tiles/base/{z}/{x}/{y}', 19, 449482, 203286)).toBe('/v1/map/tiles/base/19/449482/203286');
   });
 });
 
@@ -52,6 +76,21 @@ describe('visibleTiles', () => {
     const tiles = visibleTiles({ left: 0, top: 0, width: 600, height: 600 }, TILE_MAX_ZOOM + 1);
     expect(tiles.length).toBeGreaterThan(0);
     expect(tiles.every((t) => t.z === TILE_MAX_ZOOM && t.size === 512)).toBe(true);
+  });
+
+  it('타일 소스의 최대 줌이 더 낮으면 그 줌의 타일을 키워서 쓴다', () => {
+    const tiles = visibleTiles({ left: 0, top: 0, width: 600, height: 600 }, 19, { maxZoom: 17 });
+    expect(tiles.length).toBeGreaterThan(0);
+    expect(tiles.every((t) => t.z === 17 && t.size === 1024)).toBe(true);
+    // 최대 줌 이하에서는 그대로
+    expect(visibleTiles({ left: 0, top: 0, width: 300, height: 300 }, 17, { maxZoom: 17 }).every((t) => t.z === 17 && t.size === 256)).toBe(
+      true,
+    );
+  });
+
+  it('타일 소스의 최소 줌보다 멀리서 보면 타일을 요청하지 않는다', () => {
+    expect(visibleTiles({ left: 0, top: 0, width: 600, height: 600 }, 5, { minZoom: 6 })).toEqual([]);
+    expect(visibleTiles({ left: 0, top: 0, width: 600, height: 600 }, 6, { minZoom: 6 }).length).toBeGreaterThan(0);
   });
 
   it('뷰포트가 비어 있으면 아무것도 없다', () => {

@@ -4,7 +4,7 @@ import { cx } from '@/lib/cx';
 import { Icon } from './Icon';
 import styles from './Badge.module.css';
 
-export type BadgeVariant = 'ok' | 'check' | 'manual' | 'info' | 'primary' | 'neutral';
+export type BadgeVariant = 'ok' | 'check' | 'manual' | 'info' | 'primary' | 'neutral' | 'danger';
 
 interface BadgeProps {
   variant?: BadgeVariant;

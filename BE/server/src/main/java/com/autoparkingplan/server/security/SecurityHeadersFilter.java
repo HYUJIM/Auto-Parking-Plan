@@ -9,7 +9,13 @@ import jakarta.servlet.http.HttpServletResponse;
 
 import org.springframework.web.filter.OncePerRequestFilter;
 
-/** JSON API 응답에 붙이는 보안 헤더 (파이썬 SecurityHeadersMiddleware). 이미 정한 헤더는 덮어쓰지 않는다. */
+/**
+ * API 응답에 붙이는 보안 헤더 (파이썬 SecurityHeadersMiddleware). 이미 정한 헤더는 덮어쓰지 않는다.
+ *
+ * <p>지도 타일(/v1/map/tiles, 이미지 응답)에도 같은 헤더가 붙는다: nosniff 는 Content-Type 이 실제 이미지 형식이라 문제없고,
+ * CSP 는 그 응답을 문서로 열 때만 적용되므로 화면이 {@code <img>} 로 불러 쓰는 데 영향이 없다. Cross-Origin-Resource-Policy 는
+ * 붙이지 않는다 (FE 를 다른 origin 에 두고 BE 를 직접 부르는 배포에서도 타일이 보여야 한다).
+ */
 public class SecurityHeadersFilter extends OncePerRequestFilter {
     static final String CSP = "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'";
     private static final String[] DOCS_PATHS = {"/docs", "/redoc", "/openapi.json", "/v3/api-docs", "/swagger-ui"};

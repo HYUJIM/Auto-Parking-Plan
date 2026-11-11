@@ -52,6 +52,7 @@ import tools.jackson.databind.node.ObjectNode;
  *   GET /ned/data/getLandCharacteristics               브이월드 토지특성속성
  *   GET /ned/data/ladfrlList                           브이월드 토지임야목록
  *   GET /1613000/BldRgstHubService/getBrTitleInfo      건축HUB 건축물대장 표제부
+ *   GET /req/wmts/1.0.0/{key}/{Layer}/{z}/{y}/{x}.{ext}   브이월드 배경지도 타일 (자바판 추가, {@link MockTiles})
  *   GET /  ,  GET /__mock__/parcels                    mock 안내·예시 필지 요약
  * </pre>
  *
@@ -440,6 +441,13 @@ public final class MockServer implements AutoCloseable {
         URI uri = ex.getRequestURI();
         String path = uri.getPath(); // 퍼센트 인코딩을 푼 경로 (uvicorn 도 unquote 한 path 로 라우팅한다)
         String rawQuery = uri.getRawQuery();
+        if (path.startsWith(MockTiles.PATH_PREFIX) && ex.getRequestMethod().equals("GET")) {
+            // 배경지도 타일 (파이썬판에 없던 경로). 실제 API 처럼 실패도 200 + XML 이다
+            MockTiles.Result tile = MockTiles.respond(path.substring(MockTiles.PATH_PREFIX.length()));
+            if (tile != null) {
+                return new Response(200, tile.contentType(), tile.body(), Map.of());
+            }
+        }
         if (ROUTES.contains(path)) {
             if (!ex.getRequestMethod().equals("GET")) {
                 return new Response(405, "application/json", "{\"detail\":\"Method Not Allowed\"}".getBytes(StandardCharsets.UTF_8),

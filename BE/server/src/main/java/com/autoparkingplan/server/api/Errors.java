@@ -23,6 +23,7 @@ public final class Errors {
             Map.entry("REVIEW_NOT_FOUND", new Entry(404, "검토 결과를 찾을 수 없습니다.")),
             Map.entry("REVIEW_NOT_READY", new Entry(409, "검토가 아직 끝나지 않았습니다.")),
             Map.entry("RULE_NOT_FOUND", new Entry(404, "규칙을 찾을 수 없습니다.")),
+            Map.entry("TILE_NOT_FOUND", new Entry(404, "지도 타일을 찾을 수 없습니다.")),
             Map.entry("SITE_GEOMETRY_MISSING", new Entry(422, "필지 경계 정보가 없어 배치를 계산할 수 없습니다.")),
             Map.entry("INVALID_REQUEST", new Entry(422, "요청 형식이 올바르지 않습니다.")),
             Map.entry("UNAUTHORIZED", new Entry(401, "관리자 인증이 필요합니다.")),

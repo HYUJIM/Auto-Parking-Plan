@@ -21,6 +21,10 @@
   background: var(--color-warning-soft);
   color: var(--color-warning);
 }
+.danger {
+  background: var(--color-danger-soft);
+  color: var(--color-danger);
+}
 .manual {
   background: var(--color-neutral-soft);
   color: var(--color-neutral);

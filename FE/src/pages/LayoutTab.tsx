@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { LayoutAlternative, Parcel, ParkingSimulation, RuleReview } from '@/lib/api/types';
-import { getParkingSimulation } from '@/lib/api/review';
+import { getParkingSimulation, isParkingNotPermitted } from '@/lib/api/review';
 import { describeApiError } from '@/lib/api/errors';
 import type { AsyncState } from '@/lib/useAsync';
 import { useMap } from '@/lib/map/MapContext';
+import { useToast } from '@/components/Toast';
 import { content, fmt } from '@/lib/content';
 import { cx } from '@/lib/cx';
 import { formatNumber } from '@/lib/format';
@@ -33,11 +34,13 @@ interface LayoutTabProps {
  * 배치안 탭 — `POST /v1/reviews/{id}/parking-simulations`.
  * 법규 검토(review_id)가 끝나야 계산할 수 있습니다. 결과의 배치안 A/B/C 중 하나를 고르면 지도에 주차구획·차로·출입구를 그립니다.
  * 주차장 설치 가능 여부가 확인되지 않아 BE 가 계산하지 않으면(simulated=false) 이유를 보여 주고 '참고 배치 보기'(include_unverified)를 제안합니다.
+ * 주차장을 건설할 수 없는 토지(eligibility NOT_PERMITTED)이면 경고 알림을 띄우고, 사유만 보여 줍니다 (참고 배치도 제안하지 않음).
  * 탭을 벗어나도 상태와 지도 표시는 유지되고, 필지가 바뀌면(부모가 key 로 다시 마운트) 지워집니다.
  */
 export function LayoutTab({ parcel, review, autoRun, hidden }: LayoutTabProps) {
   const l = content.site.layout;
   const { setLayout } = useMap();
+  const toast = useToast();
   const [state, setState] = useState<SimState>({ status: 'idle' });
   const [selected, setSelected] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -56,12 +59,14 @@ export function LayoutTab({ parcel, review, autoRun, hidden }: LayoutTabProps) {
         if (controller.signal.aborted) return;
         setState({ status: 'success', data: sim, includeUnverified });
         setSelected(sim.result?.recommendedCode ?? null);
+        // 건설 불가 토지: 버튼을 누른 즉시 눈에 띄는 경고
+        if (isParkingNotPermitted(sim)) toast.show(content.site.layout.notPermitted, 'warning');
       } catch (error) {
         if (controller.signal.aborted) return;
         setState({ status: 'error', error, includeUnverified });
       }
     },
-    [reviewId],
+    [reviewId, toast],
   );
 
   // 하단 '배치안 생성' — 눌린 뒤 검토가 끝나면 그때 시작
@@ -148,13 +153,31 @@ function SimulationView({
   const r = content.site.rules;
   const alternatives = sim.result?.alternatives ?? [];
   const eligibilityStatus = isRuleStatus(sim.eligibility.status) ? sim.eligibility.status : 'MANUAL_CHECK';
+  const notPermitted = isParkingNotPermitted(sim);
 
   return (
     <>
+      {notPermitted && (
+        <div className={cx(panelStyles.notice, styles.notPermitted)} role="alert">
+          <Icon name="alert-circle" size={22} className={cx(panelStyles.noticeIcon, styles.notPermittedIcon)} />
+          <div className={styles.notSimulatedBody}>
+            <strong>{l.notPermitted}</strong>
+            {sim.eligibility.reason && <p>{sim.eligibility.reason}</p>}
+            <p>{l.notPermittedNote}</p>
+          </div>
+        </div>
+      )}
+
       <div className={styles.card}>
         <span className={styles.cardLabel}>{l.eligibility}</span>
         <div className={styles.eligibility}>
-          <StatusBadge status={eligibilityStatus} />
+          {notPermitted ? (
+            <Badge variant="danger" icon="alert-circle">
+              {l.notPermittedBadge}
+            </Badge>
+          ) : (
+            <StatusBadge status={eligibilityStatus} />
+          )}
           <span className={styles.eligibilityText}>
             {sim.eligibility.reason && <span>{sim.eligibility.reason}</span>}
             {sim.eligibility.useName && <span className={styles.muted}>{fmt(l.eligibilityUse, { use: sim.eligibility.useName })}</span>}
@@ -162,7 +185,7 @@ function SimulationView({
         </div>
       </div>
 
-      {!sim.simulated && (
+      {!sim.simulated && !notPermitted && (
         <div className={cx(panelStyles.notice, styles.notSimulated)}>
           <Icon name="info" size={22} className={cx(panelStyles.noticeIcon, panelStyles.noticeInfo)} />
           <div className={styles.notSimulatedBody}>

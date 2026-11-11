@@ -7,7 +7,7 @@
 
 | # | 문제 | 구현 |
 | --- | --- | --- |
-| A1 | 요청 제한 없음 | `server.security.TokenBucketLimiter` + `RequestGuardFilter` (서블릿 필터). IP·경로 묶음별 분당 허용량 (검토 생성 10, 배치 30, 주소 검색 30, 필지 60, 그 밖 240), 초과 시 429 + `Retry-After`. `/healthz`·OPTIONS 제외 |
+| A1 | 요청 제한 없음 | `server.security.TokenBucketLimiter` + `RequestGuardFilter` (서블릿 필터). IP·경로 묶음별 분당 허용량 (검토 생성 10, 배치 30, 주소 검색 30, 필지 60, 지도 타일 1200·순간 300, 그 밖 240), 초과 시 429 + `Retry-After`. `/healthz`·OPTIONS 제외 |
 | A2 | `?refresh=true` 로 외부 API 반복 호출 | `ParcelService.getParcel`: 같은 필지는 `PARCEL_REFRESH_MIN_INTERVAL_S`(600초) 안에 다시 부르지 않음 |
 | A3 | X-Forwarded-For 위조로 제한·잠금 회피 | `server.forward-headers-strategy=none` (Tomcat 이 전달 헤더로 연결 주소를 바꾸지 않음) + `ClientIp`: `TRUSTED_PROXY_HOPS`(ALB=1)만큼 X-Forwarded-For 뒤에서 센 값만 믿음 |
 | A4 | 관리자 토큰 무차별 대입 | `AuthFailureGuard`: IP 별 10회 실패 → 15분 잠금 (맞는 토큰도 거부). 운영에서 32자 미만·`change-me`·단조로운 토큰이면 시작 거부 (`AppSettings`, `check-config` 종료 코드 2) |

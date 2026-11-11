@@ -10,6 +10,7 @@
  *
  * <p>구성: {@link com.autoparkingplan.external.JusoClient} (도로명주소 검색),
  * {@link com.autoparkingplan.external.VWorldClient} (연속지적도·토지이용계획·토지특성·토지임야),
+ * {@link com.autoparkingplan.external.VWorldTileClient} (배경지도 타일 WMTS — 이것만 JSON 이 아니라 이미지를 돌려준다),
  * {@link com.autoparkingplan.external.BuildingHubClient} (건축물대장 표제부), {@link com.autoparkingplan.external.Pnu},
  * {@link com.autoparkingplan.external.ZoningCodes}, 공통 HTTP 처리 {@link com.autoparkingplan.external.HttpJsonClient}·
  * {@link com.autoparkingplan.external.Http}.

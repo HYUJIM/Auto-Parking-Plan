@@ -156,6 +156,7 @@ public final class E2EVerify {
         env.put("VWORLD_API_KEY", "mock-key");
         env.put("VWORLD_DATA_URL", mock);
         env.put("VWORLD_NED_URL", mock);
+        env.put("VWORLD_WMTS_URL", mock);
         env.put("BUILDING_HUB_KEY", "mock-key");
         env.put("BUILDING_HUB_URL", mock);
         env.put("LLM_PROVIDER", "fake");

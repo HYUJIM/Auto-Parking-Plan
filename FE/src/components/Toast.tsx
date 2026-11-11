@@ -1,14 +1,19 @@
 import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from 'react';
+import { cx } from '@/lib/cx';
 import { Icon } from './Icon';
 import styles from './Toast.module.css';
+
+type ToastVariant = 'info' | 'warning';
 
 interface ToastItem {
   id: number;
   message: string;
+  variant: ToastVariant;
 }
 
 interface ToastApi {
-  show: (message: string) => void;
+  /** variant 'warning' 은 눈에 띄는 색으로 더 오래(6초) 보여 줍니다 (예: 주차장 건설 불가 경고) */
+  show: (message: string, variant?: ToastVariant) => void;
 }
 
 const ToastContext = createContext<ToastApi | null>(null);
@@ -18,10 +23,10 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<ToastItem[]>([]);
   const seq = useRef(0);
 
-  const show = useCallback((message: string) => {
+  const show = useCallback((message: string, variant: ToastVariant = 'info') => {
     const id = ++seq.current;
-    setItems((list) => [...list.slice(-2), { id, message }]);
-    setTimeout(() => setItems((list) => list.filter((t) => t.id !== id)), 3600);
+    setItems((list) => [...list.slice(-2), { id, message, variant }]);
+    setTimeout(() => setItems((list) => list.filter((t) => t.id !== id)), variant === 'warning' ? 6000 : 3600);
   }, []);
 
   const api = useMemo(() => ({ show }), [show]);
@@ -31,8 +36,12 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       {children}
       <div className={styles.stack} role="status" aria-live="polite">
         {items.map((t) => (
-          <div key={t.id} className={styles.toast}>
-            <Icon name="info" size={18} />
+          <div
+            key={t.id}
+            className={cx(styles.toast, t.variant === 'warning' && styles.warning)}
+            role={t.variant === 'warning' ? 'alert' : undefined}
+          >
+            <Icon name={t.variant === 'warning' ? 'alert-circle' : 'info'} size={18} />
             <span>{t.message}</span>
           </div>
         ))}

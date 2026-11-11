@@ -3,9 +3,12 @@
 interface ImportMetaEnv {
   /** 네이버 지도 Web Dynamic Map Client ID (ncpKeyId). 비우면 미리보기 지도로 동작 */
   readonly VITE_NAVER_MAP_KEY_ID?: string;
-  /** 미리보기 지도의 배경 타일 템플릿({z} {x} {y}). 비우면 OpenStreetMap, `off` 면 타일 없음 */
+  /**
+   * 미리보기 지도의 배경 타일 템플릿({z} {x} {y}). 비우면 BE 가 알려 주는 브이월드 타일(GET /v1/map/config → /v1/map/tiles),
+   * BE 에 브이월드 키가 없으면 OpenStreetMap. `off` 면 타일 없음
+   */
   readonly VITE_MAP_TILE_URL?: string;
-  /** '위성' 레이어 타일 템플릿. 비우면 Esri World Imagery, `off` 면 일반 타일 사용 */
+  /** '위성' 레이어 타일 템플릿 (적으면 BE 에 묻지 않음). VITE_MAP_TILE_URL 과 함께 쓸 때 비우면 Esri World Imagery, `off` 면 일반 타일 사용 */
   readonly VITE_MAP_TILE_URL_SATELLITE?: string;
   /** BE 공개 API origin (정적 호스팅 + BE 직접 호출일 때). 비우면 같은 origin 의 /v1 (개발 서버가 BE 로 프록시) */
   readonly VITE_API_BASE?: string;

@@ -68,6 +68,14 @@ export async function getRuleReview(parcel: Parcel, opts: ReviewOptions = {}): P
   }
 }
 
+/**
+ * BE 가 '주차장 건설 불가'로 판단한 결과인지 — 지목이 도로·하천 같은 공공시설 용지이거나, 승인된 용도 목록에 주차장 관련 용도가 없을 때입니다.
+ * 이때는 배치를 계산하지 않고(simulated=false) 참고 배치도 제공하지 않습니다.
+ */
+export function isParkingNotPermitted(sim: Pick<ParkingSimulation, 'eligibility' | 'constraintReasons'>): boolean {
+  return sim.eligibility.status === 'NOT_PERMITTED' || sim.constraintReasons.includes('PARKING_NOT_PERMITTED');
+}
+
 export interface SimulationOptions {
   /** 주차장 설치 가능 여부가 확인되지 않아도 참고 배치를 계산 */
   includeUnverified?: boolean;

@@ -51,6 +51,7 @@ services:
       VWORLD_API_KEY: ${VWORLD_API_KEY:-mock-key}
       VWORLD_DATA_URL: ${VWORLD_DATA_URL:-http://mock:8090}
       VWORLD_NED_URL: ${VWORLD_NED_URL:-http://mock:8090}
+      VWORLD_WMTS_URL: ${VWORLD_WMTS_URL:-http://mock:8090}
       BUILDING_HUB_KEY: ${BUILDING_HUB_KEY:-mock-key}
       BUILDING_HUB_URL: ${BUILDING_HUB_URL:-http://mock:8090}
       LLM_PROVIDER: ${LLM_PROVIDER:-fake}
