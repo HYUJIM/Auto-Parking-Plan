@@ -29,6 +29,12 @@ Parameters:
   GitHubBranch:
     Type: String
     Default: main
+  GitHubSubPrefix:
+    Type: String
+    Default: ""
+    Description: >-
+      GitHub OIDC 토큰의 sub 앞부분. 저장소가 고유 번호가 들어간 새 형식(repo:OWNER@번호/NAME@번호)을 쓰면 그 값을 넣는다
+      (gh api repos/OWNER/NAME/actions/oidc/customization/sub 의 sub_claim_prefix). 비우면 repo:OWNER/NAME
   CreateGitHubOidcProvider:
     Type: String
     Default: "true"
@@ -37,6 +43,7 @@ Parameters:
 
 Conditions:
   CreateOidc: !Equals [!Ref CreateGitHubOidcProvider, "true"]
+  DefaultSubPrefix: !Equals [!Ref GitHubSubPrefix, ""]
 
 Resources:
   # ── 서버 (BE + PostgreSQL, docker compose) ─────────────────────────────
@@ -235,7 +242,10 @@ Resources:
             Condition:
               StringEquals:
                 token.actions.githubusercontent.com:aud: sts.amazonaws.com
-                token.actions.githubusercontent.com:sub: !Sub "repo:${GitHubRepo}:ref:refs/heads/${GitHubBranch}"
+                token.actions.githubusercontent.com:sub: !If
+                  - DefaultSubPrefix
+                  - !Sub "repo:${GitHubRepo}:ref:refs/heads/${GitHubBranch}"
+                  - !Sub "${GitHubSubPrefix}:ref:refs/heads/${GitHubBranch}"
       Policies:
         - PolicyName: fe-deploy
           PolicyDocument:

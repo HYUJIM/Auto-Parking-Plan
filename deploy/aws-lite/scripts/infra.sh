@@ -21,6 +21,10 @@ ARGS=(--stack-name "$STACK_NAME" --template-file "$LITE_DIR/template.yaml"
       --capabilities CAPABILITY_NAMED_IAM
       --parameter-overrides "Name=$STACK_NAME" "KeyPairName=$KEY_PAIR_NAME")
 [ -n "${GITHUB_REPO:-}" ] && ARGS+=("GitHubRepo=$GITHUB_REPO")
+# 저장소가 쓰는 OIDC sub 형식을 GitHub 에 물어 역할의 신뢰 조건에 그대로 넣는다 (gh 가 없으면 기본 형식)
+REPO_FOR_SUB="${GITHUB_REPO:-HYUJIM/Auto-Parking-Plan}"
+SUB_PREFIX="${GITHUB_SUB_PREFIX:-$(gh api "repos/$REPO_FOR_SUB/actions/oidc/customization/sub" -q '.sub_claim_prefix // ""' 2>/dev/null || true)}"
+[ -n "$SUB_PREFIX" ] && ARGS+=("GitHubSubPrefix=$SUB_PREFIX")
 [ -n "${BUNDLE_ID:-}" ] && ARGS+=("BundleId=$BUNDLE_ID")
 [ "${1:-}" = "--plan" ] && ARGS+=(--no-execute-changeset)
 
