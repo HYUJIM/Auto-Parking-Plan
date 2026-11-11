@@ -1,0 +1,58 @@
+name: deploy-be
+
+# main 에 BE 변경이 들어오면: 테스트 포함 빌드 -> 서버에 app.jar 올리고 다시 띄움 (deploy/aws-lite/README.md)
+# 저장소 설정: Secrets 의 DEPLOY_SSH_KEY(배포 전용 개인 키), Variables 의 DEPLOY_HOST(서버 IP)·DEPLOY_KNOWN_HOSTS(서버 호스트 키)
+on:
+  push:
+    branches: [main]
+    paths: ["BE/**", "deploy/aws-lite/server/**", "deploy/aws-lite/scripts/**", ".github/workflows/deploy-be.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# 배포는 한 번에 하나만. 진행 중인 배포는 끊지 않는다
+concurrency:
+  group: deploy-be
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    # 배포 변수를 아직 등록하지 않은 저장소(포크 포함)에서는 건너뛴다
+    if: vars.DEPLOY_HOST != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      # 외부 액션은 태그 대신 커밋 SHA 로 고정 (be-ci.yml 과 같은 규칙)
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+        with:
+          gradle-version: wrapper
+      - name: 테스트 + 실행 파일 (실패하면 배포하지 않음)
+        working-directory: BE
+        run: gradle --no-daemon build
+      - name: SSH 키·호스트 키 준비
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ vars.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          install -d -m 700 ~/.ssh
+          umask 077
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/deploy_known_hosts
+      - name: 서버에 배포
+        env:
+          DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
+          DEPLOY_SSH_KEY_FILE: /home/runner/.ssh/deploy_key
+          DEPLOY_KNOWN_HOSTS_FILE: /home/runner/.ssh/deploy_known_hosts
+          SKIP_BUILD: "1"
+        run: deploy/aws-lite/scripts/deploy-be.sh
+      - name: SSH 키 지우기
+        if: always()
+        run: rm -f ~/.ssh/deploy_key

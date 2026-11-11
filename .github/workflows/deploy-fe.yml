@@ -1,0 +1,50 @@
+name: deploy-fe
+
+# main 에 FE 변경이 들어오면: 검사 + 빌드 -> S3 업로드 -> CloudFront 캐시 비움 (deploy/aws-lite/README.md)
+# 저장소 설정(Variables): AWS_DEPLOY_ROLE_ARN, FE_BUCKET, CF_DISTRIBUTION_ID. 장기 키 없이 OIDC 로 역할을 맡는다
+on:
+  push:
+    branches: [main]
+    paths: ["FE/**", "deploy/aws-lite/scripts/**", ".github/workflows/deploy-fe.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write # AWS 역할을 맡기 위한 OIDC 토큰
+
+concurrency:
+  group: deploy-fe
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: vars.AWS_DEPLOY_ROLE_ARN != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: FE/.nvmrc
+          cache: npm
+          cache-dependency-path: FE/package-lock.json
+      - name: 의존성 설치
+        working-directory: FE
+        run: npm ci --ignore-scripts
+      - name: 검사 + 빌드 (실패하면 배포하지 않음. 같은 주소의 /v1 을 부르도록 VITE_API_BASE 는 비움)
+        working-directory: FE
+        env:
+          VITE_API_BASE: ""
+        run: npm run check
+      - uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ap-northeast-2
+      - name: S3 업로드 + CloudFront 캐시 비움
+        env:
+          FE_BUCKET: ${{ vars.FE_BUCKET }}
+          CF_DISTRIBUTION_ID: ${{ vars.CF_DISTRIBUTION_ID }}
+          SKIP_BUILD: "1"
+        run: deploy/aws-lite/scripts/deploy-fe.sh
