@@ -45,7 +45,7 @@ java -jar server/build/libs/app.jar e2e-verify --report var/e2e_report.json
 
 ### 3) 직접 띄워 보기
 
-터미널 1 — 모의 공공 API (도로명주소·브이월드·건축HUB 응답 재현, 예시 필지 12개, `data/mock/parcels.json`):
+터미널 1 — 모의 공공 API (도로명주소·브이월드·건축HUB 응답 재현, 예시 필지 12개, `data/mock/parcels.json`. 배경지도 타일은 타일 경계선만 있는 빈 그림):
 
 ```bash
 java -jar server/build/libs/app.jar mockserver --port 8090
@@ -54,7 +54,7 @@ java -jar server/build/libs/app.jar mockserver --port 8090
 터미널 2 — DB 준비(원문 적재 + 기록된 추출 결과 + 개발용 일괄 승인) 후 API 서버. 맥/리눅스:
 
 ```bash
-export JUSO_API_KEY=mock JUSO_BASE_URL=http://127.0.0.1:8090 VWORLD_API_KEY=mock VWORLD_DATA_URL=http://127.0.0.1:8090 VWORLD_NED_URL=http://127.0.0.1:8090 BUILDING_HUB_KEY=mock BUILDING_HUB_URL=http://127.0.0.1:8090 LLM_PROVIDER=fake ADMIN_TOKEN=local-admin-token
+export JUSO_API_KEY=mock JUSO_BASE_URL=http://127.0.0.1:8090 VWORLD_API_KEY=mock VWORLD_DATA_URL=http://127.0.0.1:8090 VWORLD_NED_URL=http://127.0.0.1:8090 VWORLD_WMTS_URL=http://127.0.0.1:8090 BUILDING_HUB_KEY=mock BUILDING_HUB_URL=http://127.0.0.1:8090 LLM_PROVIDER=fake ADMIN_TOKEN=local-admin-token
 ```
 
 ```bash
@@ -114,7 +114,9 @@ docker compose run --rm bootstrap
 | `GET /v1/reviews/{id}` | 진행 중이면 단계별 진행 상태, 끝나면 검토 결과 전체 (`review_result@1.0`) |
 | `GET /v1/rules/{rule_id}/basis` | 근거 상세 — 근거 트리 + 원문 조문 + 국가법령정보센터 링크 |
 | `GET /v1/regions` | 지원 지역 |
-| `POST /v1/reviews/{id}/parking-simulations` | 주차장 배치 시뮬레이션 (지도 오버레이용 GeoJSON) |
+| `POST /v1/reviews/{id}/parking-simulations` | 주차장 배치 시뮬레이션 (지도 오버레이용 GeoJSON). 주차장 설치 가능 여부(`eligibility.status`)가 미확인(`MANUAL_CHECK`)이면 계산을 보류하고(`include_unverified=true` 로 참고 배치 요청 가능), 건설 불가(`NOT_PERMITTED`: 지목이 도로·하천 등 공공시설 용지이거나 승인된 용도 목록에 주차장 관련 용도가 없음)이면 계산하지 않고 경고 문구(`message`, 사유 코드 `PARKING_NOT_PERMITTED`)를 돌려준다 |
+| `GET /v1/map/config` | 화면이 쓸 배경지도 타일 소스 — 브이월드 키가 있으면 `{"tiles": {"provider": "vworld", "normal", "satellite", "min_zoom", "max_zoom"}}`, 없으면 `{"tiles": null}` |
+| `GET /v1/map/tiles/{layer}/{z}/{x}/{y}` | 배경지도 타일 이미지 (`layer` = `base`·`satellite`, 줌 6~19, 표준 XYZ 번호). 브이월드 타일을 서버 키로 대신 받아 준다 — `Cache-Control: public, max-age=86400` |
 | **관리자** | |
 | `GET /admin/extractions`, `GET /admin/rules`, `GET /admin/rules/{id}` | 추출 결과·검수 대기 규칙·원문 하이라이트 + 원장 초안 |
 | `POST /admin/rules/{id}/approve\|reject\|edit` | 규칙 승인·반려·값 수정 |
@@ -124,6 +126,8 @@ docker compose run --rm bootstrap
 | `GET /admin/verifications/{report_id}`, `GET /admin/alerts`, `POST /admin/explanations/purge` | 사후 검증 보고서, 검수 알림, 설명 캐시 삭제 |
 
 오류는 모두 `{"error": {"code", "message", "details"?}}` 형식입니다 (요청 제한 429 + `Retry-After`, 본문 상한 413, 대기열 상한 503).
+
+배경지도 타일을 서버가 대신 받아 주는 이유: 필지 경계(브이월드 연속지적도)는 브이월드 배경지도 위에서만 건물·도로와 정확히 맞습니다 (OpenStreetMap·Esri 타일은 국내 지적과 6~10m 어긋남). 브이월드 타일 주소에는 인증키가 들어가므로 브라우저가 직접 부르지 않고 `/v1/map/tiles` 를 거칩니다. 타일 오류: 번호·레이어가 틀리면 422 `INVALID_REQUEST`, 그 타일이 없거나(서비스 제공영역 밖) 키가 설정되지 않았으면 404 `TILE_NOT_FOUND`, 브이월드 장애·시간 초과·키 오류는 503 `UPSTREAM_UNAVAILABLE`. 타일 주소는 `VWORLD_WMTS_URL`(기본 `https://api.vworld.kr`)로 바꿉니다 — 모의 서버를 쓸 때는 다른 브이월드 주소와 함께 모의 서버로 돌려야 합니다 (안 돌리면 모의 키로 실제 브이월드를 불러 타일이 전부 404).
 
 ## 구조
 

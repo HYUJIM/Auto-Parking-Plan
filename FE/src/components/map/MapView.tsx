@@ -1,6 +1,6 @@
 import { useEffect, useRef, type KeyboardEvent } from 'react';
 import { useMap } from '@/lib/map/MapContext';
-import { MAP_TILES_ENABLED } from '@/lib/map/tileSource';
+import { tileBadgeDesc, tileBadgeText } from '@/lib/map/tileCopy';
 import { content } from '@/lib/content';
 import { Icon } from '../Icon';
 import { MapControls } from './MapControls';
@@ -23,13 +23,11 @@ export function MapView() {
   }, [attach]);
 
   const isMock = map.status === 'mock' || map.status === 'mock-fallback';
-  // 키 없음: 타일 배경이면 '기본 지도', 타일까지 껐으면 '미리보기 지도'. 네이버 실패(fallback)는 사유를 보여 줍니다
-  const previewBadge = MAP_TILES_ENABLED ? content.map.tilesBadge : content.map.previewBadge;
+  // 키 없음: 타일 배경이면 '기본 지도'(설명은 실제 타일 공급자에 맞춤), 타일까지 껐으면 '미리보기 지도'. 네이버 실패(fallback)는 사유를 보여 줍니다
+  const previewBadge = tileBadgeText(map.tileProvider);
   const previewDesc =
     map.status === 'mock'
-      ? MAP_TILES_ENABLED
-        ? content.map.tilesDesc
-        : content.map.previewDesc
+      ? tileBadgeDesc(map.tileProvider)
       : map.fallbackReason === 'script'
         ? content.map.fallbackScriptDesc
         : content.map.fallbackDesc;

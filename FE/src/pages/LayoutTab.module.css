@@ -53,6 +53,20 @@
 .notSimulated strong {
   display: block;
 }
+.notPermitted {
+  background: var(--color-danger-soft);
+  border-color: var(--color-danger);
+}
+.notPermitted strong {
+  display: block;
+  color: var(--color-danger);
+}
+.notPermitted p {
+  color: var(--color-text-2);
+}
+.notPermittedIcon {
+  color: var(--color-danger);
+}
 .notSimulatedBody {
   display: flex;
   flex-direction: column;

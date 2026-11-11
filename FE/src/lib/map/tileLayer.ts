@@ -22,7 +22,7 @@ export class TileLayer {
   render(vp: TileViewport, zoom: number, type: MapType): void {
     const template = type === 'satellite' ? this.source.satellite : this.source.normal;
     const keep = new Set<string>();
-    for (const t of visibleTiles(vp, zoom)) {
+    for (const t of visibleTiles(vp, zoom, this.source)) {
       const key = `${template}|${t.key}`;
       keep.add(key);
       let img = this.tiles.get(key);

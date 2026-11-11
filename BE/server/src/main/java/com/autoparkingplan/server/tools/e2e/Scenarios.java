@@ -184,7 +184,10 @@ final class Scenarios {
                 int manual = PyStr.item(res, "manual_checks").size();
                 rep.check(tag + " 자동 검토 6항목 + 별도 확인 4항목", items.size() == 6 && manual == 4,
                         PyStr.repr(new ArrayList<>(items.keySet())) + " / " + manual);
-                rep.check(tag + " 시행 예정 개정 안내(대구 건축 조례 2026-11-12)", codes.contains("PENDING_AMENDMENT"), PyStr.set(codes));
+                // 개정 조례는 2026-11-12 시행: 그 전날까지만 '시행 예정' 안내가 뜨고, 시행일부터는 뜨지 않아야 한다 (검토 기준일 = 오늘, 한국 시간)
+                boolean amendmentPending = java.time.LocalDate.now(java.time.ZoneId.of("Asia/Seoul")).isBefore(java.time.LocalDate.of(2026, 11, 12));
+                rep.check(tag + " 시행 예정 개정 안내(대구 건축 조례 2026-11-12, 시행 전에만)", codes.contains("PENDING_AMENDMENT") == amendmentPending,
+                        PyStr.set(codes));
                 JsonNode bcr = itemsGet(items, "BUILDING_COVERAGE");
                 JsonNode far = itemsGet(items, "FLOOR_AREA_RATIO");
                 if (landUseError) {

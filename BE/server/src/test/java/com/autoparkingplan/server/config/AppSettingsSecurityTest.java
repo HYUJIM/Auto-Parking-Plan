@@ -61,8 +61,8 @@ class AppSettingsSecurityTest {
     @Test
     void prodRequiresHttpsForExternalAndLlmUrls() {
         Map<String, String> prod = Map.of("APP_ENV", "prod", "ADMIN_TOKEN", STRONG);
-        for (String name : List.of("JUSO_BASE_URL", "VWORLD_DATA_URL", "VWORLD_NED_URL", "BUILDING_HUB_URL", "LAWGO_BASE_URL", "ANTHROPIC_BASE_URL",
-                "OPENAI_BASE_URL")) {
+        for (String name : List.of("JUSO_BASE_URL", "VWORLD_DATA_URL", "VWORLD_NED_URL", "VWORLD_WMTS_URL", "BUILDING_HUB_URL", "LAWGO_BASE_URL",
+                "ANTHROPIC_BASE_URL", "OPENAI_BASE_URL")) {
             Map<String, String> m = new HashMap<>(prod);
             m.put(name, "http://api.example.net/secret-path");
             assertThatThrownBy(() -> settings(m)).as(name).isInstanceOf(AppSettings.InvalidSettings.class).hasMessageContaining(name)
@@ -71,8 +71,11 @@ class AppSettingsSecurityTest {
         Map<String, String> local = new HashMap<>(prod);
         local.put("JUSO_BASE_URL", "http://127.0.0.1:8090");
         local.put("VWORLD_DATA_URL", "http://localhost:8090");
+        local.put("VWORLD_WMTS_URL", "http://127.0.0.1:8090");
         local.put("ANTHROPIC_BASE_URL", "https://llm-proxy.example.net");
         assertThat(settings(local).jusoBaseUrl).isEqualTo("http://127.0.0.1:8090");
+        assertThat(settings(local).vworldWmtsUrl).isEqualTo("http://127.0.0.1:8090");
+        assertThat(settings(Map.of()).vworldWmtsUrl).isEqualTo("https://api.vworld.kr"); // 기본값: 공식 주소
         assertThat(settings(Map.of("APP_ENV", "local", "JUSO_BASE_URL", "http://api.example.net")).jusoBaseUrl).startsWith("http://"); // 로컬·테스트는 제한 없음
     }
 }

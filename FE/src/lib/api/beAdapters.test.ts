@@ -13,6 +13,7 @@ import {
   toReviewProgress,
   toRuleReview,
 } from './beAdapters';
+import { isParkingNotPermitted } from './review';
 import addressSearch from './__fixtures__/address_search.json';
 import parcelS01 from './__fixtures__/parcel_S01.json';
 import parcelS04 from './__fixtures__/parcel_S04.json';
@@ -285,6 +286,27 @@ describe('주차장 배치 시뮬레이션 → ParkingSimulation', () => {
     });
     expect(sim.legalBasis).toHaveLength(2);
     expect(sim.legalBasis[0].criteria).toBe('일반형 2.5m × 5m 이상');
+  });
+
+  it('건설 불가(NOT_PERMITTED): 상태·사유 코드·경고 문구가 그대로 전달되고 isParkingNotPermitted 가 참', () => {
+    const body = {
+      ...(simulationS01 as BeParkingSimulation),
+      eligibility: {
+        status: 'NOT_PERMITTED',
+        use_name: null,
+        reason: "지목이 '도로'인 토지입니다. 도로·하천 같은 공공시설 용지에는 주차장을 건설할 수 없습니다.",
+      },
+      constraint_reasons: ['PARKING_NOT_PERMITTED'],
+      message: '이 지역은 주차장 건설이 불가한 지역입니다.',
+    } as BeParkingSimulation;
+    const sim = toParkingSimulation(body);
+    expect(sim.simulated).toBe(false);
+    expect(sim.eligibility.status).toBe('NOT_PERMITTED');
+    expect(sim.eligibility.reason).toContain("'도로'");
+    expect(sim.constraintReasons).toEqual(['PARKING_NOT_PERMITTED']);
+    expect(isParkingNotPermitted(sim)).toBe(true);
+    // 미확인(MANUAL_CHECK)은 건설 불가가 아닙니다 — 참고 배치를 제안할 수 있는 상태
+    expect(isParkingNotPermitted(toParkingSimulation(simulationS01 as BeParkingSimulation))).toBe(false);
   });
 
   it('S02: 배치안 3개, 추천 ALT_A, 지표·각도·주차면수', () => {

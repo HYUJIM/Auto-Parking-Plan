@@ -48,9 +48,9 @@ npm run dev        # http://localhost:5173  — /v1/* 는 BE(127.0.0.1:8000)로 
 
 | 변수                          | 용도                                                                  | 없을 때                                         |
 | ----------------------------- | --------------------------------------------------------------------- | ----------------------------------------------- |
-| `VITE_NAVER_MAP_KEY_ID`       | 네이버 지도 (브라우저 노출)                                           | 기본 지도(OSM 타일 + 자체 SVG 오버레이)         |
-| `VITE_MAP_TILE_URL`           | 기본 지도의 배경 타일 템플릿(`{z}` `{x}` `{y}`), `off` 면 도식 격자만 | OpenStreetMap 표준 타일                         |
-| `VITE_MAP_TILE_URL_SATELLITE` | '위성' 레이어 타일 템플릿, `off` 면 일반 타일 사용                    | Esri World Imagery                              |
+| `VITE_NAVER_MAP_KEY_ID`       | 네이버 지도 (브라우저 노출)                                           | 기본 지도(브이월드 타일 + 자체 SVG 오버레이)    |
+| `VITE_MAP_TILE_URL`           | 기본 지도의 배경 타일 템플릿(`{z}` `{x}` `{y}`), `off` 면 도식 격자만 | BE 가 주는 브이월드 타일, 없으면 OpenStreetMap  |
+| `VITE_MAP_TILE_URL_SATELLITE` | '위성' 레이어 타일 템플릿, `off` 면 일반 타일 사용                    | BE 가 주는 브이월드 위성, 없으면 Esri           |
 | `VITE_API_BASE`               | BE 공개 API origin — FE 를 정적 호스팅하고 BE 를 직접 부를 때만       | 같은 origin 의 `/v1` (개발 서버가 BE 로 프록시) |
 | `VITE_PROXY_TARGET`           | 개발·미리보기 서버가 `/v1` 을 넘길 BE 주소 (`vite.config.ts` 만 읽음) | `http://127.0.0.1:8000`                         |
 
@@ -88,9 +88,11 @@ npm run dev        # http://localhost:5173  — /v1/* 는 BE(127.0.0.1:8000)로 
   상태 사유(`reason_code`)·BE 가 원문과 대조해 검증한 쉬운 설명·근거 트리(법률 → 시행령 → 조례, 인용·원문 링크)를 보여 줍니다.
   별도 확인 항목(도로·건축선·높이·추가 규제)과 데이터 안내, 고지는 BE 가 준 그대로입니다. 시범 지역 밖 필지는 검토를 요청하지 않고 안내만 보여 줍니다.
 - **배치안**: 법규 검토가 끝나면(`review_id`) '배치안 계산'. 주차장 설치 가능 여부가 확인되지 않아 BE 가 계산하지 않으면(`simulated=false`) 이유를 보여 주고
-  '참고 배치 보기'(`include_unverified=true`)를 제안합니다. 배치안을 고르면 지도 어댑터 `setLayout()` 이 GeoJSON 레이어(가용 영역·차로·주차구획·출입구)를 그립니다.
+  '참고 배치 보기'(`include_unverified=true`)를 제안합니다. 주차장을 건설할 수 없는 토지(`eligibility.status = NOT_PERMITTED`: 지목이 도로·하천 등이거나
+  허용 용도에 주차장이 없음)이면 경고 알림("이 지역은 주차장 건설이 불가한 지역입니다.")을 띄우고 사유만 보여 주며, 참고 배치는 제안하지 않습니다. 배치안을 고르면 지도 어댑터 `setLayout()` 이 GeoJSON 레이어(가용 영역·차로·주차구획·출입구)를 그립니다.
 - **PNU** = 법정동코드(10) + 산구분(1) + 본번(4) + 부번(4). 형식·상수는 `src/lib/api/types.ts`.
-- 브라우저가 접속하는 외부 origin 은 지도뿐입니다 — 네이버 지도(키 설정 시) 또는 기본 지도 타일(`tile.openstreetmap.org`, 위성 `server.arcgisonline.com`).
+- 브라우저가 접속하는 외부 origin 은 지도뿐입니다 — 네이버 지도(키 설정 시). 기본 지도의 타일은 BE(`/v1/map/tiles`, 같은 origin)에서 오고,
+  BE 에 브이월드 키가 없을 때만 `tile.openstreetmap.org`(위성 `server.arcgisonline.com`)에 접속합니다.
   글꼴(Pretendard)은 npm 패키지에서 번들에 포함되어 CDN 을 쓰지 않습니다.
 
 ## 소개 페이지 (`/`)
@@ -108,10 +110,16 @@ npm run dev        # http://localhost:5173  — /v1/* 는 BE(127.0.0.1:8000)로 
 ## 지도
 
 - 기본은 **네이버지도(NCP Maps v3)** 입니다. `.env` 의 `VITE_NAVER_MAP_KEY_ID` 를 채우고 NCP 콘솔 Application 에 `http://localhost:5173` 을 등록하세요.
-- 키가 없거나 인증에 실패하면 **기본 지도**로 자동 전환됩니다: 실제 지도 타일(일반 OpenStreetMap · 위성 Esri, `tileSource.ts`)을 아래에 깔고
+- 키가 없거나 인증에 실패하면 **기본 지도**로 자동 전환됩니다: 실제 지도 타일을 아래에 깔고
   그 위에 자체 SVG 로 필지 경계·마커·배치안을 그립니다(같은 웹 메르카토르 좌표계). 좌측 상단 배지로 구분됩니다.
-  OSM 타일 서버는 개발·소규모용이므로 실서비스는 네이버 키나 별도 타일 서버(`VITE_MAP_TILE_URL`)를 쓰세요. 지적도 레이어는 네이버 지도에서만 그려집니다.
-  `VITE_MAP_TILE_URL=off` 면 타일 없이 도식 격자만 그리는 **미리보기 지도**(오프라인)가 됩니다.
+  지적도 레이어는 네이버 지도에서만 그려집니다.
+- 기본 지도의 타일 소스는 이 순서로 정합니다 (`tileConfig.ts`, 지도를 붙일 때 한 번):
+  1. `.env` 에 `VITE_MAP_TILE_URL`(또는 `_SATELLITE`)을 적었으면 그 템플릿. `off` 면 타일 없이 도식 격자만 그리는 **미리보기 지도**(오프라인).
+  2. 비어 있으면 BE 에 묻습니다(`GET /v1/map/config`, 2.5초 제한). BE 에 브이월드 키가 있으면 **브이월드 타일**을 BE 경유(`/v1/map/tiles/{base|satellite}/{z}/{x}/{y}`)로 씁니다.
+     필지 경계가 브이월드 연속지적도라서 브이월드 지도 위에서만 건물·도로와 정확히 맞습니다. 인증키는 BE 에만 있습니다. 줌 범위(`min_zoom`·`max_zoom`)도 BE 가 알려 줍니다.
+  3. BE 가 `tiles: null` 을 주거나 요청이 실패하면 OpenStreetMap(일반) · Esri(위성). 국내 지적과 6~10m 어긋나 필지 선이 건물을 가로질러 보일 수 있고,
+     OSM 타일 서버는 개발·소규모용입니다.
+- 하단 출처 문구와 배지 설명은 실제로 깔린 타일을 따릅니다 (`MapContext` 의 `tileProvider` → `tileCopy.ts`, 문구는 `ko.json` 의 `map.source*`·`map.tilesDesc*`).
 - 지도 코드는 `src/lib/map/MapAdapter`(`types.ts`) 인터페이스 하나로 감싸져 있어, 카카오로 바꾸려면 `kakaoMap.ts` 를 만들고
   `createMapAdapter.ts` 한 곳만 바꾸면 됩니다. 클릭 지점 → 필지 규칙은 `pickParcel.ts`(지도 공급자와 무관).
 - 장면(scene) 세 가지: `overview`(수성구 전체) · `site`(필지 경계 + 면적 말풍선, 위성+지적도) · `point`(좌표만 있을 때 핀).
@@ -184,10 +192,12 @@ eslint.config.js · vitest.config.ts · .prettierrc.json · .nvmrc · .npmrc
   `Permissions-Policy: geolocation=(self)`, 그리고 CSP. 네이버 지도 SDK·타일 호스트는 배포 전 네트워크 패널에서 확인해 채웁니다. 시작점:
   ```
   default-src 'self'; script-src 'self' https://oapi.map.naver.com https://*.pstatic.net;
-  img-src 'self' data: blob: https://*.pstatic.net https://*.naver.com https://tile.openstreetmap.org https://server.arcgisonline.com;
+  img-src 'self' data: blob: https://*.pstatic.net https://*.naver.com;
   style-src 'self' 'unsafe-inline'; font-src 'self'; connect-src 'self' https://api.example.com https://*.naver.com https://*.pstatic.net; frame-ancestors 'none'
   ```
   (개발 서버에는 넣지 않습니다 — Vite 의 React Refresh 프리앰블이 inline script 를 씁니다.)
+  기본 지도의 타일은 BE 경유(`/v1/map/tiles`)라 화면과 API 가 같은 origin 이면 `img-src 'self'` 로 충분합니다. `VITE_API_BASE` 로 BE 를 직접 부르면
+  그 origin 을 `img-src` 에도 넣고, BE 에 브이월드 키 없이 OSM·Esri 로 대체해 쓸 거라면 `https://tile.openstreetmap.org https://server.arcgisonline.com` 을 더합니다.
 - 네이버 지도는 배포 도메인을 NCP Application 에 등록해야 합니다. 브이월드·도로명주소 키는 BE 배포 설정(`../BE/docs/DEPLOY_AWS.md`)을 따릅니다.
 
 ## 데이터

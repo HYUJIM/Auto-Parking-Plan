@@ -25,6 +25,11 @@
   animation: rise var(--duration) var(--ease);
 }
 
+.warning {
+  background: var(--color-danger);
+  color: var(--color-text-on-dark);
+}
+
 @keyframes rise {
   from {
     opacity: 0;

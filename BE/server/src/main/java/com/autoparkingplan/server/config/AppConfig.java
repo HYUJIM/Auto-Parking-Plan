@@ -22,6 +22,8 @@ import com.autoparkingplan.external.JusoApi;
 import com.autoparkingplan.external.JusoClient;
 import com.autoparkingplan.external.VWorldApi;
 import com.autoparkingplan.external.VWorldClient;
+import com.autoparkingplan.external.VWorldTileApi;
+import com.autoparkingplan.external.VWorldTileClient;
 import com.autoparkingplan.server.security.AuthFailureGuard;
 import com.autoparkingplan.server.security.Policy;
 import com.autoparkingplan.server.security.RequestGuardFilter;
@@ -64,7 +66,7 @@ public class AppConfig {
                 s.trustedProxyHops);
     }
 
-    /** 요청 제한 묶음. 꺼져 있으면 null. 버스트 = max(3, 분당/2). */
+    /** 요청 제한 묶음. 꺼져 있으면 null. 버스트 = max(3, 분당/2) — 지도 타일만 분당/4 (기본 1200/분, 순간 300장). */
     public static Map<String, Policy> ratePolicies(AppSettings s) {
         if (!s.rateLimitsOn()) {
             return null;
@@ -74,6 +76,9 @@ public class AppConfig {
         m.put("simulations", pol("simulations", s.rateLimitSimulationsPerMin));
         m.put("search", pol("search", s.rateLimitSearchPerMin));
         m.put("parcels", pol("parcels", s.rateLimitParcelsPerMin));
+        // 지도 타일은 화면 하나가 20~40장을 한꺼번에 부르고 끌 때마다 더 부른다 → 검색·필지 묶음과 섞지 않고 넉넉한 전용 묶음.
+        // 순간 허용량은 화면 몇 번 분량(분당/4)으로 잡는다: 타일 하나가 브이월드 호출 하나라 한 사람이 한꺼번에 태우는 양은 막는다.
+        m.put("tiles", new Policy("tiles", s.rateLimitTilesPerMin, Math.max(3, s.rateLimitTilesPerMin / 4)));
         m.put("default", pol("default", s.rateLimitDefaultPerMin));
         return m;
     }
@@ -133,6 +138,14 @@ public class AppConfig {
         BuildingHubApi building = s.buildingHubKey != null && !s.buildingHubKey.isEmpty()
                 ? new BuildingHubClient(s.buildingHubKey, s.buildingHubUrl, s.externalTimeoutS, null) : null;
         return new ExternalClients(juso, vworld, building);
+    }
+
+    /** 배경지도 타일 클라이언트. 브이월드 키가 없으면 비어 있다 (화면은 다른 타일 소스로 대체). */
+    @Bean
+    public MapTiles mapTiles(AppSettings s) {
+        VWorldTileApi vworld = s.vworldApiKey != null && !s.vworldApiKey.isEmpty()
+                ? new VWorldTileClient(s.vworldApiKey, s.vworldWmtsUrl, s.externalTimeoutS) : null;
+        return new MapTiles(vworld);
     }
 
     static final List<String> OFFICIAL_HOSTS = List.of("juso.go.kr", "vworld.kr", "data.go.kr");

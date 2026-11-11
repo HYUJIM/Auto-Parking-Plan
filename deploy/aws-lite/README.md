@@ -4,11 +4,12 @@
 
 ```
 사용자 ─ HTTPS ─ CloudFront ─┬─ (기본)        S3 버킷: FE 정적 파일
-                             └─ /v1/*, /healthz  Lightsail 서버 :80
+                             └─ /v1/*, /healthz  Lightsail 서버 :80   (/v1/map/tiles/* 만 엣지 캐시 1일)
                                                   └ nginx(비밀 헤더 확인) ─ API(app.jar) ─ PostgreSQL
 ```
 
 - 화면과 API 가 같은 주소로 나가므로 CORS 설정과 `VITE_API_BASE` 가 필요 없습니다. 도메인이 없어도 CloudFront 기본 주소로 HTTPS 가 됩니다.
+- 배경지도 타일(`/v1/map/tiles/*`, 서버가 브이월드 타일을 대신 받아 주는 경로)은 CloudFront 가 하루 동안 캐시합니다 (캐시 키는 경로뿐, 서버의 `Cache-Control: public, max-age=86400` 을 따름). 같은 타일은 엣지에서 바로 나가고 서버·브이월드까지 가는 것은 처음 한 번뿐입니다. 나머지 `/v1/*` 는 캐시하지 않습니다.
 - 서버 80 포트는 CloudFront 전용입니다. CloudFront 가 붙이는 비밀 헤더가 없으면 프록시가 403 으로 거부합니다 (서버 IP 직접 접속 차단).
 - 관리자 API(`/admin`)는 인터넷에 열지 않습니다. SSH 터널로만 접속합니다 (아래 "검수").
 - 서버는 이미지를 빌드하지 않습니다. 공식 JRE 이미지에 `app.jar` 와 `data/` 를 읽기 전용으로 붙여 실행합니다.
@@ -57,6 +58,8 @@ deploy/aws-lite/scripts/deploy-fe.sh
 ```bash
 ssh -i ~/.ssh/autoparkingplan_lightsail -L 8000:127.0.0.1:8000 ubuntu@<ServerIp>
 ```
+
+2026-11-12 기준 95개 중 91개가 승인돼 있습니다. 보류 4개는 조례 용적률(중심·일반·근린상업지역, 준공업지역)로, 조례 제80조제4항(상업지역 주거복합건축물)·제6항(준공업지역 오피스텔)의 단서가 규칙에 예외 근거로 들어 있지 않아 그대로 승인하면 단서 없이 표시되기 때문입니다. 이 용도지역의 용적률은 그동안 국가 법령 범위로 표시됩니다.
 
 터널을 연 채로 `http://127.0.0.1:8000/admin/rules?status=auto_checked` 를 `X-Admin-Token` 헤더(값은 서버 `/opt/app/.env` 의 `ADMIN_TOKEN`)와 함께 부릅니다. 승인 절차는 [BE/README.md](../../BE/README.md)의 관리자 API 표를 따릅니다.
 

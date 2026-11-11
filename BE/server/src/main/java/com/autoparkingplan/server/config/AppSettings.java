@@ -44,6 +44,7 @@ public final class AppSettings {
     public final String vworldDomain;
     public final String vworldDataUrl;
     public final String vworldNedUrl;
+    public final String vworldWmtsUrl;
     public final String buildingHubKey;
     public final String buildingHubUrl;
     public final String lawgoOc;
@@ -82,6 +83,7 @@ public final class AppSettings {
     public final int rateLimitSimulationsPerMin;
     public final int rateLimitSearchPerMin;
     public final int rateLimitParcelsPerMin;
+    public final int rateLimitTilesPerMin;
     public final int rateLimitDefaultPerMin;
     public final int maxBodyBytes;
     public final int maxAdminBodyBytes;
@@ -118,6 +120,7 @@ public final class AppSettings {
         vworldDomain = r.opt("VWORLD_DOMAIN");
         vworldDataUrl = r.str("VWORLD_DATA_URL", "https://api.vworld.kr");
         vworldNedUrl = r.str("VWORLD_NED_URL", "https://api.vworld.kr");
+        vworldWmtsUrl = r.str("VWORLD_WMTS_URL", "https://api.vworld.kr"); // 배경지도 타일(WMTS). 인증키가 주소 경로에 들어간다
         buildingHubKey = r.opt("BUILDING_HUB_KEY");
         buildingHubUrl = r.str("BUILDING_HUB_URL", "https://apis.data.go.kr");
         lawgoOc = r.opt("LAWGO_OC");
@@ -161,6 +164,7 @@ public final class AppSettings {
         rateLimitSimulationsPerMin = r.integer("RATE_LIMIT_SIMULATIONS_PER_MIN", 30, 1, null);
         rateLimitSearchPerMin = r.integer("RATE_LIMIT_SEARCH_PER_MIN", 30, 1, null);
         rateLimitParcelsPerMin = r.integer("RATE_LIMIT_PARCELS_PER_MIN", 60, 1, null);
+        rateLimitTilesPerMin = r.integer("RATE_LIMIT_TILES_PER_MIN", 1200, 1, null); // 지도 화면 하나가 타일 20~40장을 한꺼번에 부른다
         rateLimitDefaultPerMin = r.integer("RATE_LIMIT_DEFAULT_PER_MIN", 240, 1, null);
         maxBodyBytes = r.integer("MAX_BODY_BYTES", 64 * 1024, 1024, null);
         maxAdminBodyBytes = r.integer("MAX_ADMIN_BODY_BYTES", 2 * 1024 * 1024, 1024, null);
@@ -188,8 +192,8 @@ public final class AppSettings {
         // 인증키(JUSO/VWORLD/BUILDING_HUB 키, LAWGO_OC, LLM API 키)가 평문으로 나가지 않도록 운영에서는 https 주소만 받는다.
         // 이 컴퓨터 안(127.0.0.1·localhost)의 모의 서버·사이드카는 예외 (종단 검증이 운영 설정으로 모의 서버를 쓴다).
         String[][] urls = {{"JUSO_BASE_URL", jusoBaseUrl}, {"VWORLD_DATA_URL", vworldDataUrl}, {"VWORLD_NED_URL", vworldNedUrl},
-                {"BUILDING_HUB_URL", buildingHubUrl}, {"LAWGO_BASE_URL", lawgoBaseUrl}, {"ANTHROPIC_BASE_URL", anthropicBaseUrl},
-                {"OPENAI_BASE_URL", openaiBaseUrl}};
+                {"VWORLD_WMTS_URL", vworldWmtsUrl}, {"BUILDING_HUB_URL", buildingHubUrl}, {"LAWGO_BASE_URL", lawgoBaseUrl},
+                {"ANTHROPIC_BASE_URL", anthropicBaseUrl}, {"OPENAI_BASE_URL", openaiBaseUrl}};
         for (String[] u : urls) {
             requireHttpsInProd(u[0], u[1]);
         }

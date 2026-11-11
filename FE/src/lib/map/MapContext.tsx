@@ -8,6 +8,7 @@ import { MockMapAdapter } from './mockMap';
 import { SUSEONG_BOUNDS, SUSEONG_CENTER, metersPerPixel, project, unproject } from './geo';
 import { MAP_CONTROLS_ATTR, MAP_PANEL_ATTR, queryAnchor } from './layoutAnchors';
 import { pickParcelAt as pickParcel } from './pickParcel';
+import type { TileProvider } from './tileSource';
 import { rememberHit } from '@/lib/api/hitCache';
 import { content, fmt } from '@/lib/content';
 import { formatArea } from '@/lib/format';
@@ -31,6 +32,11 @@ export type FallbackReason = 'auth' | 'script' | null;
 interface MapContextValue {
   status: MapStatus;
   fallbackReason: FallbackReason;
+  /**
+   * 미리보기 지도(status 가 mock·mock-fallback)가 깐 배경 타일의 공급자 — 배지·출처 문구가 실제 지도와 맞도록.
+   * 네이버 지도이거나 아직 불러오는 중이면 'none'.
+   */
+  tileProvider: TileProvider;
   mapType: MapType;
   cadastral: boolean;
   zoom: number;
@@ -123,6 +129,7 @@ export function MapProvider({ children }: { children: ReactNode }) {
 
   const [status, setStatus] = useState<MapStatus>('loading');
   const [fallbackReason, setFallbackReason] = useState<FallbackReason>(null);
+  const [tileProvider, setTileProvider] = useState<TileProvider>('none');
   const [mapType, setMapTypeState] = useState<MapType>('normal');
   const [cadastral, setCadastralState] = useState(false);
   const [zoom, setZoomState] = useState(INITIAL_ZOOM);
@@ -287,6 +294,7 @@ export function MapProvider({ children }: { children: ReactNode }) {
         const mock = await mountMock();
         if (!mock) return;
         adapterRef.current = mock;
+        setTileProvider(mock.tileProvider);
         setStatus('mock-fallback');
         setFallbackReason(reason);
         wire(mock);
@@ -301,6 +309,7 @@ export function MapProvider({ children }: { children: ReactNode }) {
             adapter.destroy();
             return;
           }
+          setTileProvider(adapter instanceof MockMapAdapter ? adapter.tileProvider : 'none');
           setStatus(adapter.kind);
           setFallbackReason(null);
         } catch (err) {
@@ -310,6 +319,7 @@ export function MapProvider({ children }: { children: ReactNode }) {
           const mock = await mountMock();
           if (!mock) return;
           adapter = mock;
+          setTileProvider(mock.tileProvider);
           setStatus('mock-fallback');
           setFallbackReason(err instanceof Error && err.message === 'NAVER_AUTH_FAILURE' ? 'auth' : 'script');
         }
@@ -439,6 +449,7 @@ export function MapProvider({ children }: { children: ReactNode }) {
     () => ({
       status,
       fallbackReason,
+      tileProvider,
       mapType,
       cadastral,
       zoom,
@@ -459,6 +470,7 @@ export function MapProvider({ children }: { children: ReactNode }) {
     [
       status,
       fallbackReason,
+      tileProvider,
       mapType,
       cadastral,
       zoom,

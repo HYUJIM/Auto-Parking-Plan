@@ -14,13 +14,14 @@ BE(`../BE`, Spring Boot) 공개 API 연동은 **완료**되었습니다. 이 문
 
 ## 호출 대응
 
-| 화면               | BE 공개 API                                                            | FE 함수                                              |
-| ------------------ | ---------------------------------------------------------------------- | ---------------------------------------------------- |
-| 주소 검색 자동완성 | `GET /v1/address/search?q=`                                            | `searchAddress()` — 404 ADDRESS_NOT_FOUND 는 빈 결과 |
-| 이용화면 필지      | `GET /v1/parcels/{pnu}`                                                | `resolveSite()` — 404 PARCEL_NOT_FOUND 는 '대기'     |
-| 지도 클릭 → 필지   | `GET /v1/parcels/at?lng=&lat=`                                         | `getParcelAt()` — 404 는 null                        |
-| 법규 검토          | `POST /v1/reviews` → 202 → `GET /v1/reviews/{id}` 폴링 (`Retry-After`) | `getRuleReview()` — 60초 상한, failed 는 SERVER      |
-| 배치안             | `POST /v1/reviews/{id}/parking-simulations` (`include_unverified`)     | `getParkingSimulation()`                             |
+| 화면               | BE 공개 API                                                               | FE 함수                                                                           |
+| ------------------ | ------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| 주소 검색 자동완성 | `GET /v1/address/search?q=`                                               | `searchAddress()` — 404 ADDRESS_NOT_FOUND 는 빈 결과                              |
+| 이용화면 필지      | `GET /v1/parcels/{pnu}`                                                   | `resolveSite()` — 404 PARCEL_NOT_FOUND 는 '대기'                                  |
+| 지도 클릭 → 필지   | `GET /v1/parcels/at?lng=&lat=`                                            | `getParcelAt()` — 404 는 null                                                     |
+| 법규 검토          | `POST /v1/reviews` → 202 → `GET /v1/reviews/{id}` 폴링 (`Retry-After`)    | `getRuleReview()` — 60초 상한, failed 는 SERVER                                   |
+| 배치안             | `POST /v1/reviews/{id}/parking-simulations` (`include_unverified`)        | `getParkingSimulation()`                                                          |
+| 기본 지도 배경     | `GET /v1/map/config` → `<img>` 로 `GET /v1/map/tiles/{layer}/{z}/{x}/{y}` | `loadTileChoice()` (`src/lib/map/tileConfig.ts`) — 실패·`tiles: null` 은 OSM·Esri |
 
 ## 연동 전 대응표와 달라진 점
 

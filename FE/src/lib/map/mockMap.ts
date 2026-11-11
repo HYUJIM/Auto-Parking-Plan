@@ -2,11 +2,13 @@ import type { FitPadding, LatLng, LayoutLayers, MapAdapter, MapEvents, MapMarker
 import type { GeoJsonPosition } from '@/lib/api/types';
 import { centroid, fitZoom, metersPerPixel, project, unproject } from './geo';
 import { TileLayer } from './tileLayer';
-import { tileSourceFromEnv, type TileSource } from './tileSource';
+import { loadTileChoice } from './tileConfig';
+import type { TileChoice, TileProvider } from './tileSource';
 
 /**
  * 미리보기 지도 — 네이버 지도 Client ID 가 없거나 인증에 실패했을 때 쓰는 자체 지도.
- * 아래에는 실제 지도 타일(기본 OpenStreetMap, 위성은 Esri — tileSource.ts)을 깔고, 위에 SVG 로 필지·마커·배치안을 그립니다.
+ * 아래에는 실제 지도 타일을 깔고, 위에 SVG 로 필지·마커·배치안을 그립니다. 타일은 BE 가 대신 받아 주는 브이월드 타일이 기본이고
+ * (필지 경계와 같은 기준이라 정확히 겹침), BE 에 브이월드 키가 없으면 OpenStreetMap·Esri 로 대체합니다 — 선택 규칙은 tileConfig.ts.
  * 웹 메르카토르 좌표계를 그대로 쓰므로 필지 경계·마커 위치·축척은 네이버 지도와 같습니다.
  * 타일을 끄면(VITE_MAP_TILE_URL=off) 배경(거리·블록)을 도식으로 그립니다. 화면 코드는 이 어댑터와 네이버 어댑터를 구분하지 않습니다.
  */
@@ -59,10 +61,20 @@ export class MockMapAdapter implements MapAdapter {
   private width = 0;
   private height = 0;
 
-  /** tileSource 가 null 이면 타일 없이 도식 배경만 그립니다 (기본: .env 설정) */
-  constructor(private readonly tileSource: TileSource | null = tileSourceFromEnv(import.meta.env)) {}
+  private provider: TileProvider = 'none';
+
+  /** tileChoice 를 주지 않으면 mount 때 정합니다 (.env → BE 의 /v1/map/config → 기본 타일, tileConfig.ts) */
+  constructor(private readonly tileChoice?: TileChoice) {}
+
+  /** 지금 깔린 배경 타일의 공급자 (mount 뒤에 정해짐) — 배지·출처 문구용 */
+  get tileProvider(): TileProvider {
+    return this.provider;
+  }
 
   async mount(el: HTMLElement, opts: MapMountOptions): Promise<void> {
+    // loadTileChoice 는 실패해도 기본 타일을 돌려주고, 한 번 정한 값을 계속 씁니다
+    const choice = this.tileChoice ?? (await loadTileChoice());
+    this.provider = choice.source ? choice.provider : 'none';
     this.container = el;
     this.center = opts.center;
     this.zoom = opts.zoom;
@@ -73,9 +85,10 @@ export class MockMapAdapter implements MapAdapter {
     root.className = 'mock-map';
     root.dataset.type = this.mapType;
     root.dataset.cadastral = String(this.cadastral);
-    if (this.tileSource) {
-      this.tiles = new TileLayer(root, this.tileSource);
+    if (choice.source) {
+      this.tiles = new TileLayer(root, choice.source);
       root.dataset.tiles = 'true';
+      root.dataset.tileProvider = this.provider;
     }
 
     const svg = document.createElementNS(SVG_NS, 'svg');
