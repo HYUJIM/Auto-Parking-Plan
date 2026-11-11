@@ -1,0 +1,266 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  AutoParkingPlan 소규모 배포 - Lightsail 서버 한 대(BE + PostgreSQL) + S3·CloudFront(FE).
+  CloudFront 가 화면(S3)과 API(/v1 -> 서버)를 한 주소로 내보낸다.
+
+Parameters:
+  Name:
+    Type: String
+    Default: autoparkingplan
+    AllowedPattern: "^[a-z][a-z0-9-]{2,30}$"
+    Description: 자원 이름 접두어
+  KeyPairName:
+    Type: String
+    Description: Lightsail 에 등록한 SSH 키 쌍 이름 (scripts/infra.sh 가 만들어 넘긴다)
+  BundleId:
+    Type: String
+    Default: small_3_0
+    Description: Lightsail 요금제 (small_3_0 = 2GB 메모리, 공인 IPv4 포함)
+  BlueprintId:
+    Type: String
+    Default: ubuntu_24_04
+  AvailabilityZone:
+    Type: String
+    Default: ap-northeast-2a
+  GitHubRepo:
+    Type: String
+    Default: HYUJIM/Auto-Parking-Plan
+    Description: FE 자동 배포를 허용할 GitHub 저장소 (owner/name)
+  GitHubBranch:
+    Type: String
+    Default: main
+  CreateGitHubOidcProvider:
+    Type: String
+    Default: "true"
+    AllowedValues: ["true", "false"]
+    Description: 계정에 GitHub OIDC 공급자가 이미 있으면 false
+
+Conditions:
+  CreateOidc: !Equals [!Ref CreateGitHubOidcProvider, "true"]
+
+Resources:
+  # ── 서버 (BE + PostgreSQL, docker compose) ─────────────────────────────
+  Instance:
+    Type: AWS::Lightsail::Instance
+    Properties:
+      InstanceName: !Sub "${Name}-server"
+      AvailabilityZone: !Ref AvailabilityZone
+      BlueprintId: !Ref BlueprintId
+      BundleId: !Ref BundleId
+      KeyPairName: !Ref KeyPairName
+      Networking:
+        Ports:
+          # 22: 배포(SSH, 키 인증만). 80: CloudFront 전용 - 프록시가 비밀 헤더 없는 요청을 거부한다
+          - {FromPort: 22, ToPort: 22, Protocol: tcp, Cidrs: ["0.0.0.0/0"]}
+          - {FromPort: 80, ToPort: 80, Protocol: tcp, Cidrs: ["0.0.0.0/0"]}
+      AddOns:
+        # 매일 04:00 KST 디스크 스냅샷 (DB 백업 겸용, 최근 7개 보관)
+        - AddOnType: AutoSnapshot
+          Status: Enabled
+          AutoSnapshotAddOnRequest: {SnapshotTimeOfDay: "19:00"}
+      UserData: |
+        #!/bin/bash
+        set -eux
+        # 메모리 2GB 에 JVM + PostgreSQL 을 같이 올리므로 스왑을 둔다
+        fallocate -l 2G /swapfile && chmod 600 /swapfile && mkswap /swapfile && swapon /swapfile
+        echo '/swapfile none swap sw 0 0' >> /etc/fstab
+        export DEBIAN_FRONTEND=noninteractive
+        apt-get update
+        apt-get install -y docker.io docker-compose-v2 unattended-upgrades
+        usermod -aG docker ubuntu
+        install -d -o ubuntu -g ubuntu -m 750 /opt/app
+        touch /opt/app/.server-ready
+
+  StaticIp:
+    Type: AWS::Lightsail::StaticIp
+    Properties:
+      StaticIpName: !Sub "${Name}-ip"
+      AttachedTo: !Ref Instance
+
+  # CloudFront 만 아는 값. 서버 프록시가 이 헤더가 없는 요청(서버 IP 직접 접속)을 거부한다
+  OriginSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Sub "${Name}/origin-secret"
+      Description: CloudFront -> 서버 요청 확인용 헤더 값
+      GenerateSecretString:
+        PasswordLength: 48
+        ExcludePunctuation: true
+
+  # ── FE 정적 파일 ───────────────────────────────────────────────────────
+  FeBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault: {SSEAlgorithm: AES256}
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      OwnershipControls:
+        Rules: [{ObjectOwnership: BucketOwnerEnforced}]
+
+  FeBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref FeBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: CloudFrontRead
+            Effect: Allow
+            Principal: {Service: cloudfront.amazonaws.com}
+            Action: s3:GetObject
+            Resource: !Sub "${FeBucket.Arn}/*"
+            Condition:
+              StringEquals:
+                AWS:SourceArn: !Sub "arn:aws:cloudfront::${AWS::AccountId}:distribution/${Distribution}"
+          - Sid: DenyInsecureTransport
+            Effect: Deny
+            Principal: "*"
+            Action: s3:*
+            Resource: [!GetAtt FeBucket.Arn, !Sub "${FeBucket.Arn}/*"]
+            Condition:
+              Bool: {aws:SecureTransport: "false"}
+
+  FeOriginAccessControl:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties:
+      OriginAccessControlConfig:
+        Name: !Sub "${Name}-fe"
+        OriginAccessControlOriginType: s3
+        SigningBehavior: always
+        SigningProtocol: sigv4
+
+  # SPA 경로(/app, /site): 확장자가 없는 주소는 index.html 을 준다. API(/v1)에는 붙이지 않는다
+  SpaRewriteFunction:
+    Type: AWS::CloudFront::Function
+    Properties:
+      Name: !Sub "${Name}-spa-rewrite"
+      AutoPublish: true
+      FunctionConfig:
+        Comment: 확장자 없는 경로는 index.html
+        Runtime: cloudfront-js-2.0
+      FunctionCode: |
+        function handler(event) {
+          var request = event.request;
+          var last = request.uri.substring(request.uri.lastIndexOf('/') + 1);
+          if (last.indexOf('.') === -1) {
+            request.uri = '/index.html';
+          }
+          return request;
+        }
+
+  Distribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        Comment: !Sub "${Name} (FE + /v1 API)"
+        HttpVersion: http2and3
+        IPV6Enabled: true
+        PriceClass: PriceClass_200 # 한국 엣지 포함
+        DefaultRootObject: index.html
+        Origins:
+          - Id: fe
+            DomainName: !GetAtt FeBucket.RegionalDomainName
+            OriginAccessControlId: !Ref FeOriginAccessControl
+            S3OriginConfig: {OriginAccessIdentity: ""}
+          - Id: api
+            # CloudFront 는 IP 를 원본으로 받지 않으므로 고정 IP 의 AWS 공개 DNS 이름을 쓴다
+            DomainName: !Join
+              - ""
+              - - "ec2-"
+                - !Join ["-", !Split [".", !GetAtt StaticIp.IpAddress]]
+                - !Sub ".${AWS::Region}.compute.amazonaws.com"
+            CustomOriginConfig:
+              OriginProtocolPolicy: http-only
+              HTTPPort: 80
+              OriginReadTimeout: 30
+            OriginCustomHeaders:
+              - HeaderName: X-Origin-Verify
+                HeaderValue: !Sub "{{resolve:secretsmanager:${OriginSecret}:SecretString}}"
+        DefaultCacheBehavior:
+          TargetOriginId: fe
+          ViewerProtocolPolicy: redirect-to-https
+          AllowedMethods: [GET, HEAD]
+          Compress: true
+          CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6 # Managed-CachingOptimized
+          ResponseHeadersPolicyId: 67f7725c-6f97-4210-82d7-5512b31e9d03 # Managed-SecurityHeadersPolicy
+          FunctionAssociations:
+            - EventType: viewer-request
+              FunctionARN: !GetAtt SpaRewriteFunction.FunctionMetadata.FunctionARN
+        CacheBehaviors:
+          - PathPattern: "/v1/*"
+            TargetOriginId: api
+            ViewerProtocolPolicy: https-only
+            AllowedMethods: [GET, HEAD, OPTIONS, PUT, PATCH, POST, DELETE]
+            Compress: true
+            CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad # Managed-CachingDisabled
+            OriginRequestPolicyId: b689b0a8-53d0-40ab-baf2-68738e2966ac # Managed-AllViewerExceptHostHeader
+          - PathPattern: "/healthz"
+            TargetOriginId: api
+            ViewerProtocolPolicy: https-only
+            AllowedMethods: [GET, HEAD]
+            CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
+            OriginRequestPolicyId: b689b0a8-53d0-40ab-baf2-68738e2966ac
+
+  # ── GitHub Actions 가 FE 를 올릴 때 쓰는 역할 (장기 키 없이 OIDC) ───────
+  GitHubOidcProvider:
+    Type: AWS::IAM::OIDCProvider
+    Condition: CreateOidc
+    Properties:
+      Url: https://token.actions.githubusercontent.com
+      ClientIdList: [sts.amazonaws.com]
+
+  FeDeployRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${Name}-fe-deploy"
+      MaxSessionDuration: 3600
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Federated: !If
+                - CreateOidc
+                - !Ref GitHubOidcProvider
+                - !Sub "arn:aws:iam::${AWS::AccountId}:oidc-provider/token.actions.githubusercontent.com"
+            Action: sts:AssumeRoleWithWebIdentity
+            Condition:
+              StringEquals:
+                token.actions.githubusercontent.com:aud: sts.amazonaws.com
+                token.actions.githubusercontent.com:sub: !Sub "repo:${GitHubRepo}:ref:refs/heads/${GitHubBranch}"
+      Policies:
+        - PolicyName: fe-deploy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: s3:ListBucket
+                Resource: !GetAtt FeBucket.Arn
+              - Effect: Allow
+                Action: [s3:PutObject, s3:DeleteObject]
+                Resource: !Sub "${FeBucket.Arn}/*"
+              - Effect: Allow
+                Action: cloudfront:CreateInvalidation
+                Resource: !Sub "arn:aws:cloudfront::${AWS::AccountId}:distribution/${Distribution}"
+
+Outputs:
+  SiteUrl:
+    Value: !Sub "https://${Distribution.DomainName}"
+  ServerIp:
+    Value: !GetAtt StaticIp.IpAddress
+  FeBucketName:
+    Value: !Ref FeBucket
+  DistributionId:
+    Value: !Ref Distribution
+  OriginSecretArn:
+    Value: !Ref OriginSecret
+  FeDeployRoleArn:
+    Value: !GetAtt FeDeployRole.Arn

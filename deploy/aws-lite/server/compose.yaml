@@ -1,0 +1,94 @@
+# 운영 서버(/opt/app)에서 도는 구성: PostgreSQL + API + 프록시.
+# 값은 같은 폴더의 .env (scripts/server-env.sh 가 만든다, 권한 600) 에서 읽는다.
+# 이미지를 빌드하지 않는다: 공식 JRE 이미지에 release/app.jar 와 release/data 를 읽기 전용으로 붙인다.
+name: autoparkingplan
+
+x-app: &app
+  image: eclipse-temurin:21-jre
+  user: "10001:10001"
+  working_dir: /srv/app
+  read_only: true
+  tmpfs: ["/tmp"]
+  cap_drop: ["ALL"]
+  security_opt: ["no-new-privileges:true"]
+  volumes:
+    - ./release/app.jar:/srv/app/app.jar:ro
+    - ./release/data:/srv/app/data:ro
+    - ./blobs:/srv/app/var/blobs
+  environment:
+    APP_ENV: prod
+    APP_HOME: /srv/app
+    TZ: Asia/Seoul
+    LANG: C.UTF-8
+    JAVA_TOOL_OPTIONS: "-XX:MaxRAMPercentage=70 -Dfile.encoding=UTF-8 -Djava.io.tmpdir=/tmp"
+    DATABASE_URL: postgresql://app:${POSTGRES_PASSWORD:?}@db:5432/app
+    REVIEW_EXECUTOR: thread
+    BLOB_STORE: local
+    BLOB_LOCAL_DIR: /srv/app/var/blobs
+    # 앞단은 CloudFront 하나 (프록시는 X-Forwarded-For 를 건드리지 않는다)
+    TRUSTED_PROXY_HOPS: "1"
+    CORS_ORIGINS: ${CORS_ORIGINS:?}
+    JUSO_API_KEY: ${JUSO_API_KEY:-}
+    VWORLD_API_KEY: ${VWORLD_API_KEY:-}
+    VWORLD_DOMAIN: ${VWORLD_DOMAIN:-}
+    BUILDING_HUB_KEY: ${BUILDING_HUB_KEY:-}
+    LAWGO_OC: ${LAWGO_OC:-}
+    LLM_PROVIDER: ${LLM_PROVIDER:-none}
+    ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+    ADMIN_TOKEN: ${ADMIN_TOKEN:-}
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?}
+      POSTGRES_DB: app
+    volumes: ["pgdata:/var/lib/postgresql/data"]
+    mem_limit: 512m
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app -d app"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  api:
+    <<: *app
+    restart: unless-stopped
+    command: ["java", "-jar", "/srv/app/app.jar", "serve", "--host", "0.0.0.0", "--port", "8000"]
+    mem_limit: 1300m
+    # 관리자 API 는 인터넷에 열지 않는다: 서버 안 127.0.0.1 에만 (SSH 터널로 접속)
+    ports: ["127.0.0.1:8000:8000"]
+    depends_on:
+      db: {condition: service_healthy}
+    healthcheck:
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8000 && printf 'GET /healthz HTTP/1.0\\r\\nHost: localhost\\r\\n\\r\\n' >&3 && head -1 <&3 | grep -q ' 200'"]
+      interval: 15s
+      timeout: 5s
+      start_period: 90s
+      retries: 4
+
+  # CloudFront 전용 입구: 비밀 헤더가 맞는 /v1, /healthz 요청만 API 로 넘긴다
+  proxy:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    ports: ["80:80"]
+    environment:
+      ORIGIN_SECRET: ${ORIGIN_SECRET:?}
+    volumes:
+      - ./nginx.conf.template:/etc/nginx/templates/default.conf.template:ro
+    mem_limit: 64m
+    depends_on: [api]
+
+  # 최초 1회: 관할 + 법령 원문 + 기록된 추출 결과 적재 (운영이므로 일괄 승인은 하지 않는다)
+  #   docker compose run --rm bootstrap
+  bootstrap:
+    <<: *app
+    profiles: ["tools"]
+    command: ["java", "-jar", "/srv/app/app.jar", "bootstrap"]
+    depends_on:
+      db: {condition: service_healthy}
+
+volumes:
+  pgdata:
