@@ -152,6 +152,13 @@ X-Forwarded-For 위조 방지(`TRUSTED_PROXY_HOPS`, 서버는 전달 헤더로 �
 계산식 화이트리스트 파서, 오류 응답에 내부 정보 미노출(Tomcat 단계 오류 포함), 인증키 로그 가림, 외부 응답 크기·시간 상한, XML 외부 엔티티·DTD 미처리.
 컨테이너는 non-root·읽기 전용 루트 파일시스템, AWS 는 WAF·HTTPS·최소 권한 IAM (`deploy/aws`, [`docs/DEPLOY_AWS.md`](docs/DEPLOY_AWS.md)). 자세한 점검 기록은 [`docs/SECURITY.md`](docs/SECURITY.md).
 
+## 프론트엔드(FE/) 연결
+
+FE(React/Vite, `../FE`)는 이 서버의 공개 API(`/v1/...`)만 호출합니다. 개발 중에는 Vite 개발 서버가 `/v1` 을 이 서버(기본 `http://127.0.0.1:8000`,
+`VITE_PROXY_TARGET` 로 변경)로 프록시하므로 브라우저 입장에서는 같은 origin 입니다. FE 를 따로 배포(정적 호스팅)하고 이 서버를 직접 부르게 하려면
+`CORS_ORIGINS` 에 FE 의 origin 을 넣고(기본값에 `http://localhost:5173` 포함, AWS 는 `cors_origins` 변수) FE 빌드에 `VITE_API_BASE` 로 이 서버 주소를 줍니다.
+FE 가 쓰는 호출: 주소 검색 → 필지 → `POST /v1/reviews` 폴링 → `POST /v1/reviews/{id}/parking-simulations`. 자세한 대응은 [`../FE/README.md`](../FE/README.md).
+
 ## 저장소에 두지 않는 것
 
 API 키·토큰은 `.env`(미추적) 또는 AWS Secrets Manager 에만 둡니다. 로컬 DB·로그·검증 보고서는 `var/` (미추적).
