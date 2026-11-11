@@ -1,13 +1,16 @@
 import { useMap } from '@/lib/map/MapContext';
 import { mapControlsProps } from '@/lib/map/layoutAnchors';
+import { MAP_TILES_ENABLED } from '@/lib/map/tileSource';
 import { content } from '@/lib/content';
 import { Button } from '../Button';
 import styles from './MapControls.module.css';
 
 /** 지도 우측 컨트롤: 일반 · 위성 · 지적도 토글, 확대/축소, (이용화면) 필지에 맞춤 */
 export function MapControls() {
-  const { mapType, cadastral, scene, setMapType, toggleCadastral, zoomIn, zoomOut, fitScene } = useMap();
+  const { status, mapType, cadastral, scene, setMapType, toggleCadastral, zoomIn, zoomOut, fitScene } = useMap();
   const t = content.map;
+  // 기본 지도(타일 배경)에는 지적 경계 타일이 없어 지적도 토글을 잠급니다 — 타일을 끈 미리보기 지도는 도식 격자를 그립니다
+  const cadastralUnavailable = MAP_TILES_ENABLED && (status === 'mock' || status === 'mock-fallback');
 
   return (
     <div className={styles.controls} {...mapControlsProps}>
@@ -32,7 +35,16 @@ export function MapControls() {
         >
           {t.layers.satellite}
         </Button>
-        <Button variant="secondary" size="sm" iconLeft="grid" active={cadastral} aria-label={t.layers.cadastral} onClick={toggleCadastral}>
+        <Button
+          variant="secondary"
+          size="sm"
+          iconLeft="grid"
+          active={cadastral && !cadastralUnavailable}
+          disabled={cadastralUnavailable}
+          title={cadastralUnavailable ? t.layers.cadastralUnavailable : undefined}
+          aria-label={t.layers.cadastral}
+          onClick={toggleCadastral}
+        >
           {t.layers.cadastral}
         </Button>
       </div>

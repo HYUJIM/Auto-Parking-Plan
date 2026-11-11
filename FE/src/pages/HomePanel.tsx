@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { AddressHit } from '@/lib/api/types';
-import { getExampleParcel } from '@/lib/api/address';
 import { useRecentSearches, type RecentSearch } from '@/lib/api/recent';
 import { useMap } from '@/lib/map/MapContext';
 import { content } from '@/lib/content';
@@ -14,8 +13,8 @@ import styles from './HomePanel.module.css';
 
 /**
  * 1단계 — 초기화면 (주소 입력 전) 좌측 패널.
- * 헤드라인 · 주소 검색 + CTA · 보조 버튼 3개 · 01 서비스 · 02 이용 흐름.
- * 지도는 수성구 전체 + 검증 필지 10개 점 (점 클릭 시 바로 2단계).
+ * 헤드라인 · 주소 검색 + CTA · 보조 버튼(현재 위치·최근 검색) · 01 서비스 · 02 이용 흐름.
+ * 지도는 수성구 전체 (검색 결과가 있으면 미리보기 핀).
  */
 export function HomePanel() {
   const navigate = useNavigate();
@@ -42,7 +41,6 @@ export function HomePanel() {
       .catch((err: Error) => toast.show(err.message))
       .finally(() => setLocating(false));
   };
-  const onExample = () => goTo(getExampleParcel().pnu);
 
   const h = content.home;
 
@@ -60,9 +58,6 @@ export function HomePanel() {
         <div className={styles.helpers}>
           <Button variant="secondary" size="sm" iconLeft="locate" loading={locating} onClick={onLocate}>
             {h.helpers.location}
-          </Button>
-          <Button variant="secondary" size="sm" iconLeft="map-pin" onClick={onExample}>
-            {h.helpers.example}
           </Button>
           <div className={styles.recentWrap}>
             <Button

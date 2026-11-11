@@ -34,9 +34,9 @@ export default tseslint.config(
     },
   },
 
-  // Node 코드 (개발용 API 서버, 공유 타입, 스크립트, 설정) — 브라우저 전역 없음
+  // Node 코드 (스크립트, 설정) — 브라우저 전역 없음
   {
-    files: ['server/**/*.ts', 'shared/**/*.ts', 'scripts/**/*.mjs', 'vite.config.ts', 'vitest.config.ts', 'eslint.config.js'],
+    files: ['scripts/**/*.mjs', 'vite.config.ts', 'vitest.config.ts', 'eslint.config.js'],
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     languageOptions: {
       ecmaVersion: 2022,
@@ -45,26 +45,6 @@ export default tseslint.config(
     rules: {
       '@typescript-eslint/consistent-type-imports': typeImports,
       '@typescript-eslint/no-unused-vars': unusedVars,
-    },
-  },
-
-  // server/ 와 shared/ 는 Node 가 타입 스트리핑으로 바로 실행합니다: src 의 `@/` 별칭·JSON import 를 쓰면 tsc 는 통과해도 기동이 깨집니다
-  {
-    files: ['server/**/*.ts', 'shared/**/*.ts'],
-    rules: {
-      '@typescript-eslint/no-restricted-imports': [
-        'error',
-        {
-          patterns: [
-            {
-              group: ['@/*', '../src/*', '../src/**', '../../src/**'],
-              message: 'server/ 와 shared/ 는 src/ 를 import 하지 않습니다. 함께 쓰는 타입은 shared/types.ts 에 두세요.',
-            },
-          ],
-        },
-      ],
-      // 매개변수 프로퍼티(constructor(private x))는 타입 스트리핑이 거부합니다 (tsconfig.node.json 의 erasableSyntaxOnly 와 같은 규칙)
-      '@typescript-eslint/parameter-properties': ['error', { prefer: 'class-property' }],
     },
   },
 

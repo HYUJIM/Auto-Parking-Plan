@@ -1,13 +1,13 @@
 name: fe-ci
 
-# 프론트엔드(FE/) 변경에 실행: 타입 검사(src + server) + 린트 + 포맷 검사 + 단위 테스트 + 색 코드 직접 입력 검사 + 배포용 빌드 + API 서버 기동 확인
+# 프론트엔드(FE/) 변경에 실행: 타입 검사 + 린트 + 포맷 검사 + 단위 테스트(BE 응답 어댑터·오류 분류·검토 폴링·지도 기하) + 색 코드 직접 입력 검사 + 배포용 빌드
 on:
   push:
     paths: ["FE/**", ".github/workflows/fe-ci.yml"]
   pull_request:
     paths: ["FE/**", ".github/workflows/fe-ci.yml"]
 
-# GITHUB_TOKEN 은 읽기 전용. 비밀값(secrets.*)은 쓰지 않는다 — 공공 API 키 없이도 목업으로 빌드·검사가 끝난다
+# GITHUB_TOKEN 은 읽기 전용. 비밀값(secrets.*)은 쓰지 않는다 — BE 없이도 어댑터 테스트는 저장된 응답 샘플(__fixtures__)로 돈다
 permissions:
   contents: read
 
@@ -33,31 +33,18 @@ jobs:
           cache-dependency-path: FE/package-lock.json
       - name: 의존성 설치 (package-lock.json 그대로, 의존성의 설치 스크립트는 실행하지 않음)
         run: npm ci --ignore-scripts
-      - name: 타입 검사 (브라우저 코드 + Node 코드)
+      - name: 타입 검사 (브라우저 코드 + 설정 파일)
         run: npm run typecheck
       - name: 린트 (ESLint)
         run: npm run lint
       - name: 포맷 검사 (Prettier)
         run: npm run format:check
-      - name: 단위 테스트 (좌표 변환·PNU·필지 조합·법규 엔진·지도 기하·/api 핸들러)
+      - name: 단위 테스트 (BE 응답 어댑터·오류 분류·검토 폴링·지도 기하·저장소 값 검사)
         run: npm test
       - name: 색 코드 직접 입력 검사 (테마 파일 밖 0건)
         run: npm run check:colors
       - name: 배포용 빌드
         run: npm run build
-      - name: API 서버 기동 확인 (Node 타입 스트리핑으로 실제 실행)
-        env:
-          CORS_ORIGIN: http://localhost:5173
-          API_PORT: "8787"
-        run: |
-          node server/standalone.ts &
-          API_PID=$!
-          for i in $(seq 1 20); do
-            if curl -sf http://127.0.0.1:8787/api/health > /dev/null; then break; fi
-            sleep 0.5
-          done
-          curl -sf http://127.0.0.1:8787/api/health
-          kill "$API_PID"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: github.event_name == 'push'
         with:

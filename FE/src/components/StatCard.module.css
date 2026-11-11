@@ -46,3 +46,11 @@
   font-weight: var(--weight-medium);
   color: var(--color-text-muted);
 }
+.sub {
+  margin-left: var(--space-2);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--color-text-muted);
+  letter-spacing: 0;
+  font-family: var(--font-family);
+}

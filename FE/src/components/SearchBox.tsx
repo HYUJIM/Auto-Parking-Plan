@@ -26,16 +26,15 @@ interface SearchBoxProps {
   onResults?: (hits: AddressHit[]) => void;
 }
 
-const EMPTY: AddressSearchResult = { hits: [], total: 0, source: 'juso' };
+const EMPTY: AddressSearchResult = { hits: [], total: 0 };
 const MIN_QUERY_LENGTH = 2;
 const DEBOUNCE_MS = 220;
 
 /**
- * 주소 입력창 + 자동완성 목록. 서버의 /api/address (juso.go.kr 프록시) 를 호출합니다.
- * - 결과 0건: 지번 검색 안내 + "지도에서 직접 클릭" 안내
- * - 결과 여러 건: 목록에서 선택 (좌표가 있는 결과는 지도에 미리보기 핀)
- * - 수성구 밖: 목록에 '수성구 외' 배지
- * - API 안내(결과 과다·특수문자 등): 그대로 표시
+ * 주소 입력창 + 자동완성 목록. BE 의 `GET /v1/address/search?q=` (행정안전부 도로명주소 API 경유) 를 호출합니다.
+ * - 결과 0건: 지번 검색 안내 + "지도에서 직접 클릭" 안내 (BE 가 준 안내 문구가 있으면 그것을)
+ * - 결과 여러 건(최대 10건): 목록에서 선택 (좌표가 있는 결과는 지도에 미리보기 핀)
+ * - 지원 관할(수성구) 밖: 목록에 '수성구 외' 배지
  */
 export function SearchBox({ initialQuery = '', autoFocus, compact, ctaLabel, onSelect, onResults }: SearchBoxProps) {
   const [query, setQuery] = useState(initialQuery);
@@ -233,9 +232,7 @@ export function SearchBox({ initialQuery = '', autoFocus, compact, ctaLabel, onS
       return { kind: 'warn', text: content.search.noResults, sub: content.search.noResultsMap };
     }
     if (status === 'done' && hits.length > 1 && showList) {
-      const text = fmt(content.search.multiple, { n: hits.length });
-      const sub = result.total > hits.length ? fmt(content.search.showingTop, { total: result.total, n: hits.length }) : undefined;
-      return { kind: 'muted', text, sub };
+      return { kind: 'muted', text: fmt(content.search.multiple, { n: hits.length }) };
     }
     return null;
   })();
@@ -304,9 +301,9 @@ export function SearchBox({ initialQuery = '', autoFocus, compact, ctaLabel, onS
                 </li>
               ))}
             </ul>
-            <p className={cx(styles.sourceLine, result.source === 'mock' && styles.sourceMock)}>
+            <p className={styles.sourceLine}>
               <Icon name="info" size={12} />
-              {result.source === 'mock' ? content.search.sourceMock : content.search.sourceJuso}
+              {content.search.source}
             </p>
           </div>
         )}

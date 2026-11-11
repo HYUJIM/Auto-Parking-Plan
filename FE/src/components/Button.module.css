@@ -65,8 +65,7 @@
   border-color: var(--color-primary);
   box-shadow: var(--shadow-button);
 }
-.primary:hover:not(:disabled),
-.primary.hover {
+.primary:hover:not(:disabled) {
   background: var(--color-primary-hover);
   border-color: var(--color-primary-hover);
 }
@@ -81,8 +80,7 @@
   color: var(--color-text);
   border-color: var(--color-border-strong);
 }
-.secondary:hover:not(:disabled),
-.secondary.hover {
+.secondary:hover:not(:disabled) {
   border-color: var(--color-primary);
   color: var(--color-primary);
   background: var(--color-surface-hover);
@@ -97,8 +95,7 @@
   background: transparent;
   color: var(--color-text-2);
 }
-.ghost:hover:not(:disabled),
-.ghost.hover {
+.ghost:hover:not(:disabled) {
   background: var(--color-primary-soft);
   color: var(--color-on-primary-soft);
 }
@@ -121,8 +118,7 @@
 .icon.lg {
   width: var(--button-height-lg);
 }
-.icon:hover:not(:disabled),
-.icon.hover {
+.icon:hover:not(:disabled) {
   color: var(--color-primary);
   border-color: var(--color-primary);
 }

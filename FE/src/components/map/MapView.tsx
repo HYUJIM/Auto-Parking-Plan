@@ -1,5 +1,6 @@
 import { useEffect, useRef, type KeyboardEvent } from 'react';
 import { useMap } from '@/lib/map/MapContext';
+import { MAP_TILES_ENABLED } from '@/lib/map/tileSource';
 import { content } from '@/lib/content';
 import { Icon } from '../Icon';
 import { MapControls } from './MapControls';
@@ -22,9 +23,13 @@ export function MapView() {
   }, [attach]);
 
   const isMock = map.status === 'mock' || map.status === 'mock-fallback';
+  // 키 없음: 타일 배경이면 '기본 지도', 타일까지 껐으면 '미리보기 지도'. 네이버 실패(fallback)는 사유를 보여 줍니다
+  const previewBadge = MAP_TILES_ENABLED ? content.map.tilesBadge : content.map.previewBadge;
   const previewDesc =
     map.status === 'mock'
-      ? content.map.previewDesc
+      ? MAP_TILES_ENABLED
+        ? content.map.tilesDesc
+        : content.map.previewDesc
       : map.fallbackReason === 'script'
         ? content.map.fallbackScriptDesc
         : content.map.fallbackDesc;
@@ -74,7 +79,7 @@ export function MapView() {
           <div className={styles.previewWrap}>
             <span className={styles.preview} title={previewDesc}>
               <Icon name="info" size={14} />
-              {content.map.previewBadge}
+              {previewBadge}
             </span>
             {map.status === 'mock-fallback' && <span className={styles.previewDesc}>{previewDesc}</span>}
           </div>

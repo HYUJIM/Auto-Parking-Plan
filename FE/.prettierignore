@@ -4,3 +4,5 @@ coverage
 package-lock.json
 public/icons
 public/brand
+# BE 응답 원문 그대로 보관 (어댑터 테스트 입력)
+src/lib/api/__fixtures__

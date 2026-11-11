@@ -19,8 +19,6 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   block?: boolean;
   /** 토글이 켜진 상태 (레이어 버튼 등) */
   active?: boolean;
-  /** 디자인 키트에서 hover 상태를 보여줄 때만 사용 */
-  forceHover?: boolean;
 }
 
 const ICON_PX: Record<ButtonSize, number> = { sm: 18, md: 20, lg: 22 };
@@ -39,7 +37,6 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
     icon,
     block,
     active,
-    forceHover,
     className,
     children,
     disabled,
@@ -61,7 +58,6 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
         styles[size],
         block && styles.block,
         active && styles.active,
-        forceHover && styles.hover,
         loading && styles.loading,
         className,
       )}

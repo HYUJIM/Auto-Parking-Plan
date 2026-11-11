@@ -1,53 +1,40 @@
-import type { LatLng } from '@/lib/map/types';
-import type { Parcel, ParcelAtResult, RuleReview, SiteData } from './types';
-import { apiUrl, toApiError } from './base';
+import type { BeParcel } from './beTypes';
+import { toParcel } from './beAdapters';
+import { getJson } from './base';
 import { getCachedHit } from './hitCache';
-import { delay, maybeFail } from './mock';
-import { buildRuleReview } from '@/lib/rules/engine';
+import { ApiError, type LatLng, type Parcel, type SiteData } from './types';
 
 /**
- * 이용화면 데이터 해석 — `/api/parcel?pnu=` 호출.
- *  - 200: 필지(목업 또는 브이월드). 도로명주소가 없으면 검색 결과(세션 캐시)에서 보충합니다.
- *  - 501(키 없음)·404(연속지적도에 없음): 주소·좌표만으로 '대기' 화면을 구성합니다.
+ * 이용화면 데이터 — `GET /v1/parcels/{pnu}`.
+ *  - 200: 필지(브이월드 연속지적도·토지특성·토지이용계획 + 건축물대장). 도로명주소가 없으면 검색 결과(세션 캐시)에서 보충합니다.
+ *  - 404 PARCEL_NOT_FOUND(연속지적도에 없음·신규 분할 등): 주소·좌표만으로 '대기' 화면을 구성합니다.
+ *  - 503(외부 API 장애)·429 등은 그대로 던져 카드가 '다시 시도' 를 보여 줍니다.
  */
-export async function resolveSite(pnu: string): Promise<SiteData> {
-  const res = await fetch(apiUrl('/api/parcel', { pnu }), { headers: { Accept: 'application/json' } });
-  if (res.ok) {
-    const parcel = (await res.json()) as Parcel;
+export async function resolveSite(pnu: string, signal?: AbortSignal): Promise<SiteData> {
+  try {
+    const body = await getJson<BeParcel>(`/v1/parcels/${encodeURIComponent(pnu)}`, undefined, { signal });
+    const parcel = toParcel(body);
     if (!parcel.address.road) {
       const hit = getCachedHit(pnu);
-      if (hit?.roadAddress) parcel.address.road = hit.roadAddress;
+      if (hit?.roadAddress && hit.roadAddress !== hit.jibunAddress) parcel.address.road = hit.roadAddress;
     }
     return { kind: 'parcel', parcel };
+  } catch (err) {
+    if (err instanceof ApiError && err.code === 'NOT_FOUND') return { kind: 'pending', pnu, hit: getCachedHit(pnu) };
+    throw err;
   }
-
-  const err = await toApiError(res);
-  if (err.code === 'NOT_READY' || err.code === 'NOT_FOUND') {
-    return { kind: 'pending', pnu, hit: getCachedHit(pnu) };
-  }
-  throw err;
 }
 
 /**
- * 지도 클릭 지점의 필지 (브이월드). 그 지점에 필지가 없으면 null,
- * 브이월드 키가 없으면 ApiError('NOT_READY') 를 던집니다(호출 쪽에서 안내).
+ * 지도 클릭 지점의 필지 — `GET /v1/parcels/at?lng=&lat=`. 응답은 필지 전체이므로 바로 Parcel 로 돌려줍니다.
+ * 그 지점에 필지가 없으면(404) null, 좌표 범위 밖(422)·외부 API 장애(503)는 ApiError.
  */
-export async function getParcelAt(point: LatLng): Promise<ParcelAtResult | null> {
-  const res = await fetch(apiUrl('/api/parcel/at', { lng: point.lng.toFixed(7), lat: point.lat.toFixed(7) }), {
-    headers: { Accept: 'application/json' },
-  });
-  if (res.status === 404) return null;
-  if (!res.ok) throw await toApiError(res);
-  return (await res.json()) as ParcelAtResult;
-}
-
-/**
- * 법규 검토 (핵심 6항목 + 별도 확인 4항목).
- * 지금은 브라우저 안에서 목업 기준표로 만듭니다(src/lib/rules/engine.ts). 네트워크 지연·실패 흉내는 '다시 시도' UI 확인용.
- * BE 연동 시 이 함수 본문만 `POST /v1/reviews` 호출로 바꿉니다.
- */
-export async function getRuleReview(parcel: Parcel): Promise<RuleReview> {
-  await delay(320);
-  maybeFail();
-  return buildRuleReview(parcel);
+export async function getParcelAt(point: LatLng, signal?: AbortSignal): Promise<Parcel | null> {
+  try {
+    const body = await getJson<BeParcel>('/v1/parcels/at', { lng: point.lng.toFixed(7), lat: point.lat.toFixed(7) }, { signal });
+    return toParcel(body);
+  } catch (err) {
+    if (err instanceof ApiError && err.code === 'NOT_FOUND') return null;
+    throw err;
+  }
 }

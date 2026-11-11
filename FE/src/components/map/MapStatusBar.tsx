@@ -1,4 +1,5 @@
 import { useMap, useMapCursor } from '@/lib/map/MapContext';
+import { MAP_TILES_ENABLED } from '@/lib/map/tileSource';
 import { content, fmt } from '@/lib/content';
 import { cx } from '@/lib/cx';
 import { formatCoord } from '@/lib/format';
@@ -9,13 +10,14 @@ export function MapStatusBar() {
   const cursor = useMapCursor();
   const { status } = useMap();
   const isMock = status === 'mock' || status === 'mock-fallback';
+  const source = isMock ? (MAP_TILES_ENABLED ? content.map.sourceTiles : content.map.sourceMock) : content.map.source;
   return (
     <div className={styles.bar}>
       <span className={cx(styles.coords, 'numeric')}>
         {cursor ? fmt(content.map.coords, { lat: formatCoord(cursor.lat), lng: formatCoord(cursor.lng) }) : content.map.coordsEmpty}
       </span>
       <span className={styles.right}>
-        <span className={styles.source}>{isMock ? content.map.sourceMock : content.map.source}</span>
+        <span className={styles.source}>{source}</span>
         <span className={styles.disclaimer}>{content.map.disclaimer}</span>
       </span>
     </div>

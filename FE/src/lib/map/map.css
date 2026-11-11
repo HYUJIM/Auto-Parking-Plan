@@ -22,6 +22,17 @@
   box-shadow: 0 0 0 6px color-mix(in srgb, var(--map-marker-preview) 22%, transparent);
 }
 
+/* ── 배치안 출입구 점 (네이버 지도 HTML 콘텐츠) ───────────────────── */
+.map-gate-marker {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--map-layout-gate-stroke);
+  border: 2.5px solid var(--map-marker-ring);
+  box-shadow: 0 0 0 5px color-mix(in srgb, var(--map-layout-gate-stroke) 25%, transparent);
+  pointer-events: none;
+}
+
 /* ── 대지면적 말풍선 ─────────────────────────────────────────── */
 .map-area-label {
   position: relative;
@@ -68,9 +79,43 @@
   cursor: grabbing;
 }
 .mock-map svg {
+  /* 배경 타일(absolute) 위에 오도록 */
+  position: relative;
+  z-index: 1;
   display: block;
   width: 100%;
   height: 100%;
+}
+
+/* 배경 타일 층 — 실제 지도(OSM·Esri) 위에 SVG 표시를 겹칩니다 (tileLayer.ts) */
+.mock-map .mm-tiles {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+.mock-map .mm-tile {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 256px;
+  height: 256px;
+  opacity: 0;
+  transition: opacity var(--duration-fast) var(--ease);
+  pointer-events: none;
+  user-select: none;
+}
+.mock-map .mm-tile.is-loaded {
+  opacity: 1;
+}
+.mock-map .mm-tile.is-error {
+  display: none;
+}
+.mock-map[data-tiles='true'] .mm-bg,
+.mock-map[data-tiles='true'] .mm-grid {
+  display: none;
+}
+.mock-map[data-tiles='true'][data-type='satellite'] {
+  background: var(--map-bg-satellite);
 }
 .mock-map .mm-bg {
   fill: var(--map-bg-normal);
@@ -141,6 +186,40 @@
   stroke-width: calc(var(--map-road-stroke-width) * 1px);
   stroke-linecap: round;
   opacity: 0.9;
+}
+
+/* 주차장 배치안 — 색은 --map-layout-* 토큰 (네이버 지도는 mapStyle.ts 가 같은 토큰을 읽습니다) */
+.mock-map .mm-layout-usable_area {
+  fill: none;
+  stroke: var(--map-layout-usable-stroke);
+  stroke-width: 1.5;
+  stroke-dasharray: 5 4;
+  opacity: 0.9;
+}
+.mock-map .mm-layout-aisle {
+  fill: var(--map-layout-aisle-fill);
+  fill-opacity: var(--map-layout-aisle-fill-opacity);
+  stroke: var(--map-layout-usable-stroke);
+  stroke-width: 1;
+  stroke-opacity: 0.6;
+}
+.mock-map .mm-layout-stall {
+  fill: var(--map-layout-stall-fill);
+  fill-opacity: var(--map-layout-stall-fill-opacity);
+  stroke: var(--map-layout-stall-stroke);
+  stroke-width: 1.2;
+  stroke-linejoin: round;
+}
+.mock-map .mm-layout-gate_opening {
+  fill: none;
+  stroke: var(--map-layout-gate-stroke);
+  stroke-width: calc(var(--map-layout-gate-stroke-width) * 1px);
+  stroke-linecap: round;
+}
+.mock-map .mm-layout-gate {
+  fill: var(--map-layout-gate-stroke);
+  stroke: var(--map-marker-ring);
+  stroke-width: 2.5;
 }
 
 .mock-map .mm-marker {

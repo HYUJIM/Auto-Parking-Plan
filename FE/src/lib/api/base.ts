@@ -1,11 +1,18 @@
 import { content } from '@/lib/content';
-import { ApiError } from './types';
+import type { BeErrorBody } from './beTypes';
+import { ApiError, type ApiErrorCode } from './types';
 
-/** API 서버 주소. 개발 중에는 비어 있어 같은 origin 의 /api (Vite 미들웨어)를 씁니다. */
+/**
+ * BE 공개 API(`/v1/...`) 호출 공통.
+ *  - 개발: VITE_API_BASE 가 비어 있으면 같은 origin 의 `/v1` 을 부르고, Vite 개발 서버가 BE 로 프록시합니다 (vite.config.ts).
+ *  - 배포: FE 를 정적 호스팅하고 BE 를 직접 부르면 VITE_API_BASE=https://api.example.com (BE 의 CORS_ORIGINS 에 FE origin 등록).
+ */
 export const API_BASE = (import.meta.env.VITE_API_BASE ?? '').replace(/\/+$/, '');
 
 export function apiUrl(path: string, params?: Record<string, string | number | undefined>): string {
-  const url = new URL(`${API_BASE}${path}`, window.location.origin);
+  // 단위 테스트(Node)에는 window 가 없으므로 기준 origin 을 대신 둡니다 — 상대 경로 해석에만 쓰입니다
+  const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost';
+  const url = new URL(`${API_BASE}${path}`, origin);
   if (params) {
     for (const [k, v] of Object.entries(params)) {
       if (v !== undefined && v !== '') url.searchParams.set(k, String(v));
@@ -14,21 +21,69 @@ export function apiUrl(path: string, params?: Record<string, string | number | u
   return url.toString();
 }
 
-/** 실패 응답의 { message } 를 읽어 ApiError 로 바꿉니다 */
+/** BE 오류 바디 `{ error: { code, message, details? } }` 와 HTTP 상태를 ApiError 로 분류합니다 */
 export async function toApiError(res: Response): Promise<ApiError> {
   let message = content.status.error;
+  let beCode: string | undefined;
+  let details: unknown;
   try {
-    const body = (await res.json()) as { message?: string };
-    if (body?.message) message = body.message;
+    const body = (await res.json()) as BeErrorBody;
+    if (typeof body?.error?.message === 'string' && body.error.message) message = body.error.message;
+    if (typeof body?.error?.code === 'string') beCode = body.error.code;
+    details = body?.error?.details;
   } catch {
-    /* 본문이 JSON 이 아님 */
+    /* 본문이 JSON 이 아님 (프록시·게이트웨이 오류 등) */
   }
-  if (res.status === 400 || res.status === 422) return new ApiError(message, 'BAD_REQUEST');
-  if (res.status === 404) return new ApiError(message, 'NOT_FOUND');
-  if (res.status === 429) return new ApiError(message, 'RATE_LIMITED');
-  if (res.status === 501) return new ApiError(message, 'NOT_READY');
-  if (res.status === 503) return new ApiError(message, 'BUSY');
-  if (res.status === 502 || res.status === 504) return new ApiError(message, 'UPSTREAM');
-  if (res.status >= 500) return new ApiError(message, 'SERVER');
-  return new ApiError(message, 'NETWORK');
+  const retryAfterRaw = Number(res.headers.get('Retry-After'));
+  const retryAfter = Number.isFinite(retryAfterRaw) && retryAfterRaw > 0 ? retryAfterRaw : undefined;
+  return new ApiError(message, classify(res.status, beCode), { beCode, details, status: res.status, retryAfter });
+}
+
+export function classify(status: number, beCode?: string): ApiErrorCode {
+  if (status === 400 || status === 413 || status === 422) return 'BAD_REQUEST';
+  if (status === 404) return 'NOT_FOUND';
+  if (status === 409) return 'CONFLICT';
+  if (status === 429) return 'RATE_LIMITED';
+  if (status === 503) return beCode === 'SERVICE_BUSY' ? 'BUSY' : beCode === 'UPSTREAM_UNAVAILABLE' ? 'UPSTREAM' : 'SERVER';
+  if (status >= 500) return 'SERVER';
+  return 'UNKNOWN';
+}
+
+export interface RequestOptions {
+  signal?: AbortSignal;
+}
+
+/**
+ * fetch + 오류 분류. 연결 실패(TypeError)는 ApiError('NETWORK'), 2xx 가 아니면 toApiError.
+ * 중단(AbortError)은 그대로 던져 호출 쪽이 무시할 수 있게 둡니다.
+ */
+export async function request(url: string, init: RequestInit = {}): Promise<Response> {
+  let res: Response;
+  try {
+    res = await fetch(url, { ...init, headers: { Accept: 'application/json', ...(init.headers ?? {}) } });
+  } catch (err) {
+    if (err instanceof DOMException && err.name === 'AbortError') throw err;
+    throw new ApiError(content.status.errorDesc, 'NETWORK');
+  }
+  if (!res.ok) throw await toApiError(res);
+  return res;
+}
+
+export async function getJson<T>(
+  path: string,
+  params?: Record<string, string | number | undefined>,
+  opts: RequestOptions = {},
+): Promise<T> {
+  const res = await request(apiUrl(path, params), { signal: opts.signal });
+  return (await res.json()) as T;
+}
+
+export async function postJson<T>(path: string, body: unknown, opts: RequestOptions = {}): Promise<T> {
+  const res = await request(apiUrl(path), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body ?? {}),
+    signal: opts.signal,
+  });
+  return (await res.json()) as T;
 }

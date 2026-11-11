@@ -1,11 +1,11 @@
 /*
- * A안 · 클리어 블루프린트 (1순위, 확정)
+ * 클리어 블루프린트 — 확정 디자인 (이 파일 하나가 사이트 전체의 색·글꼴·둥글기)
  * 하양 바탕 + 선명한 블루, 대지는 블루 실선·연한 블루 채움, 접도 구간은 청록.
  *
  * 메인 색을 바꾸려면 --color-primary 한 줄만 고치면 됩니다.
  * 컴포넌트 코드에는 색 코드를 직접 쓰지 않습니다 — 색은 이 파일에서만 정의합니다.
  */
-:root[data-theme='clear-blue'] {
+:root {
   /* 메인 */
   --color-primary: #1e5eff;
   --color-primary-hover: #174bd6;
@@ -95,4 +95,22 @@
   --map-bg-satellite: #2f3a31;
   --map-bg-satellite-2: #46543f;
   --map-cadastral: #ffffff;
+
+  /* 주차장 배치안 (배치안 탭) — 주차구획·차로·출입구·가용 영역 */
+  --map-layout-stall-stroke: #ffffff;
+  --map-layout-stall-fill: #1e5eff;
+  --map-layout-stall-fill-opacity: 0.55;
+  --map-layout-aisle-fill: #0f1b33;
+  --map-layout-aisle-fill-opacity: 0.28;
+  --map-layout-gate-stroke: #ffb020;
+  --map-layout-gate-stroke-width: 4;
+  --map-layout-usable-stroke: #ffffff;
+
+  /* 소개 페이지(/) — 도면풍 어두운 바탕과 모션 강조색. 투명도는 쓰는 쪽에서 color-mix 로 만듭니다 */
+  --landing-ink: #0a1330;
+  --landing-ink-2: #13224f;
+  --landing-line: #a9bcec;
+  --landing-glow: #5b8cff;
+  --landing-amber: #ffb020;
+  --landing-mint: #34d399;
 }

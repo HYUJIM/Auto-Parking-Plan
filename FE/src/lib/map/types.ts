@@ -1,10 +1,10 @@
-import type { LatLng } from '../../../shared/types';
+import type { LatLng, LayoutLayers } from '@/lib/api/types';
 
 /**
  * MapAdapter — 지도 공급자(네이버·카카오·미리보기)를 감싸는 단 하나의 인터페이스.
  * 화면 코드는 이 인터페이스만 쓰므로, 지도 회사를 바꿔도 lib/map 아래 파일 하나만 교체하면 됩니다.
  */
-export type { LatLng };
+export type { LatLng, LayoutLayers };
 
 export type MapType = 'normal' | 'satellite';
 
@@ -13,7 +13,7 @@ export type MapKind = 'naver' | 'mock';
 export interface MapMarker {
   id: string;
   position: LatLng;
-  /** 'parcel' = 검증 필지 점, 'preview' = 검색 결과 미리보기 핀 */
+  /** 'parcel' = 좌표만 있는 필지의 점(point 장면), 'preview' = 검색 결과 미리보기 핀 */
   variant: 'parcel' | 'preview';
   title?: string;
 }
@@ -21,8 +21,6 @@ export interface MapMarker {
 export interface SiteOverlay {
   /** 대지 경계 */
   polygon: LatLng[];
-  /** 인접 도로 중심선 (다른 색으로 강조) */
-  road?: LatLng[];
   /** 대지면적 말풍선 문구 */
   areaLabel?: string;
 }
@@ -68,6 +66,11 @@ export interface MapAdapter {
 
   setMarkers(markers: MapMarker[], onClick?: (marker: MapMarker) => void): void;
   setSite(site: SiteOverlay | null): void;
+  /**
+   * 주차장 배치안 레이어 (GeoJSON FeatureCollection, 각 feature 의 properties.layer 로 종류 구분).
+   * null 이면 지웁니다. 대지 경계 위에, 마커 아래에 그립니다.
+   */
+  setLayout(layers: LayoutLayers | null): void;
 
   /** 현재 중심 위도·줌에서 1px 이 몇 m 인지 (축척 바) */
   getMetersPerPixel(): number;

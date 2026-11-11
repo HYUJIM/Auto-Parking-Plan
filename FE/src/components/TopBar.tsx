@@ -1,7 +1,6 @@
 import { Link } from 'react-router-dom';
 import { content } from '@/lib/content';
 import { Button } from './Button';
-import { Icon } from './Icon';
 import { useToast } from './Toast';
 import styles from './TopBar.module.css';
 
@@ -25,10 +24,6 @@ export function TopBar() {
         <Button variant="ghost" size="sm" iconLeft="bell" onClick={comingSoon} className={styles.navItem}>
           {content.nav.notice}
         </Button>
-        <Link to="/kit" className={styles.kit} title={content.nav.kit}>
-          <Icon name="palette" size={18} />
-          <span className={styles.kitLabel}>{content.nav.kit}</span>
-        </Link>
         <Button variant="secondary" size="sm" iconLeft="user" onClick={comingSoon}>
           {content.nav.login}
         </Button>

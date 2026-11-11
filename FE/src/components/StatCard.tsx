@@ -12,10 +12,12 @@ interface StatCardProps {
   numeric?: boolean;
   /** 두 칸 차지 */
   wide?: boolean;
+  /** 값·단위 뒤에 작게 붙는 보조 표기 (예: 평 환산) */
+  sub?: ReactNode;
 }
 
 /** 대지 요약 카드: 숫자는 크게, 단위는 작게 */
-export function StatCard({ label, value, unit, hint, numeric, wide }: StatCardProps) {
+export function StatCard({ label, value, unit, hint, numeric, wide, sub }: StatCardProps) {
   return (
     <div className={cx(styles.card, wide && styles.wide)}>
       <span className={styles.label}>
@@ -25,6 +27,7 @@ export function StatCard({ label, value, unit, hint, numeric, wide }: StatCardPr
       <span className={cx(styles.value, numeric && 'numeric', numeric && styles.numeric)}>
         {value}
         {unit && <span className={styles.unit}>{unit}</span>}
+        {sub && <span className={styles.sub}>{sub}</span>}
       </span>
     </div>
   );

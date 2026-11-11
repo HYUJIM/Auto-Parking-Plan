@@ -1,10 +1,14 @@
-import type { FitPadding, LatLng, MapAdapter, MapEvents, MapMarker, MapMountOptions, MapType, SiteOverlay } from './types';
+import type { FitPadding, LatLng, LayoutLayers, MapAdapter, MapEvents, MapMarker, MapMountOptions, MapType, SiteOverlay } from './types';
+import type { GeoJsonPosition } from '@/lib/api/types';
 import { centroid, fitZoom, metersPerPixel, project, unproject } from './geo';
+import { TileLayer } from './tileLayer';
+import { tileSourceFromEnv, type TileSource } from './tileSource';
 
 /**
- * 미리보기 지도 — 네이버 지도 Client ID 가 없거나 인증에 실패했을 때 쓰는 자체 SVG 지도.
- * 웹 메르카토르 좌표계를 그대로 쓰므로 필지 경계·마커 위치·축척은 실제 지도와 같고,
- * 배경(거리·블록)만 도식으로 그립니다. 화면 코드는 이 어댑터와 네이버 어댑터를 구분하지 않습니다.
+ * 미리보기 지도 — 네이버 지도 Client ID 가 없거나 인증에 실패했을 때 쓰는 자체 지도.
+ * 아래에는 실제 지도 타일(기본 OpenStreetMap, 위성은 Esri — tileSource.ts)을 깔고, 위에 SVG 로 필지·마커·배치안을 그립니다.
+ * 웹 메르카토르 좌표계를 그대로 쓰므로 필지 경계·마커 위치·축척은 네이버 지도와 같습니다.
+ * 타일을 끄면(VITE_MAP_TILE_URL=off) 배경(거리·블록)을 도식으로 그립니다. 화면 코드는 이 어댑터와 네이버 어댑터를 구분하지 않습니다.
  */
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
@@ -27,6 +31,7 @@ export class MockMapAdapter implements MapAdapter {
 
   private container: HTMLElement | null = null;
   private root: HTMLDivElement | null = null;
+  private tiles: TileLayer | null = null;
   private gridLayer: SVGGElement | null = null;
   private cadastralLayer: SVGGElement | null = null;
   private featureLayer: SVGGElement | null = null;
@@ -39,6 +44,7 @@ export class MockMapAdapter implements MapAdapter {
   private markers: MapMarker[] = [];
   private onMarkerClick?: (marker: MapMarker) => void;
   private site: SiteOverlay | null = null;
+  private layout: LayoutLayers | null = null;
 
   private listeners = {
     mousemove: new Set<Handler<'mousemove'>>(),
@@ -53,6 +59,9 @@ export class MockMapAdapter implements MapAdapter {
   private width = 0;
   private height = 0;
 
+  /** tileSource 가 null 이면 타일 없이 도식 배경만 그립니다 (기본: .env 설정) */
+  constructor(private readonly tileSource: TileSource | null = tileSourceFromEnv(import.meta.env)) {}
+
   async mount(el: HTMLElement, opts: MapMountOptions): Promise<void> {
     this.container = el;
     this.center = opts.center;
@@ -64,6 +73,10 @@ export class MockMapAdapter implements MapAdapter {
     root.className = 'mock-map';
     root.dataset.type = this.mapType;
     root.dataset.cadastral = String(this.cadastral);
+    if (this.tileSource) {
+      this.tiles = new TileLayer(root, this.tileSource);
+      root.dataset.tiles = 'true';
+    }
 
     const svg = document.createElementNS(SVG_NS, 'svg');
     svg.setAttribute('aria-hidden', 'true');
@@ -103,6 +116,8 @@ export class MockMapAdapter implements MapAdapter {
     cancelAnimationFrame(this.frame);
     this.resizeObserver?.disconnect();
     this.resizeObserver = null;
+    this.tiles?.destroy();
+    this.tiles = null;
     if (this.root) {
       this.root.removeEventListener('pointerdown', this.handlePointerDown);
       this.root.removeEventListener('pointermove', this.handlePointerMove);
@@ -162,6 +177,8 @@ export class MockMapAdapter implements MapAdapter {
   setMapType(type: MapType): void {
     this.mapType = type;
     if (this.root) this.root.dataset.type = type;
+    // 타일은 레이어별 템플릿이 달라 다시 그립니다 (도식 배경은 CSS 만 바뀜)
+    if (this.tiles) this.scheduleRender();
   }
 
   setCadastral(on: boolean): void {
@@ -180,6 +197,11 @@ export class MockMapAdapter implements MapAdapter {
 
   setSite(site: SiteOverlay | null): void {
     this.site = site;
+    this.scheduleRender();
+  }
+
+  setLayout(layers: LayoutLayers | null): void {
+    this.layout = layers;
     this.scheduleRender();
   }
 
@@ -230,8 +252,10 @@ export class MockMapAdapter implements MapAdapter {
   private render(): void {
     if (!this.gridLayer || !this.cadastralLayer || !this.featureLayer || !this.width || !this.height) return;
     const vp = this.viewport();
-    this.gridLayer.innerHTML = this.renderGrid(vp);
-    this.cadastralLayer.innerHTML = this.cadastral ? this.renderCadastral(vp) : '';
+    // 타일이 있으면 도식 배경·도식 지적 격자는 그리지 않습니다 (실제 지도 위에 가짜 선을 얹지 않도록)
+    this.tiles?.render(vp, this.zoom, this.mapType);
+    this.gridLayer.innerHTML = this.tiles ? '' : this.renderGrid(vp);
+    this.cadastralLayer.innerHTML = this.cadastral && !this.tiles ? this.renderCadastral(vp) : '';
     this.featureLayer.innerHTML = this.renderFeatures(vp);
   }
 
@@ -298,15 +322,11 @@ export class MockMapAdapter implements MapAdapter {
     const parts: string[] = [];
 
     if (this.site) {
-      if (this.site.road && this.site.road.length > 1) {
-        const d = this.site.road.map((p, i) => `${i ? 'L' : 'M'}${this.pt(p, vp)}`).join(' ');
-        parts.push(`<path class="mm-road" d="${d}"/>`);
-      }
       if (this.site.polygon.length > 2) {
         const d = this.site.polygon.map((p, i) => `${i ? 'L' : 'M'}${this.pt(p, vp)}`).join(' ') + ' Z';
         parts.push(`<path class="mm-site" d="${d}"/>`);
       }
-      if (this.site.areaLabel) {
+      if (this.site.areaLabel && this.site.polygon.length) {
         const c = this.toScreen(centroid(this.site.polygon), vp);
         const top = Math.min(...this.site.polygon.map((p) => this.toScreen(p, vp).y));
         parts.push(
@@ -314,6 +334,31 @@ export class MockMapAdapter implements MapAdapter {
             `<div xmlns="http://www.w3.org/1999/xhtml" class="map-area-label">${escapeHtml(this.site.areaLabel)}</div>` +
             `</foreignObject>`,
         );
+      }
+    }
+
+    // 배치안 (어댑터가 그리는 순서 = features 순서: 가용 영역 → 차로 → 주차구획 → 출입구)
+    for (const f of this.layout?.features ?? []) {
+      const cls = `mm-layout-${escapeHtml(f.properties.layer)}`;
+      const g = f.geometry;
+      const ringPath = (ring: GeoJsonPosition[]) =>
+        ring.map(([lng, lat], i) => `${i ? 'L' : 'M'}${this.pt({ lat, lng }, vp)}`).join(' ') + ' Z';
+      if (g.type === 'Polygon' || g.type === 'MultiPolygon') {
+        const polygons = g.type === 'Polygon' ? [g.coordinates] : g.coordinates;
+        for (const rings of polygons) {
+          const d = rings
+            .filter((r) => r.length >= 3)
+            .map(ringPath)
+            .join(' ');
+          if (d) parts.push(`<path class="${cls}" fill-rule="evenodd" d="${d}"/>`);
+        }
+      } else if (g.type === 'LineString' && g.coordinates.length >= 2) {
+        const d = g.coordinates.map(([lng, lat], i) => `${i ? 'L' : 'M'}${this.pt({ lat, lng }, vp)}`).join(' ');
+        parts.push(`<path class="${cls}" d="${d}"/>`);
+      } else if (g.type === 'Point') {
+        const [lng, lat] = g.coordinates;
+        const s = this.toScreen({ lat, lng }, vp);
+        parts.push(`<circle class="${cls}" cx="${s.x.toFixed(1)}" cy="${s.y.toFixed(1)}" r="6"/>`);
       }
     }
 

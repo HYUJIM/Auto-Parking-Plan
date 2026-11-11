@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
-import type { FitPadding, LatLng, MapAdapter, MapMarker, MapType } from './types';
+import type { FitPadding, LatLng, LayoutLayers, MapAdapter, MapMarker, MapType } from './types';
 import type { AddressHit, Parcel } from '@/lib/api/types';
 import { describeApiError } from '@/lib/api/errors';
 import { createMapAdapter } from './createMapAdapter';
@@ -8,7 +8,6 @@ import { MockMapAdapter } from './mockMap';
 import { SUSEONG_BOUNDS, SUSEONG_CENTER, metersPerPixel, project, unproject } from './geo';
 import { MAP_CONTROLS_ATTR, MAP_PANEL_ATTR, queryAnchor } from './layoutAnchors';
 import { pickParcelAt as pickParcel } from './pickParcel';
-import { suseongParcels } from '@/lib/api/mock';
 import { rememberHit } from '@/lib/api/hitCache';
 import { content, fmt } from '@/lib/content';
 import { formatArea } from '@/lib/format';
@@ -47,6 +46,11 @@ interface MapContextValue {
   fitScene: () => void;
   setScene: (scene: MapScene) => void;
   setPreviewPins: (hits: AddressHit[]) => void;
+  /**
+   * 주차장 배치안 레이어를 현재 필지(site 장면) 위에 그립니다. null 이면 지움.
+   * 필지가 바뀌거나 초기화면으로 돌아가면 자동으로 지워집니다.
+   */
+  setLayout: (layers: LayoutLayers | null) => void;
   locate: () => Promise<void>;
 }
 
@@ -78,16 +82,18 @@ function sceneKeyOf(scene: MapScene): string {
   return 'overview';
 }
 
-function siteBounds(parcel: Parcel): LatLng[] {
-  return [...parcel.polygon, ...(parcel.road.path ?? [])];
-}
-
 /** 점 하나를 보여줄 때 쓰는 작은 범위 (약 100m × 110m) */
 function pointBounds(center: LatLng): LatLng[] {
   return [
     { lat: center.lat - 0.00045, lng: center.lng - 0.00055 },
     { lat: center.lat + 0.00045, lng: center.lng + 0.00055 },
   ];
+}
+
+function siteBounds(parcel: Parcel): LatLng[] {
+  if (parcel.polygon.length >= 3) return parcel.polygon;
+  if (parcel.center) return pointBounds(parcel.center);
+  return SUSEONG_BOUNDS;
 }
 
 function sceneBounds(scene: MapScene): LatLng[] {
@@ -110,6 +116,8 @@ export function MapProvider({ children }: { children: ReactNode }) {
   const previewRef = useRef<MapMarker[]>([]);
   /** 미리보기 핀 id(PNU) → 검색 결과. 핀을 클릭해도 주소·좌표를 세션에 남기기 위해 */
   const previewHitsRef = useRef<Map<string, AddressHit>>(new Map());
+  /** 현재 그려진 배치안 (어느 필지의 것인지 함께) — 필지가 바뀌면 버립니다 */
+  const layoutRef = useRef<{ pnu: string; layers: LayoutLayers } | null>(null);
   /** 진행 중인 지도 클릭 조회를 무효화하기 위한 일련번호 — 이동·장면 변경 때마다 증가 */
   const clickSeq = useRef(0);
 
@@ -144,17 +152,9 @@ export function MapProvider({ children }: { children: ReactNode }) {
 
   const buildMarkers = useCallback((): MapMarker[] => {
     const scene = sceneRef.current;
+    // overview 에는 고정 점이 없습니다 — 검색 결과 미리보기 핀(previewRef)만 올립니다
     const parcelMarkers: MapMarker[] =
-      scene.kind === 'overview'
-        ? suseongParcels.map((p) => ({
-            id: p.pnu,
-            position: p.center,
-            variant: 'parcel',
-            title: `${content.map.markerParcel} · ${p.address.road ?? p.address.jibun}`,
-          }))
-        : scene.kind === 'point'
-          ? [{ id: scene.pnu, position: scene.center, variant: 'parcel', title: scene.title }]
-          : [];
+      scene.kind === 'point' ? [{ id: scene.pnu, position: scene.center, variant: 'parcel', title: scene.title }] : [];
     return [...parcelMarkers, ...previewRef.current];
   }, []);
 
@@ -166,6 +166,8 @@ export function MapProvider({ children }: { children: ReactNode }) {
   const applyScene = useCallback(
     (adapter: MapAdapter, next: MapScene) => {
       if (next.kind === 'overview') {
+        layoutRef.current = null;
+        adapter.setLayout(null);
         adapter.setSite(null);
         adapter.setMapType('normal');
         adapter.setCadastral(false);
@@ -174,6 +176,8 @@ export function MapProvider({ children }: { children: ReactNode }) {
         adapter.setMarkers(buildMarkers(), handleMarkerClick);
         adapter.fitBounds(SUSEONG_BOUNDS, getFitPadding());
       } else if (next.kind === 'point') {
+        layoutRef.current = null;
+        adapter.setLayout(null);
         adapter.setSite(null);
         adapter.setMarkers(buildMarkers(), handleMarkerClick);
         adapter.setMapType('satellite');
@@ -183,12 +187,14 @@ export function MapProvider({ children }: { children: ReactNode }) {
         adapter.fitBounds(pointBounds(next.center), getFitPadding());
       } else {
         const p = next.parcel;
+        if (layoutRef.current && layoutRef.current.pnu !== p.pnu) layoutRef.current = null;
         adapter.setMarkers(buildMarkers(), handleMarkerClick);
-        adapter.setSite({
-          polygon: p.polygon,
-          road: p.road.path,
-          areaLabel: fmt(content.map.areaLabel, { area: formatArea(p.area) }),
-        });
+        adapter.setSite(
+          p.polygon.length >= 3
+            ? { polygon: p.polygon, areaLabel: p.area !== null ? fmt(content.map.areaLabel, { area: formatArea(p.area) }) : undefined }
+            : null,
+        );
+        adapter.setLayout(layoutRef.current?.layers ?? null);
         adapter.setMapType('satellite');
         adapter.setCadastral(true);
         setMapTypeState('satellite');
@@ -204,9 +210,9 @@ export function MapProvider({ children }: { children: ReactNode }) {
    * 지도 클릭 → 필지 선택 (검색 결과 0건일 때의 대안). 규칙은 pickParcel.ts, 여기서는 결과를 라우팅·토스트로 옮기기만 합니다.
    */
   const pickParcelAt = useCallback(
-    async (point: LatLng, adapter: MapAdapter) => {
+    async (point: LatLng) => {
       const seq = ++clickSeq.current;
-      const result = await pickParcel(point, adapter.getMetersPerPixel());
+      const result = await pickParcel(point);
       if (seq !== clickSeq.current) return; // 그 사이 다른 곳을 클릭함
       switch (result.kind) {
         case 'found':
@@ -214,9 +220,6 @@ export function MapProvider({ children }: { children: ReactNode }) {
           return;
         case 'none':
           toast.show(sceneRef.current.kind === 'overview' ? content.map.clickNoParcel : content.map.clickFailed);
-          return;
-        case 'not-ready':
-          toast.show(content.map.clickNotReady);
           return;
         case 'failed': {
           const described = describeApiError(result.error);
@@ -266,7 +269,7 @@ export function MapProvider({ children }: { children: ReactNode }) {
             }
           }),
           adapter.on('zoom', () => syncZoom(adapter)),
-          adapter.on('click', (p) => void pickParcelAt(p, adapter)),
+          adapter.on('click', (p) => void pickParcelAt(p)),
           adapter.on('authfailure', () => void fallbackToMock('auth')),
         );
         const ro = new ResizeObserver(() => adapter.resize());
@@ -356,6 +359,17 @@ export function MapProvider({ children }: { children: ReactNode }) {
     [buildMarkers, handleMarkerClick],
   );
 
+  const setLayout = useCallback((layers: LayoutLayers | null) => {
+    const current = sceneRef.current;
+    if (!layers || current.kind !== 'site') {
+      layoutRef.current = null;
+      adapterRef.current?.setLayout(null);
+      return;
+    }
+    layoutRef.current = { pnu: current.parcel.pnu, layers };
+    adapterRef.current?.setLayout(layers);
+  }, []);
+
   const setMapType = useCallback((type: MapType) => {
     adapterRef.current?.setMapType(type);
     setMapTypeState(type);
@@ -439,6 +453,7 @@ export function MapProvider({ children }: { children: ReactNode }) {
       fitScene,
       setScene,
       setPreviewPins,
+      setLayout,
       locate,
     }),
     [
@@ -458,6 +473,7 @@ export function MapProvider({ children }: { children: ReactNode }) {
       fitScene,
       setScene,
       setPreviewPins,
+      setLayout,
       locate,
     ],
   );

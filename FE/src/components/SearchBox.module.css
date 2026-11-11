@@ -45,6 +45,10 @@
   font-size: var(--text-md);
   color: var(--color-text);
 }
+/* 포커스 표시는 .field:focus-within(테두리·그림자)이 맡습니다 — 전역 :focus-visible 외곽선까지 겹치면 네모 칸이 하나 더 보입니다 */
+.input:focus-visible {
+  outline: none;
+}
 .input::placeholder {
   color: var(--color-text-muted);
 }
@@ -103,10 +107,6 @@
   background: var(--color-surface-2);
   font-size: var(--text-xs);
   color: var(--color-text-muted);
-}
-.sourceMock {
-  color: var(--color-warning);
-  background: var(--color-warning-soft);
 }
 
 .option {

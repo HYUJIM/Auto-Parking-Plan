@@ -1,4 +1,5 @@
-import type { FitPadding, LatLng, MapAdapter, MapEvents, MapMarker, MapMountOptions, MapType, SiteOverlay } from './types';
+import type { FitPadding, LatLng, LayoutLayers, MapAdapter, MapEvents, MapMarker, MapMountOptions, MapType, SiteOverlay } from './types';
+import type { GeoJsonGeometry, GeoJsonPosition, LayoutFeature } from '@/lib/api/types';
 import { centroid, metersPerPixel } from './geo';
 import { getMapStyle } from './mapStyle';
 
@@ -59,8 +60,8 @@ export class NaverMapAdapter implements MapAdapter {
   private markerObjects: any[] = [];
   private markerListeners: any[] = [];
   private sitePolygon: any = null;
-  private roadLine: any = null;
   private areaLabel: any = null;
+  private layoutObjects: any[] = [];
   private sdkListeners: any[] = [];
   private lateAuthHandler: (() => void) | null = null;
 
@@ -134,6 +135,7 @@ export class NaverMapAdapter implements MapAdapter {
     this.sdkListeners = [];
     this.clearMarkers();
     this.clearSite();
+    this.clearLayout();
     this.cadastralLayer?.setMap(null);
     this.map?.destroy?.();
     this.map = null;
@@ -204,20 +206,8 @@ export class NaverMapAdapter implements MapAdapter {
   setSite(site: SiteOverlay | null): void {
     const { maps } = window.naver;
     this.clearSite();
-    if (!site) return;
+    if (!site || site.polygon.length < 3) return;
     const style = getMapStyle();
-
-    if (site.road && site.road.length > 1) {
-      this.roadLine = new maps.Polyline({
-        map: this.map,
-        path: site.road.map((p) => new maps.LatLng(p.lat, p.lng)),
-        strokeColor: style.roadStroke,
-        strokeWeight: style.roadStrokeWidth,
-        strokeOpacity: 0.9,
-        strokeLineCap: 'round',
-        clickable: false,
-      });
-    }
 
     this.sitePolygon = new maps.Polygon({
       map: this.map,
@@ -228,6 +218,7 @@ export class NaverMapAdapter implements MapAdapter {
       fillColor: style.siteFill,
       fillOpacity: style.siteFillOpacity,
       clickable: false,
+      zIndex: 1,
     });
 
     if (site.areaLabel) {
@@ -243,6 +234,53 @@ export class NaverMapAdapter implements MapAdapter {
           anchor: new maps.Point(0, 0),
         },
       });
+    }
+  }
+
+  /** 배치안 레이어: Polygon/MultiPolygon → Polygon, LineString → Polyline, Point → 작은 HTML 마커. 색은 --map-layout-* 토큰 */
+  setLayout(layers: LayoutLayers | null): void {
+    const { maps } = window.naver;
+    this.clearLayout();
+    if (!layers || !this.map) return;
+    const style = getMapStyle();
+    const toPath = (ring: GeoJsonPosition[]) => ring.map(([lng, lat]) => new maps.LatLng(lat, lng));
+
+    for (const f of layers.features) {
+      const g: GeoJsonGeometry = f.geometry;
+      if (g.type === 'Polygon' || g.type === 'MultiPolygon') {
+        const polygons = g.type === 'Polygon' ? [g.coordinates] : g.coordinates;
+        for (const rings of polygons) {
+          if (!rings.length || rings[0].length < 3) continue;
+          this.layoutObjects.push(
+            new maps.Polygon({ map: this.map, paths: rings.map(toPath), clickable: false, ...polygonStyle(f, style) }),
+          );
+        }
+      } else if (g.type === 'LineString') {
+        if (g.coordinates.length < 2) continue;
+        this.layoutObjects.push(
+          new maps.Polyline({
+            map: this.map,
+            path: toPath(g.coordinates),
+            strokeColor: style.layoutGateStroke,
+            strokeWeight: style.layoutGateStrokeWidth,
+            strokeOpacity: 1,
+            strokeLineCap: 'round',
+            clickable: false,
+            zIndex: 6,
+          }),
+        );
+      } else if (g.type === 'Point') {
+        const [lng, lat] = g.coordinates;
+        this.layoutObjects.push(
+          new maps.Marker({
+            position: new maps.LatLng(lat, lng),
+            map: this.map,
+            clickable: false,
+            zIndex: 7,
+            icon: { content: '<div class="map-gate-marker"></div>', anchor: new maps.Point(7, 7) },
+          }),
+        );
+      }
     }
   }
 
@@ -278,11 +316,47 @@ export class NaverMapAdapter implements MapAdapter {
 
   private clearSite(): void {
     this.sitePolygon?.setMap(null);
-    this.roadLine?.setMap(null);
     this.areaLabel?.setMap(null);
     this.sitePolygon = null;
-    this.roadLine = null;
     this.areaLabel = null;
+  }
+
+  private clearLayout(): void {
+    this.layoutObjects.forEach((o) => o.setMap(null));
+    this.layoutObjects = [];
+  }
+}
+
+/** 배치안 폴리곤 스타일 — 종류(properties.layer)별 색·투명도·z 순서 (가용 영역 < 차로 < 주차구획) */
+function polygonStyle(f: LayoutFeature, style: ReturnType<typeof getMapStyle>): Record<string, unknown> {
+  switch (f.properties.layer) {
+    case 'stall':
+      return {
+        strokeColor: style.layoutStallStroke,
+        strokeWeight: 1.2,
+        strokeOpacity: 1,
+        fillColor: style.layoutStallFill,
+        fillOpacity: style.layoutStallFillOpacity,
+        zIndex: 5,
+      };
+    case 'aisle':
+      return {
+        strokeColor: style.layoutUsableStroke,
+        strokeWeight: 1,
+        strokeOpacity: 0.6,
+        fillColor: style.layoutAisleFill,
+        fillOpacity: style.layoutAisleFillOpacity,
+        zIndex: 4,
+      };
+    default:
+      return {
+        strokeColor: style.layoutUsableStroke,
+        strokeWeight: 1.5,
+        strokeOpacity: 0.9,
+        strokeStyle: 'shortdash',
+        fillOpacity: 0,
+        zIndex: 3,
+      };
   }
 }
 

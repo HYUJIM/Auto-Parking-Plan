@@ -44,7 +44,6 @@ export const icons = [
   'refresh',
   'loader',
   'maximize',
-  'palette',
   'check',
 ] as const;
 

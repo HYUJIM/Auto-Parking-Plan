@@ -1,24 +1,26 @@
-import type { AddressSearchResult, Parcel } from './types';
-import { apiUrl, toApiError } from './base';
-import { suseongParcels } from './mock';
+import type { BeAddressSearch } from './beTypes';
+import { toAddressSearchResult } from './beAdapters';
+import { getJson } from './base';
+import { ApiError, type AddressSearchResult } from './types';
+
+const EMPTY: AddressSearchResult = { hits: [], total: 0 };
 
 /**
- * 주소 검색 (도로명·지번 자동완성).
- *
- * 브라우저는 `/api/address?q=` 만 호출합니다. 서버(server/api.ts)가 행정안전부 juso.go.kr 를 대신 호출해
- * 법정동코드·본번·부번으로 PNU 를 만들고, 좌표제공 API 가 있으면 위경도까지 붙여 줍니다.
- * 승인키가 없으면 서버가 목업 필지 목록으로 응답합니다(source: 'mock').
+ * 주소 검색 (도로명·지번 자동완성) — `GET /v1/address/search?q=`.
+ * BE 가 행정안전부 도로명주소 API 를 대신 호출해 PNU·필지 중심 좌표·지원 관할 여부까지 붙여 줍니다 (최대 10건).
+ * 결과 0건은 BE 가 404 ADDRESS_NOT_FOUND 로 답하므로 오류가 아니라 빈 결과(+안내)로 돌려줍니다.
  */
 export async function searchAddress(query: string, signal?: AbortSignal): Promise<AddressSearchResult> {
   const q = query.trim();
-  if (q.length < 2) return { hits: [], total: 0, source: 'juso' };
-
-  const res = await fetch(apiUrl('/api/address', { q, limit: 10 }), { signal, headers: { Accept: 'application/json' } });
-  if (!res.ok) throw await toApiError(res);
-  return (await res.json()) as AddressSearchResult;
-}
-
-/** 예시 주소 = 수성구 검증 필지 중 1개 */
-export function getExampleParcel(): Parcel {
-  return suseongParcels[0];
+  if (q.length < 2) return EMPTY;
+  try {
+    const body = await getJson<BeAddressSearch>('/v1/address/search', { q }, { signal });
+    return toAddressSearchResult(body);
+  } catch (err) {
+    if (err instanceof ApiError && err.code === 'NOT_FOUND' && err.beCode === 'ADDRESS_NOT_FOUND') {
+      const reason = (err.details as { reason?: unknown } | undefined)?.reason;
+      return typeof reason === 'string' && reason ? { ...EMPTY, notice: reason } : EMPTY;
+    }
+    throw err;
+  }
 }
