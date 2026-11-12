@@ -1,8 +1,13 @@
 package com.autoparkingplan.server.api;
 
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.Semaphore;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.regex.Pattern;
+
+import jakarta.servlet.http.HttpServletRequest;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,9 +48,15 @@ public class MapController {
     /** 앞자리 0·부호·공백 없는 십진수만 (같은 타일을 여러 주소로 부르지 못하게 — 캐시 키가 주소다). */
     private static final Pattern INT = Pattern.compile("0|[1-9]\\d{0,6}");
     static final String TILE_CACHE_CONTROL = "public, max-age=86400";
+    /** '그 타일 없음'도 잠깐 캐시한다 — 없는 타일을 계속 물어 브이월드 호출을 일으키지 못하게 (CDN 기본은 10초). */
+    static final String MISSING_CACHE_CONTROL = "public, max-age=600";
+    /** 브이월드로 동시에 나가는 타일 요청 수. 브이월드가 느려져도 타일이 요청 스레드를 다 차지해 검색·검토까지 멈추는 일을 막는다. */
+    static final int UPSTREAM_CONCURRENCY = 24;
+    static final long UPSTREAM_WAIT_MS = 300;
     private static final long UPSTREAM_LOG_INTERVAL_NS = 60_000_000_000L;
 
     private final VWorldTileApi vworld; // 브이월드 키가 없으면 null
+    private final Semaphore upstreamSlots = new Semaphore(UPSTREAM_CONCURRENCY);
     private final AtomicLong lastUpstreamLog = new AtomicLong(System.nanoTime() - UPSTREAM_LOG_INTERVAL_NS);
 
     public MapController(MapTiles tiles) {
@@ -77,7 +88,7 @@ public class MapController {
 
     @GetMapping("/tiles/{layer}/{z}/{x}/{y}")
     public ResponseEntity<byte[]> tile(@PathVariable("layer") String layerS, @PathVariable("z") String zS, @PathVariable("x") String xS,
-            @PathVariable("y") String yS) {
+            @PathVariable("y") String yS, HttpServletRequest request) {
         // 검사는 키 설정 여부와 무관하게 먼저 한다 (잘못된 주소는 언제나 422)
         VWorldTiles.Layer layer = VWorldTiles.Layer.of(layerS)
                 .orElseThrow(() -> RequestValidationException.of(List.of("path", "layer"), "base 또는 satellite 여야 합니다"));
@@ -94,18 +105,43 @@ public class MapController {
         if (y >= n) {
             throw RequestValidationException.of(List.of("path", "y"), "허용 범위를 벗어났습니다");
         }
+        // 타일 하나에 주소도 하나만: 라우팅은 ';v=1' 같은 경로 매개변수와 %xx 표기를 같은 타일로 풀어 주므로, 받은 주소가
+        // 표준 표기와 글자까지 같을 때만 응답한다. 앞단 CDN 의 캐시 키가 주소라서, 변형 주소로 캐시를 비켜 가며 같은 타일을
+        // 끝없이 새로 받게 하는 것을 막는다 (2026-11-12 운영 점검에서 변형 주소가 200 으로 응답함을 확인)
+        String canonical = "/v1/map/tiles/" + layer.id() + "/" + z + "/" + x + "/" + y;
+        if (!canonical.equals(request.getRequestURI())) {
+            throw new ApiError("TILE_NOT_FOUND");
+        }
         if (vworld == null) {
             throw new ApiError("TILE_NOT_FOUND"); // 타일 소스 없음 (GET /v1/map/config 가 tiles: null 을 알려 준다)
         }
+        boolean acquired;
+        try {
+            acquired = upstreamSlots.tryAcquire(UPSTREAM_WAIT_MS, TimeUnit.MILLISECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            acquired = false;
+        }
+        if (!acquired) {
+            throw busy(); // 브이월드가 느려 자리가 꽉 찼다 — 요청 스레드를 붙잡지 않고 바로 돌려보낸다
+        }
         VWorldTiles.Tile tile;
         try {
-            tile = vworld.getTile(layer, z, x, y).orElseThrow(() -> new ApiError("TILE_NOT_FOUND"));
+            tile = vworld.getTile(layer, z, x, y)
+                    .orElseThrow(() -> new ApiError("TILE_NOT_FOUND", null, null, null, Map.of(HttpHeaders.CACHE_CONTROL, MISSING_CACHE_CONTROL)));
         } catch (UpstreamError e) {
             logUpstream(e);
-            throw new ApiError("UPSTREAM_UNAVAILABLE");
+            throw busy();
+        } finally {
+            upstreamSlots.release();
         }
         return ResponseEntity.ok().header(HttpHeaders.CONTENT_TYPE, tile.contentType()).header(HttpHeaders.CACHE_CONTROL, TILE_CACHE_CONTROL)
                 .body(tile.body());
+    }
+
+    /** 일시적인 실패는 CDN·브라우저가 붙들고 있지 않게 no-store 로 내보낸다. */
+    private static ApiError busy() {
+        return new ApiError("UPSTREAM_UNAVAILABLE", null, null, null, Map.of(HttpHeaders.CACHE_CONTROL, "no-store", "Retry-After", "2"));
     }
 
     /** 타일은 한꺼번에 수십 장이 실패하므로 원천 오류는 1분에 한 번만 남긴다. 메시지는 클라이언트가 이미 인증키를 가린 것이다. */

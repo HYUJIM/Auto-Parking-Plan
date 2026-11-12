@@ -86,7 +86,12 @@ class ParkingEngineAdapter {
     }
 
     SimOut simulate(JsonNode siteGeojson, List<Rule> stallRules, List<Rule> aisleRules, ParkingBridge.Request p) {
-        SimulationResult sim = ParkingEngine.simulate(siteGeojson, dimsFromRules(stallRules, aisleRules), params(p));
+        return simulate(siteGeojson, dimsFromRules(stallRules, aisleRules), p);
+    }
+
+    /** 치수가 이미 풀려 있을 때 (엔티티 없이 — 트랜잭션 밖에서 부른다). */
+    SimOut simulate(JsonNode siteGeojson, ParkingDimensions dims, ParkingBridge.Request p) {
+        SimulationResult sim = ParkingEngine.simulate(siteGeojson, dims, params(p));
         ObjectNode j = sim.toJson();
         return new SimOut(j.get("site_area_m2"), sim.crsInternal(), (ArrayNode) j.get("alternatives"), (ArrayNode) j.get("constraint_reasons"));
     }

@@ -139,7 +139,8 @@ public final class Req {
             err(loc, "최대 " + maxLen + "자여야 합니다");
             return null;
         }
-        if (pattern != null && !pattern.matcher(s).find()) {
+        // 문자열 전체가 맞아야 한다. find() + '^…$' 는 끝에 줄바꿈이 붙은 값("…\n")도 통과시킨다
+        if (pattern != null && !pattern.matcher(s).matches()) {
             err(loc, "형식이 올바르지 않습니다");
             return null;
         }

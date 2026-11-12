@@ -6,7 +6,13 @@ cd /opt/app
 [ -f .env ] || { echo "오류: /opt/app/.env 가 없습니다. 먼저 scripts/server-env.sh 를 실행하세요." >&2; exit 1; }
 [ -f incoming/app.jar ] || { echo "오류: 올라온 app.jar 가 없습니다." >&2; exit 1; }
 
+# 되돌릴 때를 위해 지금 구성을 보관해 둔다 (첫 배포에는 없다)
+mkdir -p .prev
+for f in compose.yaml nginx.conf.template; do [ -f "$f" ] && cp "$f" ".prev/$f"; done
 cp incoming/compose.yaml incoming/nginx.conf.template .
+install -m 755 incoming/backup-db.sh backup-db.sh
+# 호스트 설정(SSH·자동 재부팅·백업 예약)을 코드와 맞춘다. 실패해도 배포는 계속한다 — 다음 배포에서 다시 시도된다
+sudo bash incoming/host-setup.sh /opt/app || echo "경고: 호스트 설정 적용 실패 (배포는 계속합니다)" >&2
 mkdir -p blobs
 # 컨테이너의 앱 사용자(10001)가 쓸 수 있게
 sudo chown -R 10001:10001 blobs
@@ -48,8 +54,9 @@ done
 echo "오류: API 가 5분 안에 정상 상태가 되지 않았습니다. 최근 로그:" >&2
 docker compose logs --tail 60 api >&2
 if [ -d release.old ]; then
-  echo "이전 릴리스로 되돌립니다." >&2
+  echo "이전 릴리스로 되돌립니다 (app.jar·data·compose·프록시 설정. DB 마이그레이션은 되돌리지 않습니다)." >&2
   rm -rf release && mv release.old release
-  docker compose up -d --force-recreate api
+  for f in compose.yaml nginx.conf.template; do [ -f ".prev/$f" ] && cp ".prev/$f" "$f"; done
+  docker compose up -d --force-recreate api proxy
 fi
 exit 1

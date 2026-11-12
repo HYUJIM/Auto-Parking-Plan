@@ -43,12 +43,17 @@ export function SitePanel() {
   const [progress, setProgress] = useState<ReviewProgress | null>(null);
   const headRef = useRef<HTMLElement>(null);
 
-  const siteState = useAsync(() => resolveSite(pnu), [pnu], Boolean(pnu));
+  const siteState = useAsync((signal) => resolveSite(pnu, signal), [pnu], Boolean(pnu));
   const site = siteState.status === 'success' ? siteState.data : null;
   const parcel = site?.kind === 'parcel' ? site.parcel : null;
   // 시범 지역 밖 필지는 BE 도 빈 결과만 주므로 검토를 요청하지 않습니다
   const reviewEnabled = Boolean(parcel?.inSuseong);
-  const rulesState = useAsync(() => getRuleReview(parcel as Parcel, { onProgress: setProgress }), [parcel?.pnu], reviewEnabled);
+  // 다른 필지로 넘어가거나 화면을 떠나면 signal 로 폴링을 끊습니다 (끊지 않으면 필지마다 60초씩 서버를 계속 부릅니다)
+  const rulesState = useAsync(
+    (signal) => getRuleReview(parcel as Parcel, { signal, onProgress: setProgress }),
+    [parcel?.pnu],
+    reviewEnabled,
+  );
   /** 필지 조회가 실패해도 주소·PNU 는 검색 결과(세션 캐시)로 보여 줍니다 */
   const cachedHit = getCachedHit(pnu);
 

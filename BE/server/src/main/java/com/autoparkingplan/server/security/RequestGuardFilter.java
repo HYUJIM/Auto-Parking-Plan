@@ -32,14 +32,33 @@ public class RequestGuardFilter extends OncePerRequestFilter {
 
     private final TokenBucketLimiter limiter;
     private final Map<String, Policy> policies; // null 이면 요청 제한 끔 (테스트)
+    private final Map<String, Policy> globalPolicies; // 묶음 이름 → 모든 사용자 합계 제한 (없으면 합계 제한 없음)
     private final int hops;
     private final int maxBody;
     private final int maxAdminBody;
 
     public RequestGuardFilter(TokenBucketLimiter limiter, Map<String, Policy> policies, int trustedProxyHops, int maxBodyBytes,
             int maxAdminBodyBytes) {
+        this(limiter, policies, trustedProxyHops, maxBodyBytes, maxAdminBodyBytes, 0);
+    }
+
+    /**
+     * @param globalFactor 묶음마다 '모든 사용자 합계' 허용량 = IP 별 허용량 × 이 값. 0 이면 합계 제한 없음.
+     *                     주소를 많이 가진 공격자가 IP 별 제한을 주소 수만큼 곱해 외부 공공 API 할당량과 서버(2 vCPU)를 태우는 것을 막는다.
+     *                     여러 대로 늘리기 전까지 앞단 방화벽(WAF)의 합계 제한을 대신한다.
+     */
+    public RequestGuardFilter(TokenBucketLimiter limiter, Map<String, Policy> policies, int trustedProxyHops, int maxBodyBytes,
+            int maxAdminBodyBytes, int globalFactor) {
         this.limiter = limiter;
         this.policies = policies;
+        this.globalPolicies = new java.util.HashMap<>();
+        if (policies != null && globalFactor > 0) {
+            for (Policy pol : policies.values()) {
+                long perMin = Math.min(Integer.MAX_VALUE, (long) pol.perMinute() * globalFactor);
+                long burst = Math.min(Integer.MAX_VALUE, (long) pol.burst() * globalFactor);
+                globalPolicies.put(pol.name(), new Policy("global:" + pol.name(), (int) perMin, (int) burst));
+            }
+        }
         this.hops = trustedProxyHops;
         this.maxBody = maxBodyBytes;
         this.maxAdminBody = maxAdminBodyBytes;
@@ -76,6 +95,13 @@ public class RequestGuardFilter extends OncePerRequestFilter {
         Policy policy = classify(method, path);
         if (policy != null) {
             double wait = limiter.hit(policy, ClientIp.of(req, hops));
+            if (wait <= 0) {
+                // IP 별 제한을 통과한 요청만 전체 예산에서 센다 (한 사람이 막힌 요청으로 남의 몫을 태우지 못하게)
+                Policy global = globalPolicies.get(policy.name());
+                if (global != null) {
+                    wait = limiter.hit(global, "*");
+                }
+            }
             if (wait > 0) {
                 Errors.write(resp, 429, "RATE_LIMITED", "요청이 너무 많습니다. 잠시 후 다시 시도해주세요.",
                         Map.of("Retry-After", String.valueOf(Math.max(1, (long) Math.ceil(wait)))));

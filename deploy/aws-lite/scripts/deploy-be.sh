@@ -19,5 +19,5 @@ remote 'test -f /opt/app/.server-ready || { echo "서버 초기 설정이 아직
         rm -rf /opt/app/incoming && mkdir -p /opt/app/incoming'
 tar --no-xattrs -C "$REPO_DIR/BE/server/build/libs" -cf - app.jar | remote 'tar -C /opt/app/incoming -xf -'
 tar --no-xattrs -C "$REPO_DIR/BE" -cf - data | remote 'tar -C /opt/app/incoming -xf -'
-tar --no-xattrs -C "$LITE_DIR/server" -cf - compose.yaml nginx.conf.template remote-deploy.sh | remote 'tar -C /opt/app/incoming -xf -'
+tar --no-xattrs -C "$LITE_DIR/server" -cf - compose.yaml nginx.conf.template remote-deploy.sh host-setup.sh backup-db.sh | remote 'tar -C /opt/app/incoming -xf -'
 remote 'install -m 755 /opt/app/incoming/remote-deploy.sh /opt/app/remote-deploy.sh && rm /opt/app/incoming/remote-deploy.sh && /opt/app/remote-deploy.sh'

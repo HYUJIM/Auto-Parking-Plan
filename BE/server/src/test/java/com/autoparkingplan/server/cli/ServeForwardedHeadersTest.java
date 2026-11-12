@@ -91,4 +91,28 @@ class ServeForwardedHeadersTest {
         assertThat(tf).contains("{ name = \"TRUSTED_PROXY_HOPS\", value = \"1\" }");
         assertThat(tf).doesNotContain("SERVER_FORWARD_HEADERS_STRATEGY").doesNotContain("SERVER_TOMCAT_REMOTEIP").doesNotContain("SERVER_SERVER_HEADER");
     }
+    /**
+     * 실제 운영 구성(deploy/aws-lite: CloudFront → nginx → 앱)이 클라이언트 주소 판별의 전제를 지키는지 고정한다.
+     * 앱은 X-Forwarded-For 의 맨 뒤 값(CloudFront 가 붙인 사용자 주소)을 믿으므로({@code TRUSTED_PROXY_HOPS=1}),
+     * 프록시가 그 헤더를 건드리거나 hops 가 달라지면 모든 사용자가 한 묶음으로 뭉치거나 제한을 피할 수 있게 된다.
+     */
+    @Test
+    void liveDeploymentKeepsClientAddressAssumptions() throws IOException {
+        Path lite = ROOT.resolve("..").resolve("deploy").resolve("aws-lite").resolve("server").normalize();
+        org.junit.jupiter.api.Assumptions.assumeTrue(Files.isDirectory(lite), "deploy/aws-lite 가 없는 체크아웃 (BE 만 받은 경우)");
+        String compose = Files.readString(lite.resolve("compose.yaml"), StandardCharsets.UTF_8);
+        assertThat(compose).contains("TRUSTED_PROXY_HOPS: \"1\"").contains("APP_ENV: prod");
+        assertThat(compose).doesNotContain("SERVER_FORWARD_HEADERS_STRATEGY").doesNotContain("SERVER_TOMCAT_REMOTEIP");
+        assertThat(compose).contains("127.0.0.1:8000:8000"); // 관리자 API 는 서버 안에서만
+        String nginx = Files.readString(lite.resolve("nginx.conf.template"), StandardCharsets.UTF_8);
+        String active = nginx.lines().filter(l -> !l.strip().startsWith("#")).collect(java.util.stream.Collectors.joining("\n"));
+        // X-Forwarded-For 를 덧붙이거나 바꾸지 않는다 (그대로 통과시켜야 맨 뒤 값이 CloudFront 가 붙인 사용자 주소다)
+        assertThat(active).doesNotContain("proxy_set_header X-Forwarded-For").doesNotContain("proxy_add_x_forwarded_for")
+                .doesNotContain("X-Real-IP");
+        // 비밀 헤더가 맞는 /v1/ 만 앱으로 넘기고, 그 헤더는 앱에 넘기지 않으며, 나머지(/admin·/healthz 포함)는 막는다
+        assertThat(active).contains("if ($http_x_origin_verify != \"${ORIGIN_SECRET}\") { return 403; }")
+                .contains("proxy_set_header X-Origin-Verify \"\";").contains("location / { return 404; }");
+        assertThat(active.lines().filter(l -> l.strip().startsWith("location ")).map(String::strip).toList())
+                .containsExactly("location /v1/ {", "location / { return 404; }");
+    }
 }

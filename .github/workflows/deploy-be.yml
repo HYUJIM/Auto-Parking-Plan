@@ -18,9 +18,13 @@ concurrency:
 
 jobs:
   deploy:
-    # 배포 변수를 아직 등록하지 않은 저장소(포크 포함)에서는 건너뛴다
-    if: vars.DEPLOY_HOST != ''
+    # 배포 변수를 아직 등록하지 않은 저장소(포크 포함)에서는 건너뛴다.
+    # main 이 아닌 가지에서 수동 실행(workflow_dispatch)해도 운영에 올라가지 않게 가지를 한 번 더 확인한다
+    if: vars.DEPLOY_HOST != '' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    # production 환경: 저장소 설정에서 '배포 가능한 가지 = main' 으로 묶고 DEPLOY_SSH_KEY 를 환경 비밀값으로 옮기면
+    # 다른 가지의 워크플로는 배포 키를 읽을 수 없다 (deploy/aws-lite/README.md "자동 배포")
+    environment: production
     timeout-minutes: 45
     steps:
       # 외부 액션은 태그 대신 커밋 SHA 로 고정 (be-ci.yml 과 같은 규칙)
@@ -37,6 +41,10 @@ jobs:
       - name: 테스트 + 실행 파일 (실패하면 배포하지 않음)
         working-directory: BE
         run: gradle --no-daemon build
+      # 종단 검증: 모의 공공 API + 실제 서버 프로세스로 전체 흐름과 보안 단계를 확인한다. 단위 테스트만 통과한 빌드가 운영에 올라가지 않게 배포 전에 돈다
+      - name: 종단 검증 (실패하면 배포하지 않음)
+        working-directory: BE
+        run: java -jar server/build/libs/app.jar e2e-verify --report var/e2e_report.json
       - name: SSH 키·호스트 키 준비
         env:
           DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}

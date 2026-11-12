@@ -209,7 +209,8 @@ export function toBasisNode(b: BeBasisNode): BasisNode {
     articleLabel: str(b.article_label),
     effectiveFrom: dateOnly(b.effective_from) ?? null,
     quote: str(b.quote),
-    url: str(b.url) && /^https?:\/\//.test(b.url as string) ? (b.url as string) : null,
+    // 원문 링크는 https 주소만 화면에 겁니다 (javascript: 같은 스킴과 평문 http 를 막습니다 — BE 도 걸러 주지만 여기서 한 번 더)
+    url: str(b.url) && /^https:\/\/[^\s/?#]+/.test(b.url as string) ? (b.url as string) : null,
     ruleId: str(b.rule_id),
   };
 }
@@ -295,8 +296,25 @@ export function toReviewProgress(body: BeReviewProgress): ReviewProgress {
 
 const GEOMETRY_TYPES = new Set(['Point', 'LineString', 'Polygon', 'MultiPolygon']);
 
+function isPosition(v: unknown): boolean {
+  return Array.isArray(v) && v.length >= 2 && Number.isFinite(v[0]) && Number.isFinite(v[1]);
+}
+
+/** 좌표가 [경도, 위도] 를 depth 단계만큼 감싼 배열인지 (Point=0, LineString=1, Polygon=2, MultiPolygon=3) */
+function isCoordinates(v: unknown, depth: number): boolean {
+  if (depth === 0) return isPosition(v);
+  return Array.isArray(v) && v.every((item) => isCoordinates(item, depth - 1));
+}
+
+const GEOMETRY_DEPTH: Record<string, number> = { Point: 0, LineString: 1, Polygon: 2, MultiPolygon: 3 };
+
+/**
+ * 종류와 좌표 모양이 맞는 도형만 받습니다. 모양이 틀린 좌표가 지도 그리기(매 프레임 도는 렌더)까지 가면
+ * 거기서 예외가 나 지도 위 표시가 통째로 멈추므로, 여기서 걸러 그 도형만 빼고 그립니다.
+ */
 function toGeometry(g: BeGeometry | null | undefined): GeoJsonGeometry | null {
   if (!g || !GEOMETRY_TYPES.has(g.type) || !Array.isArray(g.coordinates)) return null;
+  if (!isCoordinates(g.coordinates, GEOMETRY_DEPTH[g.type])) return null;
   return g as GeoJsonGeometry;
 }
 

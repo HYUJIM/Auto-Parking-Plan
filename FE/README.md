@@ -90,6 +90,9 @@ npm run dev        # http://localhost:5173  — /v1/* 는 BE(127.0.0.1:8000)로 
 - **배치안**: 법규 검토가 끝나면(`review_id`) '배치안 계산'. 주차장 설치 가능 여부가 확인되지 않아 BE 가 계산하지 않으면(`simulated=false`) 이유를 보여 주고
   '참고 배치 보기'(`include_unverified=true`)를 제안합니다. 주차장을 건설할 수 없는 토지(`eligibility.status = NOT_PERMITTED`: 지목이 도로·하천 등이거나
   허용 용도에 주차장이 없음)이면 경고 알림("이 지역은 주차장 건설이 불가한 지역입니다.")을 띄우고 사유만 보여 주며, 참고 배치는 제안하지 않습니다. 배치안을 고르면 지도 어댑터 `setLayout()` 이 GeoJSON 레이어(가용 영역·차로·주차구획·출입구)를 그립니다.
+- **요청 중단과 재시도**: 필지가 바뀌거나 화면을 떠나면 진행 중인 필지 조회와 법규 검토 폴링을 끊습니다 (`useAsync` 가 `AbortSignal` 을 넘깁니다).
+  폴링 중의 일시 오류(429·503·연결 끊김)는 `Retry-After` 만큼 기다렸다가 같은 검토를 이어서 확인하고, 요청 하나는 35초에 끊습니다.
+- **BE 응답을 믿지 않는 곳**: 타일 주소 템플릿은 `/v1/map/tiles/…` 모양만(`bePathTemplate`), 원문 링크는 https 만, 배치 도형은 좌표 모양이 맞는 것만 받습니다.
 - **PNU** = 법정동코드(10) + 산구분(1) + 본번(4) + 부번(4). 형식·상수는 `src/lib/api/types.ts`.
 - 브라우저가 접속하는 외부 origin 은 지도뿐입니다 — 네이버 지도(키 설정 시). 기본 지도의 타일은 BE(`/v1/map/tiles`, 같은 origin)에서 오고,
   BE 에 브이월드 키가 없을 때만 `tile.openstreetmap.org`(위성 `server.arcgisonline.com`)에 접속합니다.
@@ -180,21 +183,22 @@ eslint.config.js · vitest.config.ts · .prettierrc.json · .nvmrc · .npmrc
   CI(`.github/workflows/fe-ci.yml`)가 타입 검사·린트·포맷 검사·단위 테스트·색 검사·빌드를 돌립니다 (`npm ci --ignore-scripts`, Node 는 `.nvmrc`).
 - **BE 주소**: 빌드 시 `VITE_API_BASE=https://api.example.com` 으로 BE origin 을 넣고, BE 의 `CORS_ORIGINS` 에 FE 배포 도메인을 등록합니다.
   같은 도메인 아래 `/v1` 을 BE 로 라우팅(CloudFront 동작·ALB 경로 규칙)하면 `VITE_API_BASE` 를 비워 둘 수 있습니다.
-- **SPA 경로**: `/app`·`/site?pnu=…` 는 클라이언트 라우트입니다. CloudFront 는 Custom Error Response 403/404 → `/index.html` (HTTP 200, 오류 캐시 TTL 0),
-  Amplify 는 rewrite `</^[^.]+$|\.(?!(css|gif|ico|jpg|js|png|txt|svg|woff|woff2|ttf|map|json)$)([^.]+$)/>` → `/index.html` (200) 을 넣어야 새로고침·공유 링크가 열립니다.
+- **SPA 경로**: `/app`·`/site?pnu=…` 는 클라이언트 라우트입니다. 이 저장소의 배포(`deploy/aws-lite`)는 CloudFront Function 으로 마지막 경로 조각에 점이 없으면
+  `/index.html` 을 줍니다 (Custom Error Response 는 API 의 404 까지 바꿔 버려 쓰지 않습니다). Amplify 는
+  rewrite `</^[^.]+$|\.(?!(css|gif|ico|jpg|js|png|txt|svg|woff|woff2|ttf|map|json)$)([^.]+$)/>` → `/index.html` (200) 을 넣습니다.
 - **캐시 헤더**: `assets/*` 는 해시 파일명이므로 `Cache-Control: public,max-age=31536000,immutable`, `index.html` 은 `no-cache` 로 올리고 배포 뒤 `/index.html` 을 무효화합니다.
   ```bash
   aws s3 sync dist s3://<bucket> --exclude index.html --cache-control 'public,max-age=31536000,immutable'
   aws s3 cp dist/index.html s3://<bucket>/index.html --cache-control 'no-cache'
   aws cloudfront create-invalidation --distribution-id <id> --paths '/index.html'
   ```
-- **보안 헤더**(CloudFront Response Headers Policy 등으로): `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`,
-  `Permissions-Policy: geolocation=(self)`, 그리고 CSP. 네이버 지도 SDK·타일 호스트는 배포 전 네트워크 패널에서 확인해 채웁니다. 시작점:
+- **보안 헤더**: `deploy/aws-lite/template.yaml` 의 `FeSecurityHeaders` 가 CloudFront 응답에 붙입니다. 운영 빌드를 이 CSP 아래에서 전체 흐름으로 돌려 위반 0건을 확인했습니다.
   ```
-  default-src 'self'; script-src 'self' https://oapi.map.naver.com https://*.pstatic.net;
-  img-src 'self' data: blob: https://*.pstatic.net https://*.naver.com;
-  style-src 'self' 'unsafe-inline'; font-src 'self'; connect-src 'self' https://api.example.com https://*.naver.com https://*.pstatic.net; frame-ancestors 'none'
+  default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' https://tile.openstreetmap.org https://server.arcgisonline.com;
+  font-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; upgrade-insecure-requests
   ```
+  인라인 스크립트·`eval` 이 없고, 인라인 스타일은 모두 CSSOM(React `style`·`el.style`)으로 넣어 `'unsafe-inline'` 이 필요 없습니다. `data:`·`blob:` 도 쓰지 않습니다.
+  네이버 지도를 켜면 그 SDK·타일 호스트를 `script-src`·`img-src`·`connect-src` 에 더해야 합니다 (실제 목록은 키를 넣고 네트워크 패널에서 확인).
   (개발 서버에는 넣지 않습니다 — Vite 의 React Refresh 프리앰블이 inline script 를 씁니다.)
   기본 지도의 타일은 BE 경유(`/v1/map/tiles`)라 화면과 API 가 같은 origin 이면 `img-src 'self'` 로 충분합니다. `VITE_API_BASE` 로 BE 를 직접 부르면
   그 origin 을 `img-src` 에도 넣고, BE 에 브이월드 키 없이 OSM·Esri 로 대체해 쓸 거라면 `https://tile.openstreetmap.org https://server.arcgisonline.com` 을 더합니다.

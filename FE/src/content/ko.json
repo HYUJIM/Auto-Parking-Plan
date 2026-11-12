@@ -196,6 +196,7 @@
       "constraintReasons": {
         "PARKING_USE_NOT_CONFIRMED": "주차장 설치 가능 여부가 확인되지 않았습니다",
         "PARKING_NOT_PERMITTED": "주차장을 건설할 수 없는 토지입니다",
+        "SITE_TOO_LARGE": "대지가 넓어 배치를 계산하지 않았습니다",
         "SITE_GEOMETRY_MISSING": "대지 경계 정보가 없습니다",
         "SITE_GEOMETRY_INVALID": "대지 경계가 올바르지 않습니다",
         "SITE_GEOMETRY_REPAIRED": "대지 경계를 보정해 계산했습니다",

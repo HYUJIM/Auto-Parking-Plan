@@ -71,7 +71,12 @@ class SecurityComponentsTest {
         assertThat(ClientIp.of(scope("not-an-ip"), 1)).isEqualTo("10.0.0.9");
         assertThat(ClientIp.of(scope("1.1.1.1"), 2)).isEqualTo("10.0.0.9"); // 프록시 수보다 짧으면 위조로 보고 믿지 않음
         assertThat(ClientIp.of(scope(".1:2"), 1)).isEqualTo("10.0.0.9"); // IPv6 리터럴이 아닌 것 → DNS 조회 없이 버림
-        assertThat(ClientIp.of(scope("2001:DB8::1"), 1)).isEqualTo("2001:db8:0:0:0:0:0:1"); // IPv6 는 표준 표기로
+        assertThat(ClientIp.of(scope("2001:DB8::1"), 1)).isEqualTo("2001:db8:0:0::/64"); // IPv6 는 표기를 정규화한 뒤 /64 로 묶는다
+        // 같은 /64 안에서 주소만 바꿔도 같은 묶음 (주소를 돌려 가며 요청 제한을 피하지 못한다), 다른 /64 는 다른 묶음
+        assertThat(ClientIp.of(scope("2001:db8:0:0:dead:beef:1:2"), 1)).isEqualTo("2001:db8:0:0::/64");
+        assertThat(ClientIp.of(scope("2001:db8:0:1::1"), 1)).isEqualTo("2001:db8:0:1::/64");
+        assertThat(ClientIp.of(scope("::ffff:203.0.113.7"), 1)).isEqualTo("203.0.113.7"); // IPv4 를 감싼 표기는 IPv4 로 센다
+        assertThat(ClientIp.network("unknown")).isEqualTo("unknown");
     }
 
     // ── 토큰 버킷 ──────────────────────────────────────────────
@@ -92,6 +97,43 @@ class SecurityComponentsTest {
     }
 
     /** test_token_bucket_memory_is_bounded */
+    /** 전체 예산: IP 마다 제한 안쪽이어도 모든 사용자 합계가 넘으면 막는다 (주소를 많이 가진 공격자가 제한을 주소 수만큼 곱하지 못하게). */
+    @Test
+    void globalBudgetCapsTotalAcrossClients() throws Exception {
+        double[] now = {1000.0};
+        TokenBucketLimiter lim = new TokenBucketLimiter(1000, () -> now[0]);
+        // IP 별 분당 4(순간 2), 전체 = ×3 → 분당 12(순간 6)
+        java.util.Map<String, Policy> policies = java.util.Map.of("default", new Policy("default", 4, 2));
+        RequestGuardFilter filter = new RequestGuardFilter(lim, policies, 0, 1024, 1024, 3);
+        int ok = 0;
+        int limited = 0;
+        for (int i = 0; i < 10; i++) { // 서로 다른 10명이 한 번씩 — IP 별로는 모두 여유가 있다
+            MockHttpServletRequest req = new MockHttpServletRequest("GET", "/v1/regions");
+            req.setServletPath("/v1/regions");
+            req.setRemoteAddr("198.51.100." + (i + 1));
+            org.springframework.mock.web.MockHttpServletResponse resp = new org.springframework.mock.web.MockHttpServletResponse();
+            filter.doFilter(req, resp, new org.springframework.mock.web.MockFilterChain());
+            if (resp.getStatus() == 429) {
+                limited++;
+                assertThat(resp.getHeader("Retry-After")).isNotNull();
+            } else {
+                ok++;
+            }
+        }
+        assertThat(ok).isEqualTo(6);
+        assertThat(limited).isEqualTo(4);
+        // 합계 제한이 꺼져 있으면(0) 열 명 모두 통과
+        RequestGuardFilter off = new RequestGuardFilter(new TokenBucketLimiter(1000, () -> now[0]), policies, 0, 1024, 1024, 0);
+        for (int i = 0; i < 10; i++) {
+            MockHttpServletRequest req = new MockHttpServletRequest("GET", "/v1/regions");
+            req.setServletPath("/v1/regions");
+            req.setRemoteAddr("198.51.100." + (i + 1));
+            org.springframework.mock.web.MockHttpServletResponse resp = new org.springframework.mock.web.MockHttpServletResponse();
+            off.doFilter(req, resp, new org.springframework.mock.web.MockFilterChain());
+            assertThat(resp.getStatus()).isEqualTo(200);
+        }
+    }
+
     @Test
     void tokenBucketMemoryIsBounded() {
         TokenBucketLimiter lim = new TokenBucketLimiter(100, () -> System.nanoTime() / 1e9);

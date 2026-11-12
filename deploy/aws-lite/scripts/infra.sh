@@ -26,10 +26,16 @@ REPO_FOR_SUB="${GITHUB_REPO:-HYUJIM/Auto-Parking-Plan}"
 SUB_PREFIX="${GITHUB_SUB_PREFIX:-$(gh api "repos/$REPO_FOR_SUB/actions/oidc/customization/sub" -q '.sub_claim_prefix // ""' 2>/dev/null || true)}"
 [ -n "$SUB_PREFIX" ] && ARGS+=("GitHubSubPrefix=$SUB_PREFIX")
 [ -n "${BUNDLE_ID:-}" ] && ARGS+=("BundleId=$BUNDLE_ID")
+# 월 예산 알림: BUDGET_EMAIL=you@example.com [BUDGET_LIMIT_USD=30] ./infra.sh  (한 번 주면 스택이 기억한다)
+[ -n "${BUDGET_EMAIL:-}" ] && ARGS+=("BudgetEmail=$BUDGET_EMAIL")
+[ -n "${BUDGET_LIMIT_USD:-}" ] && ARGS+=("BudgetLimitUsd=$BUDGET_LIMIT_USD")
 [ "${1:-}" = "--plan" ] && ARGS+=(--no-execute-changeset)
 
 aws cloudformation deploy "${ARGS[@]}" --no-fail-on-empty-changeset
 [ "${1:-}" = "--plan" ] && exit 0
+
+# 실수로 스택을 지우지 못하게 종료 보호를 켠다 (지우려면 콘솔이나 CLI 에서 먼저 꺼야 한다)
+aws cloudformation update-termination-protection --stack-name "$STACK_NAME" --enable-termination-protection >/dev/null
 
 echo
 aws cloudformation describe-stacks --stack-name "$STACK_NAME" \

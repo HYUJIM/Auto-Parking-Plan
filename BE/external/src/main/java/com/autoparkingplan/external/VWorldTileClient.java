@@ -81,10 +81,15 @@ public final class VWorldTileClient implements VWorldTileApi, AutoCloseable {
             }
             return Optional.of(new VWorldTiles.Tile(type.get(), resp.body()));
         }
-        // 200 + XML: 키 오류만 장애로 올리고, 나머지(서비스 제공영역 밖·줌 범위 밖 등)는 '그 타일 없음'
+        // 200 + XML: '그 타일 없음'(서비스 제공영역 밖·번호 범위 밖)만 빈 값으로 돌려준다.
+        // 키 오류와 그 밖의 오류 보고서(할당량·시스템 오류 등)는 장애로 올린다 — 빈 타일로 삼키면 지도가 조용히 비고 로그에도 남지 않는다
         VWorldTiles.WmtsError err = VWorldTiles.parseError(resp);
         if (err.isKeyError()) {
             throw new UpstreamError(VWorld.SERVICE, endpoint + " 인증키 오류: " + http.scrub(err.text()), false, status);
+        }
+        if (err.isReported() && !err.isMissingTile()) {
+            throw new UpstreamError(VWorld.SERVICE, endpoint + " 오류 응답(" + http.scrub(err.code()) + "/" + http.scrub(err.locator()) + "): "
+                    + http.scrub(err.text()), false, status);
         }
         return Optional.empty();
     }
