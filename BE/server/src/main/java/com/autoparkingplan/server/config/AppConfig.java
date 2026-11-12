@@ -114,7 +114,7 @@ public class AppConfig {
     @Bean
     public FilterRegistrationBean<RequestGuardFilter> requestGuardFilter(AppSettings s, SecurityState sec) {
         FilterRegistrationBean<RequestGuardFilter> r = new FilterRegistrationBean<>(new RequestGuardFilter(sec.limiter(), ratePolicies(s),
-                s.trustedProxyHops, s.maxBodyBytes, s.maxAdminBodyBytes));
+                s.trustedProxyHops, s.maxBodyBytes, s.maxAdminBodyBytes, s.rateLimitGlobalFactor));
         r.setOrder(3);
         return r;
     }
@@ -144,9 +144,12 @@ public class AppConfig {
     @Bean
     public MapTiles mapTiles(AppSettings s) {
         VWorldTileApi vworld = s.vworldApiKey != null && !s.vworldApiKey.isEmpty()
-                ? new VWorldTileClient(s.vworldApiKey, s.vworldWmtsUrl, s.externalTimeoutS) : null;
+                // 타일은 화면 꾸밈이라 오래 기다릴 가치가 없다: 다른 외부 호출보다 짧게 끊는다 (전송 계층이 본문까지 이 값의 2배 안에 끝낸다)
+                ? new VWorldTileClient(s.vworldApiKey, s.vworldWmtsUrl, Math.min(s.externalTimeoutS, TILE_TIMEOUT_S)) : null;
         return new MapTiles(vworld);
     }
+
+    static final double TILE_TIMEOUT_S = 2.0;
 
     static final List<String> OFFICIAL_HOSTS = List.of("juso.go.kr", "vworld.kr", "data.go.kr");
 
@@ -160,7 +163,8 @@ public class AppConfig {
                 host = null;
             }
             String h = host == null ? "" : host;
-            if (OFFICIAL_HOSTS.stream().noneMatch(h::endsWith)) {
+            // 점(.) 경계까지 본다 — 'evilvworld.kr' 같은 이름이 공식 호스트로 통과하지 않게
+            if (OFFICIAL_HOSTS.stream().noneMatch(o -> h.equals(o) || h.endsWith("." + o))) {
                 return false;
             }
         }

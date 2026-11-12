@@ -85,12 +85,16 @@ public final class AppSettings {
     public final int rateLimitParcelsPerMin;
     public final int rateLimitTilesPerMin;
     public final int rateLimitDefaultPerMin;
+    /** 묶음별 '모든 사용자 합계' 허용량 = IP 별 허용량 × 이 값 (0 = 합계 제한 없음). */
+    public final int rateLimitGlobalFactor;
     public final int maxBodyBytes;
     public final int maxAdminBodyBytes;
     public final int adminMaxFailures;
     public final int adminLockMinutes;
     public final int parcelRefreshMinIntervalS;
     public final int maxPendingReviews;
+    /** 배치를 계산하는 대지 면적 상한(㎡). 넘으면 계산하지 않고 사유(SITE_TOO_LARGE)를 돌려준다. */
+    public final double parkingMaxSiteAreaM2;
 
     /** 설정 오류 (시작 거부). 메시지는 사람이 읽고 고칠 수 있게. */
     public static final class InvalidSettings extends IllegalArgumentException {
@@ -104,6 +108,11 @@ public final class AppSettings {
         appEnv = r.choice("APP_ENV", "local", ENVS);
         logLevel = r.str("LOG_LEVEL", "INFO");
         timezone = r.str("TIMEZONE", "Asia/Seoul");
+        try {
+            java.time.ZoneId.of(timezone); // 검토 요청마다 쓰는 값 — 오타가 있으면 요청 때마다 500 이 되므로 시작할 때 거른다
+        } catch (java.time.DateTimeException e) {
+            throw new InvalidSettings("TIMEZONE 이 올바른 시간대 이름이 아닙니다: " + timezone);
+        }
         databaseUrl = r.str("DATABASE_URL", DatabaseUrls.defaultLocalUrl(root));
         dbEcho = r.bool("DB_ECHO", false);
 
@@ -126,6 +135,10 @@ public final class AppSettings {
         lawgoOc = r.opt("LAWGO_OC");
         lawgoBaseUrl = r.str("LAWGO_BASE_URL", "https://www.law.go.kr/DRF"); // OC 가 평문으로 오가지 않도록 https
         externalTimeoutS = r.dbl("EXTERNAL_TIMEOUT_S", 3.0);
+        // 외부 호출 하나는 이 값의 2배(본문까지)·재시도 1회까지 요청 스레드를 붙잡는다. 앞단(nginx·CloudFront)의 30초 안에 끝나야 한다
+        if (externalTimeoutS <= 0 || externalTimeoutS > 30) {
+            throw new InvalidSettings("EXTERNAL_TIMEOUT_S 는 0 초과 30 이하여야 합니다: " + externalTimeoutS);
+        }
         parcelCacheDays = r.integer("PARCEL_CACHE_DAYS", 30, null, null);
 
         llmProvider = r.choice("LLM_PROVIDER", "none", LLM_PROVIDERS);
@@ -151,7 +164,7 @@ public final class AppSettings {
         explanationAudiences = r.list("EXPLANATION_AUDIENCES", List.of("owner", "architect"));
 
         reviewExecutor = r.choice("REVIEW_EXECUTOR", "thread", EXECUTORS);
-        reviewWorkers = r.integer("REVIEW_WORKERS", 4, null, null);
+        reviewWorkers = r.integer("REVIEW_WORKERS", 4, 1, 64);
 
         String tok = r.opt("ADMIN_TOKEN");
         adminToken = tok == null || tok.isBlank() ? null : tok; // 공백만 있는 토큰 = 미설정
@@ -166,14 +179,27 @@ public final class AppSettings {
         rateLimitParcelsPerMin = r.integer("RATE_LIMIT_PARCELS_PER_MIN", 60, 1, null);
         rateLimitTilesPerMin = r.integer("RATE_LIMIT_TILES_PER_MIN", 1200, 1, null); // 지도 화면 하나가 타일 20~40장을 한꺼번에 부른다
         rateLimitDefaultPerMin = r.integer("RATE_LIMIT_DEFAULT_PER_MIN", 240, 1, null);
+        rateLimitGlobalFactor = r.integer("RATE_LIMIT_GLOBAL_FACTOR", 20, 0, 10_000);
         maxBodyBytes = r.integer("MAX_BODY_BYTES", 64 * 1024, 1024, null);
         maxAdminBodyBytes = r.integer("MAX_ADMIN_BODY_BYTES", 2 * 1024 * 1024, 1024, null);
         adminMaxFailures = r.integer("ADMIN_MAX_FAILURES", 10, 1, null);
         adminLockMinutes = r.integer("ADMIN_LOCK_MINUTES", 15, 1, null);
         parcelRefreshMinIntervalS = r.integer("PARCEL_REFRESH_MIN_INTERVAL_S", 600, 0, null);
         maxPendingReviews = r.integer("MAX_PENDING_REVIEWS", 500, 1, null);
+        parkingMaxSiteAreaM2 = r.integer("PARKING_MAX_SITE_AREA_M2", 30_000, 100, 1_000_000);
 
         prodGuards();
+    }
+
+    /** 운영의 CORS 허용 출처: 와일드카드와 http 출처를 받지 않는다 (이 컴퓨터 안의 주소는 예외 — 종단 검증이 운영 설정으로 돈다). */
+    private void requireSafeCorsOrigins() {
+        for (String origin : corsOrigins) {
+            String o = origin == null ? "" : origin.strip();
+            boolean local = o.startsWith("http://localhost") || o.startsWith("http://127.0.0.1") || o.startsWith("http://[::1]");
+            if (o.contains("*") || !(o.startsWith("https://") || local)) {
+                throw new InvalidSettings("운영(APP_ENV=prod)의 CORS_ORIGINS 는 https 출처만 적어야 합니다 (와일드카드·http 불가): " + o);
+            }
+        }
     }
 
     private void prodGuards() {
@@ -189,6 +215,7 @@ public final class AppSettings {
                         + "(예: openssl rand -base64 32 또는 python -c \"import secrets; print(secrets.token_urlsafe(32))\")");
             }
         }
+        requireSafeCorsOrigins();
         // 인증키(JUSO/VWORLD/BUILDING_HUB 키, LAWGO_OC, LLM API 키)가 평문으로 나가지 않도록 운영에서는 https 주소만 받는다.
         // 이 컴퓨터 안(127.0.0.1·localhost)의 모의 서버·사이드카는 예외 (종단 검증이 운영 설정으로 모의 서버를 쓴다).
         String[][] urls = {{"JUSO_BASE_URL", jusoBaseUrl}, {"VWORLD_DATA_URL", vworldDataUrl}, {"VWORLD_NED_URL", vworldNedUrl},

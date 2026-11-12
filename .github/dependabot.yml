@@ -1,0 +1,27 @@
+# 의존성 보안·버전 갱신 PR 을 자동으로 연다 (저장소 설정에서 Dependabot alerts 를 켜야 보안 알림도 온다).
+# PR 이 한꺼번에 몰리지 않게 주 1회, 마이너·패치는 생태계별로 한 PR 에 묶는다. 메이저는 따로 열려 직접 판단한다.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: {interval: weekly, day: monday, time: "09:00", timezone: Asia/Seoul}
+    open-pull-requests-limit: 5
+    groups:
+      actions:
+        patterns: ["*"]
+
+  - package-ecosystem: gradle
+    directory: /BE
+    schedule: {interval: weekly, day: monday, time: "09:00", timezone: Asia/Seoul}
+    open-pull-requests-limit: 5
+    groups:
+      be-minor-patch:
+        update-types: [minor, patch]
+
+  - package-ecosystem: npm
+    directory: /FE
+    schedule: {interval: weekly, day: monday, time: "09:00", timezone: Asia/Seoul}
+    open-pull-requests-limit: 5
+    groups:
+      fe-minor-patch:
+        update-types: [minor, patch]

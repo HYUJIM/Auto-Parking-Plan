@@ -20,9 +20,16 @@ export interface ReviewOptions {
 const POLL_DEFAULT_MS = 1000;
 const POLL_MAX_MS = 10_000;
 const TIMEOUT_MS = 60_000;
+/** 폴링 중에 만나면 기다렸다가 다시 확인하는 오류 (그 밖의 오류는 바로 올립니다) */
+const POLL_RETRY_CODES: ReadonlySet<string> = new Set(['RATE_LIMITED', 'BUSY', 'UPSTREAM', 'NETWORK']);
 
 function sleep(ms: number, signal?: AbortSignal): Promise<void> {
   return new Promise((resolve, reject) => {
+    // 이미 중단된 신호는 abort 이벤트가 다시 오지 않습니다 — 기다리지 않고 바로 끝냅니다
+    if (signal?.aborted) {
+      reject(new DOMException('Aborted', 'AbortError'));
+      return;
+    }
     const timer = setTimeout(() => {
       signal?.removeEventListener('abort', onAbort);
       resolve();
@@ -54,13 +61,24 @@ export async function getRuleReview(parcel: Parcel, opts: ReviewOptions = {}): P
   const deadline = Date.now() + (opts.timeoutMs ?? TIMEOUT_MS);
 
   for (;;) {
-    const res = await request(apiUrl(`/v1/reviews/${encodeURIComponent(reviewId)}`), { signal });
+    let res: Response;
+    try {
+      res = await request(apiUrl(`/v1/reviews/${encodeURIComponent(reviewId)}`), { signal });
+    } catch (err) {
+      // 폴링 중 한 번의 일시 오류(요청 제한·서버 바쁨·연결 끊김)로 검토 전체를 실패로 만들지 않습니다.
+      // 이미 만든 검토를 버리고 새로 만들면 서버 일만 늘어납니다 — 기다렸다가 같은 검토를 이어서 확인합니다
+      if (!(err instanceof ApiError) || !POLL_RETRY_CODES.has(err.code)) throw err;
+      const wait = pollDelayMs(err.retryAfter === undefined ? null : String(err.retryAfter));
+      if (Date.now() + wait > deadline) throw err;
+      await sleep(wait, signal);
+      continue;
+    }
     const body = (await res.json()) as BeReviewResponse;
     if (isBeReviewResult(body)) return toRuleReview(body);
 
     const progress = toReviewProgress(body);
     if (progress.status === 'failed') throw new ApiError(content.status.reviewFailed, 'SERVER', { beCode: 'REVIEW_FAILED' });
-    onProgress?.(progress);
+    if (!signal?.aborted) onProgress?.(progress); // 떠난 화면의 진행 표시가 다음 필지에 나타나지 않게
 
     const delay = pollDelayMs(res.headers.get('Retry-After'));
     if (Date.now() + delay > deadline) throw new ApiError(content.status.reviewTimeout, 'SERVER', { beCode: 'REVIEW_TIMEOUT' });

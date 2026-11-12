@@ -18,7 +18,9 @@ concurrency:
 
 jobs:
   deploy:
-    if: vars.AWS_DEPLOY_ROLE_ARN != ''
+    # AWS 역할의 신뢰 조건이 main 가지로 묶여 있어 다른 가지에서는 어차피 거부되지만, 헛도는 실행을 막으려고 여기서도 확인한다.
+    # (environment 를 붙이면 OIDC sub 형식이 바뀌어 신뢰 조건과 어긋나므로 붙이지 않는다)
+    if: vars.AWS_DEPLOY_ROLE_ARN != '' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:

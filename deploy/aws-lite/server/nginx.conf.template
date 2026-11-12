@@ -1,8 +1,18 @@
 # nginx 공식 이미지가 시작할 때 ${ORIGIN_SECRET} 만 환경 변수로 바꿔 /etc/nginx/conf.d/default.conf 로 쓴다.
+# 접근 기록에 실제 사용자 주소(CloudFront 가 붙인 X-Forwarded-For)를 남긴다 — 기본 형식의 접속 주소는 CloudFront 엣지뿐이라 추적에 쓸 수 없다
+log_format origin '$remote_addr xff="$http_x_forwarded_for" [$time_iso8601] "$request" $status $body_bytes_sent '
+                  'rt=$request_time ua="$http_user_agent"';
+
 server {
-    listen 80 default_server;
+    listen 8080 default_server;
     server_tokens off;
+    access_log /var/log/nginx/access.log origin;
     client_max_body_size 64k;
+
+    # 서버 IP 로 직접 붙어 연결만 붙잡는 요청(slowloris 류)을 빨리 끊는다. CloudFront 는 헤더·본문을 한꺼번에 보낸다
+    client_header_timeout 10s;
+    client_body_timeout 10s;
+    send_timeout 30s;
 
     # api 컨테이너가 새로 뜨면 IP 가 바뀌므로 매번 Docker DNS 로 다시 찾는다
     resolver 127.0.0.11 valid=5s;
@@ -18,12 +28,8 @@ server {
         proxy_read_timeout 30s;
     }
 
-    location = /healthz {
-        if ($http_x_origin_verify != "${ORIGIN_SECRET}") { return 403; }
-        proxy_pass $api;
-        proxy_set_header X-Origin-Verify "";
-    }
-
+    # /healthz 는 밖으로 내보내지 않는다: 요청 제한이 없고 호출마다 DB 연결을 하나 쓰는 경로라 값싼 공격 대상이 된다.
+    # 컨테이너 상태 확인은 Docker healthcheck 가 컨테이너 안에서 직접 부른다 (compose.yaml)
     # /admin 을 포함한 나머지는 밖에서 접근할 수 없다
     location / { return 404; }
 }

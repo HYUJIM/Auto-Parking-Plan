@@ -383,14 +383,20 @@ public class PublicController {
         Long maxAlt = r.integer("max_alternatives", 3L, false, null, null, 1L, 6L);
         Boolean includeUnverified = r.bool("include_unverified", false, false);
         r.done();
+        if (angles != null) {
+            angles = new ArrayList<>(new java.util.LinkedHashSet<>(angles)); // 같은 각도를 여러 번 보내 계산을 부풀리지 못하게
+        }
         ParkingBridge.Request req = new ParkingBridge.Request(angles == null || angles.isEmpty() ? null : angles, stallType, setback, gate,
                 gateCount.intValue(), maxAlt.intValue(), includeUnverified);
-        return tx.execute(st -> {
-            try {
-                return parking.simulateForReview(em, reviewId, req);
-            } catch (ParkingBridge.SimulationUnavailable e) {
-                throw new ApiError(e.code(), e.getMessage());
+        try {
+            // DB 읽기만 트랜잭션 안에서 하고, 배치 계산(CPU 를 오래 쓴다)은 연결을 돌려준 뒤에 한다
+            ParkingBridge.Prepared prepared = tx.execute(st -> parking.prepare(em, reviewId, req));
+            return prepared.finish();
+        } catch (ParkingBridge.SimulationUnavailable e) {
+            if ("SERVICE_BUSY".equals(e.code())) {
+                throw new ApiError(e.code(), e.getMessage(), null, null, Map.of("Retry-After", "5"));
             }
-        });
+            throw new ApiError(e.code(), e.getMessage());
+        }
     }
 }

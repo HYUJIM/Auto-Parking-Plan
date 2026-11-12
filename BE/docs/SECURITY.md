@@ -34,7 +34,7 @@ JVM 시작 동안 ECS 헬스체크 유예 120초, 작업 메모리 2GB(`task_mem
 
 ## 3. 남은 위험
 
-- 요청 제한은 컨테이너(ECS 작업) 단위로 센다 — 여러 작업 전체를 묶는 제한은 ALB 앞의 WAF rate-based 규칙이 맡는다
+- 요청 제한은 컨테이너 하나 안에서 센다. 한 대짜리 운영 구성(5장)에서는 '모든 사용자 합계' 제한(`RATE_LIMIT_GLOBAL_FACTOR`)이 앞단 WAF 를 대신하고, 여러 대로 늘리면(`deploy/aws`) ALB 앞의 WAF rate-based 규칙이 그 일을 맡는다
 - 공개 응답의 설명·근거 문장은 프론트엔드가 **텍스트로** 그려야 한다 (HTML 로 넣으면 저장형 XSS 가 된다; 링크는 http(s) 만 내려간다)
 - 외부 공공 API 와 국가법령정보 원문은 신뢰할 수밖에 없는 입력이다 — 수집한 원문은 해시·버전으로 보관하고, 값은 원문에 있는 것만 쓴다
 - 실제 AWS·실제 API 키로는 미검증 (모의 서버·SDK 대조 테스트로만 확인)
@@ -81,9 +81,63 @@ JVM 시작 동안 ECS 헬스체크 유예 120초, 작업 메모리 2GB(`task_mem
 
 ### 4.3 남은 것 (이번에 고치지 않음)
 
-- `REVIEW_EXECUTOR=thread`(기본, 개발용)는 프로세스 재시작 때 진행 중이던 검토를 복구하지 않는다 — 클라이언트는 `queued`/`running` 을 계속 보고, 오래 남은 `queued` 는 대기 상한(`MAX_PENDING_REVIEWS`)에 센다. 운영은 `worker` 모드(시작 시 되돌림)를 쓴다
+- ~~`REVIEW_EXECUTOR=thread` 는 프로세스 재시작 때 진행 중이던 검토를 복구하지 않는다~~ → 2026-11-12 에 고침 (5장 C3). 한 대짜리 운영 구성이 thread 모드를 쓰게 되어 더 미룰 수 없었다
 - `Ingest.linkDelegations`(매일 재수집·관리자 재수집)가 모든 조문을 한 영속성 컨텍스트에 올린다 — 말뭉치가 커지면 메모리·시간이 늘어난다
 - 파이썬 호환 도우미(repr·isdigit·정규식 변환)가 `external`·`legal`·`ai` 에 비슷하게 세 벌 있다 — `common` 으로 모으는 정리는 대조 테스트 보호 아래 별도 작업
 - 실행 파일 `app.jar` 가 212MB (openai-java-core 75MB, anthropic-java-core 44MB — SDK 가 생성 코드를 모두 포함). 이미지 pull·시작 시간에 영향
 - GEOS 이식 파일의 LGPL 검토 (`THIRD_PARTY_NOTICES.md`)
 - 실제 AWS·실제 API 키로는 미검증. 컨테이너 OS 패키지 취약점은 ECR scan-on-push 에 맡긴다 (로컬 trivy 미실행)
+
+## 5. 운영 환경 점검 (2026-11-12, 실제 서비스)
+
+운영 구성이 `deploy/aws-lite`(CloudFront → nginx → 앱 컨테이너 1개, Lightsail 서버 한 대, `REVIEW_EXECUTOR=thread`, WAF 없음)로 정해진 뒤,
+실제 서비스에 공격 요청을 보내고 서버·AWS 계정·GitHub 저장소 설정을 함께 점검했다. 1~4장의 전제 중 이 구성에서 달라지는 것은 여기 적은 것이 우선한다.
+
+방법: 포트·TLS·헤더·노출 파일 탐색, 프록시 우회(경로 변형 12종·서버 IP 직접 접속·헤더 추측), 교차 출처 요청, 요청 제한 초과와 위조 헤더 5종,
+타일 캐시 오염·주소 변형, 입력값 변조, 서버 설정(sshd·Docker·권한·로그) 조회, AWS(IAM·S3·CloudFront·Lightsail)·GitHub 설정 조회, BE·FE 코드 검토.
+
+### 5.1 공격했으나 막힌 것
+
+- 경로 변형으로 관리자 API 에 닿지 못한다 (CloudFront 가 정규화해 화면 파일을 주거나 404). 서버 IP 직접 접속은 비밀 헤더가 없어 403, `/admin` 은 404
+- 다른 출처의 요청·사전 요청은 403. 메서드 변조는 405
+- 요청 제한을 넘긴 뒤 `X-Forwarded-For`·`X-Real-IP`·`Forwarded`·`CloudFront-Viewer-Address` 위조와 경로 변형으로 피하지 못한다
+- 한 주소가 한도를 계속 채우는 동안 다른 주소의 요청은 정상 처리된다 (사용자별 묶음이 분리돼 있음). 초당 약 370건에서도 서비스 유지
+- 제한에 걸린 응답(429)·검증 오류(422)는 엣지에 캐시되지 않는다. 열린 포트는 22·80 뿐, SSH 는 키 인증만, 소스맵·`.env`·`.git` 노출 없음
+
+### 5.2 찾아서 고친 것
+
+| # | 문제 (확인 방법) | 조치 |
+| --- | --- | --- |
+| C1 | **IPv6 주소를 바꿔 가며 요청 제한 회피** — 제한 묶음이 주소 하나 단위라, /64 를 가진 한 사람이 주소만 돌리면 묶음이 무한히 생긴다 (CloudFront 는 IPv6 를 받는다. 같은 /64 의 200개 주소가 200개 묶음이 됨을 실험으로 확인) | `ClientIp.network`: IPv6 는 /64 로 묶어 센다 (관리자 잠금도 같이). 테스트 `SecurityComponentsTest` |
+| C2 | 주소를 많이 가진 공격자가 IP 별 제한을 주소 수만큼 곱해 외부 공공 API 할당량·서버를 태울 수 있다 (WAF 없음) | 묶음마다 '모든 사용자 합계' 제한 = IP 별 허용량 × `RATE_LIMIT_GLOBAL_FACTOR`(기본 20). IP 별 제한을 통과한 요청만 센다. 테스트 `globalBudgetCapsTotalAcrossClients` |
+| C3 | thread 모드에서 재시작(배포마다 일어난다)하면 진행 중이던 검토가 `queued`·`running` 으로 남아 화면이 끝없이 기다리고, 쌓이면 대기 상한에 걸려 새 검토가 모두 503 | `ReviewService.resumeOrphans`: 서버 시작 때 남은 요청을 다시 실행. compose `stop_grace_period: 30s` (우아한 종료 20초가 실제로 지켜지게). 테스트 `threadModeResumesOrphanedReviewsOnStartup` |
+| C4 | **배치 시뮬레이션이 요청 하나로 CPU·메모리·DB 연결을 오래 붙잡음** — 대지 크기·동시 실행·출력 크기에 상한이 없고 엔진이 DB 트랜잭션 안에서 돌았다 (600m 사각 대지에서 응답 28MB 를 실험으로 확인) | 대지 면적 상한(`PARKING_MAX_SITE_AREA_M2`, 기본 3만㎡ → `SITE_TOO_LARGE`), 같은 각도 중복 제거, 엔진 동시 실행을 코어 수로 제한(넘으면 503 `SERVICE_BUSY` + `Retry-After`), 엔진은 트랜잭션 밖에서 실행. 테스트 `ParkingBridgeAndWorkerTest` 4건 |
+| C5 | **같은 타일이 여러 주소로 응답** — `;v=1`, `base;a/19;b/…`, `%37` 표기가 모두 같은 타일로 200 (운영에서 확인). 엣지 캐시 키가 주소라서 캐시를 비켜 가며 브이월드 호출을 끝없이 일으킬 수 있다 | 받은 주소가 표준 표기와 글자까지 같을 때만 응답 (아니면 404, 원천 호출 없음). 테스트 `nonCanonicalTileAddressesAre404BeforeAnyUpstreamCall` |
+| C6 | 브이월드가 느려지면 타일 요청이 요청 스레드를 다 차지해 검색·검토까지 멈춘다 (타일 하나가 최대 6초, 동시 호출 무제한) | 브이월드 동시 호출 24개로 제한(자리가 없으면 0.3초 뒤 503), 타일 제한 시간 2초 |
+| C7 | 브이월드의 오류 보고서(할당량·시스템 오류)를 모두 '타일 없음'(404)으로 삼켜 지도가 조용히 비고 로그에도 남지 않는다. 오류 응답에 캐시 헤더가 없다 | '타일 없음'만 404(`max-age=600`), 그 밖의 보고서는 503(`no-store`, `Retry-After`)과 로그 |
+| C8 | `/healthz` 가 공개돼 있고 요청 제한이 없으며 호출마다 DB 연결을 쓴다 (400회 연속 200 확인) | CloudFront 동작과 프록시 경로에서 제거. 상태 확인은 컨테이너 안에서만 |
+| C9 | 설정 오류가 요청 때에야 드러난다: `TIMEZONE` 오타는 검토마다 500, `REVIEW_WORKERS`·`EXTERNAL_TIMEOUT_S` 범위 없음, 운영 `CORS_ORIGINS` 에 `*`·http 허용, 공식 호스트 판별이 `evilvworld.kr` 을 통과 | 시작할 때 검증(`AppSettings`), 호스트는 점 경계까지 비교. 테스트 `AppSettingsSecurityTest` |
+| C10 | PNU 등 형식 검사가 끝에 줄바꿈이 붙은 값을 통과시킨다 (`find()` + `^…$`) | `matches()` 로 문자열 전체 검사 (`api.Req`) |
+| C11 | 주차장 가능 여부 판정이 모르는 상태 값에서 500(NPE), 조례가 아직 승인되지 않은 상태에서도 '건설 불가'로 단정 | 모르는 상태는 '별도 확인', 국가 법령과 조례가 모두 승인된 목록에서만 단정 |
+| C12 | 프록시(nginx 1.27)가 2025-04 이후 갱신이 끊긴 계열, 컨테이너 로그 무제한, DB·프록시 컨테이너 권한 제한 없음, DB 백업이 디스크 스냅샷 하나뿐 | 권한 없는 nginx 안정판(읽기 전용·capabilities 제거), 로그 10MB×5, DB capabilities 최소화·`pids_limit`, 일일 `pg_dump`(7개 보관), SSH X11 전달·root 로그인 끔, 보안 업데이트 뒤 새벽 자동 재부팅 (`deploy/aws-lite/server`) |
+| C13 | 화면 응답에 CSP 가 없고 `Server: AmazonS3` 노출 | CloudFront 응답 헤더 정책: `default-src 'none'` 기반 CSP(운영 빌드 전체 흐름에서 위반 0건 확인), `Permissions-Policy`, `Server` 헤더 제거 |
+| C14 | 배포 경로: 수동 실행으로 main 이 아닌 가지를 운영에 올릴 수 있고, 배포가 종단 검증 없이 단위 테스트만으로 진행, 의존성 취약점 알림·정적 분석 없음, 되돌리기가 jar 만 복구 | 배포 작업을 main 으로 제한·`production` 환경 지정, 배포 전 `e2e-verify`, Dependabot·CodeQL 추가, 되돌릴 때 compose·프록시 설정도 복구, 스택 종료 보호·서버 삭제 방지(`DeletionPolicy: Retain`) |
+
+FE 쪽 조치(법규 검토 폴링을 떠난 화면에서 끊기, 타일 주소 검증 강화, 배치 도형 검증, 원문 링크 https 한정)는 `FE/README.md` 에 적었다.
+
+### 5.3 코드로 고칠 수 없어 설정이 필요한 것
+
+- AWS 루트 계정과 관리자 사용자에 2단계 인증이 없다. 관리자 권한의 장기 액세스 키가 발급돼 있다 → MFA 를 켜고 키는 지운 뒤 `aws login` 을 쓴다
+- 예산 알림이 없다 → `BUDGET_EMAIL=… deploy/aws-lite/scripts/infra.sh` (템플릿에 선택 항목으로 추가)
+- GitHub `main` 가지에 보호 규칙이 없어 쓰기 권한자가 검사 없이 운영에 배포할 수 있다 → PR 과 상태 검사를 요구하는 규칙
+- 배포 키(`DEPLOY_SSH_KEY`)가 저장소 비밀값이라 쓰기 권한자가 다른 가지의 워크플로로 읽을 수 있다 → `production` 환경을 main 전용으로 묶고 환경 비밀값으로 옮긴다
+- Dependabot alerts 가 꺼져 있다 → 저장소 설정에서 켠다
+
+### 5.4 남은 것
+
+- CloudFront 와 서버 사이는 HTTP (비밀 헤더가 평문으로 지나간다). 도메인을 붙이면 서버에도 인증서를 달아 HTTPS 로 바꾼다
+- CloudFront 기본 인증서는 최소 TLS 1.0 정책을 바꿀 수 없다 (자체 도메인 인증서를 써야 TLS 1.2 이상으로 올릴 수 있다)
+- DB 연결을 잡은 채 외부 API 를 부르는 경로(필지 조회·검토 생성)가 남아 있다 — 외부 API 가 느려지면 연결 20개가 묶인다. 조회와 저장을 나누는 구조 변경이 필요하다
+- 익명 요청이 만든 검토·필지 행을 지우는 경로가 없다 (시범 규모에서는 12MB. 정리 명령이 필요하다)
+- 감사 로그(CloudTrail 추적)·위협 탐지(GuardDuty)·CloudFront 접근 로그·WAF 를 쓰지 않는다 (비용)
+- 종단 검증이 오늘 날짜를 검토 기준일로 써서 '시행 예정 개정' 경로는 시행일 이후 검증되지 않는다 (기준일을 명시해 양쪽을 모두 확인하도록 바꿔야 한다)

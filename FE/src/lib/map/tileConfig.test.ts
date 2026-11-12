@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { fetchMapConfig, resolveTileChoice, tileSourceFromBe } from './tileConfig';
+import { bePathTemplate, fetchMapConfig, loadTileChoice, resetTileChoiceCache, resolveTileChoice, tileSourceFromBe } from './tileConfig';
 import { DEFAULT_TILE_SOURCE, TILE_MAX_ZOOM, tileUrl } from './tileSource';
 import { tileBadgeDesc, tileBadgeText, tileSourceText } from './tileCopy';
 import { content } from '@/lib/content';
@@ -63,6 +63,66 @@ describe('tileSourceFromBe', () => {
     expect(tileSourceFromBe({ tiles: { ...BE_VWORLD.tiles, max_zoom: 18.5 } }, '')?.maxZoom).toBe(TILE_MAX_ZOOM);
     expect(tileSourceFromBe({ tiles: { ...BE_VWORLD.tiles, min_zoom: -1 } }, '')?.minZoom).toBeUndefined();
     expect(tileSourceFromBe({ tiles: { ...BE_VWORLD.tiles, min_zoom: 20, max_zoom: 19 } }, '')).toBeNull();
+  });
+});
+
+describe('bePathTemplate — BE 가 준 타일 경로만 받는다', () => {
+  it('정상 경로', () => {
+    expect(bePathTemplate('/v1/map/tiles/base/{z}/{x}/{y}')).toBe('/v1/map/tiles/base/{z}/{x}/{y}');
+    expect(bePathTemplate('/v1/map/tiles/satellite/{z}/{x}/{y}.jpeg')).toBe('/v1/map/tiles/satellite/{z}/{x}/{y}.jpeg');
+  });
+
+  it('다른 호스트로 풀리거나 경로를 벗어나는 값은 거부한다 (변조된 응답이 타일 요청을 밖으로 돌리지 못하게)', () => {
+    const hostile = [
+      '/\\evil.example/{z}/{x}/{y}.png', // 브라우저가 //evil.example 로 푼다
+      '/\t/evil.example/{z}/{x}/{y}.png', // 탭은 URL 해석에서 지워진다
+      '//evil.example/{z}/{x}/{y}',
+      'https://evil.example/{z}/{x}/{y}',
+      '/other/{z}/{x}/{y}', // 타일 경로가 아님
+      '/v1/map/tiles/../../../brand/logo.svg?{z}{x}{y}',
+      '/v1/map/tiles/base/{z}/{x}/{y}?next=//evil.example',
+      '/v1/map/tiles/base/{z}/{x}/{y}/{z}', // 자리표시자 중복
+      '/v1/map/tiles/base/{z}/{x}', // 자리표시자 누락
+      '/v1/map/tiles/base/{z}/{x}/{y}/{w}',
+      '/v1/map/tiles/base//{z}/{x}/{y}',
+      'javascript:alert(1)//{z}{x}{y}',
+      '/v1/map/tiles/' + 'a'.repeat(300) + '/{z}/{x}/{y}',
+    ];
+    for (const value of hostile) expect(bePathTemplate(value), value).toBeNull();
+    expect(bePathTemplate(null)).toBeNull();
+    expect(bePathTemplate(42)).toBeNull();
+  });
+});
+
+describe('loadTileChoice — BE 에 묻지 못한 결과는 기억하지 않는다', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    resetTileChoiceCache();
+  });
+
+  it('요청이 실패하면 이번에는 기본 타일을 쓰고, 다음에 다시 묻는다', async () => {
+    resetTileChoiceCache();
+    const fetchMock = vi.fn(async () => {
+      throw new TypeError('network');
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    expect((await loadTileChoice()).provider).toBe('default');
+    expect((await loadTileChoice()).provider).toBe('default');
+    expect(fetchMock).toHaveBeenCalledTimes(2); // 실패는 캐시하지 않음
+  });
+
+  it('BE 가 답한 결과(브이월드 또는 tiles: null)는 한 번만 묻고 계속 쓴다', async () => {
+    resetTileChoiceCache();
+    const body = {
+      tiles: { provider: 'vworld', normal: '/v1/map/tiles/base/{z}/{x}/{y}', satellite: '/v1/map/tiles/satellite/{z}/{x}/{y}' },
+    };
+    const fetchMock = vi.fn(
+      async () => new Response(JSON.stringify(body), { status: 200, headers: { 'Content-Type': 'application/json' } }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    expect((await loadTileChoice()).provider).toBe('vworld');
+    expect((await loadTileChoice()).provider).toBe('vworld');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });
 

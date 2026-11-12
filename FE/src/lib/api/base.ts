@@ -53,17 +53,32 @@ export interface RequestOptions {
   signal?: AbortSignal;
 }
 
+/** 요청 하나의 제한 시간. 앞단(CloudFront·프록시)이 30초에 끊으므로 그보다 조금 길게 — 응답이 영영 안 와도 화면이 멈춰 있지 않게 */
+export const REQUEST_TIMEOUT_MS = 35_000;
+
 /**
- * fetch + 오류 분류. 연결 실패(TypeError)는 ApiError('NETWORK'), 2xx 가 아니면 toApiError.
- * 중단(AbortError)은 그대로 던져 호출 쪽이 무시할 수 있게 둡니다.
+ * fetch + 오류 분류. 연결 실패(TypeError)와 제한 시간 초과는 ApiError('NETWORK'), 2xx 가 아니면 toApiError.
+ * 호출 쪽이 끊은 중단(AbortError)은 그대로 던져 호출 쪽이 무시할 수 있게 둡니다.
  */
 export async function request(url: string, init: RequestInit = {}): Promise<Response> {
   let res: Response;
+  // 호출 쪽 신호와 제한 시간을 하나로 묶습니다. AbortSignal.any/timeout 은 조금 오래된 브라우저(사파리 17.3 이하)에 없어 직접 잇습니다
+  const controller = new AbortController();
+  const caller = init.signal ?? undefined;
+  const onCallerAbort = () => controller.abort();
+  if (caller?.aborted) throw new DOMException('Aborted', 'AbortError'); // 이미 끊긴 요청은 보내지 않습니다
+  caller?.addEventListener('abort', onCallerAbort, { once: true });
+  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   try {
-    res = await fetch(url, { ...init, headers: { Accept: 'application/json', ...(init.headers ?? {}) } });
+    res = await fetch(url, { ...init, signal: controller.signal, headers: { Accept: 'application/json', ...(init.headers ?? {}) } });
   } catch (err) {
-    if (err instanceof DOMException && err.name === 'AbortError') throw err;
+    // 호출 쪽이 끊은 경우만 AbortError 로 올립니다 (제한 시간으로 끊긴 것은 연결 문제로 알립니다)
+    if (caller?.aborted) throw new DOMException('Aborted', 'AbortError');
+    void err;
     throw new ApiError(content.status.errorDesc, 'NETWORK');
+  } finally {
+    clearTimeout(timer);
+    caller?.removeEventListener('abort', onCallerAbort);
   }
   if (!res.ok) throw await toApiError(res);
   return res;

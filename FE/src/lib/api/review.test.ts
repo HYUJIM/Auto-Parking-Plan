@@ -45,6 +45,46 @@ describe('pollDelayMs — Retry-After 를 따르되 1~10초', () => {
   });
 });
 
+describe('getRuleReview — 중단과 일시 오류', () => {
+  it('폴링 중에 중단하면 AbortError 로 끝나고 더는 서버를 부르지 않는다 (떠난 화면을 위해 계속 묻지 않음)', async () => {
+    const calls = stubFetch([
+      () => json(202, { review_id: '01a1c5cf-d680-719d-a82c-612c939d4dbd' }),
+      () => json(200, reviewProgress, { 'Retry-After': '1' }),
+    ]);
+    const controller = new AbortController();
+    const progress = vi.fn(() => controller.abort()); // 첫 진행 상태를 받은 직후 화면을 떠난다
+    await expect(getRuleReview(parcel, { signal: controller.signal, onProgress: progress })).rejects.toMatchObject({ name: 'AbortError' });
+    const seen = calls.length;
+    await new Promise((r) => setTimeout(r, 30));
+    expect(calls).toHaveLength(seen); // 중단 뒤 추가 호출 없음
+    expect(progress).toHaveBeenCalledTimes(1);
+  });
+
+  it('폴링 중 429·503 은 Retry-After 만큼 기다렸다가 같은 검토를 이어서 확인한다 (새 검토를 만들지 않음)', async () => {
+    const calls = stubFetch([
+      () => json(202, { review_id: '01a1c5cf-d680-719d-a82c-612c939d4dbd' }),
+      () => json(429, { error: { code: 'RATE_LIMITED', message: '요청이 너무 많습니다.' } }, { 'Retry-After': '0.01' }),
+      () => json(503, { error: { code: 'SERVICE_BUSY', message: '바쁩니다.' } }, { 'Retry-After': '0.01' }),
+      () => json(200, reviewS01),
+    ]);
+    vi.useFakeTimers();
+    const pending = getRuleReview(parcel);
+    await vi.advanceTimersByTimeAsync(5000);
+    const review = await pending;
+    expect(review.reviewId).toBeTruthy();
+    expect(calls.filter((c) => c.init?.method === 'POST')).toHaveLength(1);
+    expect(calls).toHaveLength(4);
+  });
+
+  it('일시 오류가 아닌 실패(404 등)는 바로 올린다', async () => {
+    stubFetch([
+      () => json(202, { review_id: '01a1c5cf-d680-719d-a82c-612c939d4dbd' }),
+      () => json(404, { error: { code: 'REVIEW_NOT_FOUND', message: '없습니다.' } }),
+    ]);
+    await expect(getRuleReview(parcel)).rejects.toMatchObject({ code: 'NOT_FOUND' });
+  });
+});
+
 describe('getRuleReview — POST /v1/reviews → 202 → GET 폴링', () => {
   it('진행 중 응답을 onProgress 로 알리고 items 가 오면 RuleReview 로 끝낸다', async () => {
     const calls = stubFetch([

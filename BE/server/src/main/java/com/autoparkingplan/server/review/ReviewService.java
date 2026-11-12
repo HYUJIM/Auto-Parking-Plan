@@ -123,6 +123,30 @@ public class ReviewService implements AutoCloseable {
         }
     }
 
+    /**
+     * thread 모드 전용: 이전 프로세스가 끝내지 못한 요청(queued·running)을 다시 실행한다. 서버({@code serve}) 시작 때 한 번 부른다.
+     *
+     * <p>thread 모드의 대기열은 메모리에만 있어서, 배포·재시작으로 프로세스가 내려가면 진행 중이던 요청이 queued·running 인 채로 남는다.
+     * 화면은 끝없이 기다리고, 남은 queued 는 대기 상한({@code MAX_PENDING_REVIEWS})에 계속 세어져 쌓이면 새 검토가 모두 503 이 된다.
+     * 이 모드에서는 이 프로세스가 유일한 실행자이므로 남은 요청은 모두 주인이 없다 — 오래된 것부터 다시 넣는다.
+     * (worker 모드는 워커가 시작할 때 {@link #reclaimStale} 로 되돌린다.)
+     *
+     * @return 다시 넣은 건수 (thread 모드가 아니면 0)
+     */
+    public int resumeOrphans() {
+        if (pool == null) {
+            return 0;
+        }
+        List<UUID> ids = txNew.execute(st -> em.createQuery(
+                "select r.id from ReviewRequest r where r.status in ('queued', 'running') order by r.createdAt", UUID.class).getResultList());
+        if (ids == null || ids.isEmpty()) {
+            return 0;
+        }
+        ids.forEach(id -> pool.submit(() -> runSafe(id)));
+        log.info("이전 프로세스가 끝내지 못한 검토 {}건을 다시 실행합니다", ids.size());
+        return ids.size();
+    }
+
     // ── 제출 ───────────────────────────────────────────────
     public UUID submit(String pnu, LocalDate asOf, String audience, ObjectNode inputs) {
         UUID rid = retryOnceOnConflict(() -> tx.execute(st -> {

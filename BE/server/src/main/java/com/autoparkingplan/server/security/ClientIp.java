@@ -36,10 +36,39 @@ public final class ClientIp {
             String cand = parts.get(parts.size() - trustedProxyHops);
             String norm = normalizeIp(cand);
             if (norm != null) {
-                return norm;
+                return network(norm);
             }
         }
-        return peer;
+        return network(peer);
+    }
+
+    /**
+     * 제한·잠금을 세는 단위. IPv4 는 주소 그대로, IPv6 는 앞 64비트(/64)로 묶는다.
+     *
+     * <p>IPv6 는 가입자 한 명이 /64 전체(주소 2^64 개)를 받는 것이 보통이라, 주소 하나하나를 따로 세면 한 사람이 주소만 바꿔 가며
+     * 요청 제한과 관리자 잠금을 무한히 새 묶음으로 피해 갈 수 있다 (2026-11-12 점검). IP 가 아닌 값("unknown" 등)은 그대로 둔다.
+     */
+    static String network(String ip) {
+        if (ip == null || !ip.contains(":")) {
+            return ip;
+        }
+        String norm = normalizeIp(ip);
+        if (norm == null || !norm.contains(":")) {
+            return norm == null ? ip : norm; // IPv4 로 풀리는 표기(::ffff:1.2.3.4)는 IPv4 로 센다
+        }
+        try {
+            byte[] b = InetAddress.getByName(norm).getAddress();
+            if (b.length != 16) {
+                return norm;
+            }
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < 8; i += 2) {
+                sb.append(Integer.toHexString(((b[i] & 0xff) << 8) | (b[i + 1] & 0xff))).append(':');
+            }
+            return sb.append(":/64").toString();
+        } catch (Exception e) {
+            return norm;
+        }
     }
 
     /** IP 문자열이면 표준 표기, 아니면 null (호스트 이름은 받지 않는다 — DNS 조회 금지). */

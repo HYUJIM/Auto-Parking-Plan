@@ -25,11 +25,21 @@ export const MAP_CONFIG_TIMEOUT_MS = 2500;
 
 const PLACEHOLDERS = ['{z}', '{x}', '{y}'];
 
-/** BE 가 준 템플릿은 같은 BE 의 경로(`/v1/...`)여야 합니다 — 다른 호스트 주소나 자리표시자가 빠진 값은 쓰지 않습니다 */
-function bePathTemplate(value: unknown): string | null {
-  if (typeof value !== 'string') return null;
-  if (!value.startsWith('/') || value.startsWith('//')) return null;
-  return PLACEHOLDERS.every((p) => value.includes(p)) ? value : null;
+/** BE 타일 경로의 모양: `/v1/map/tiles/<레이어>/…` 에 영문·숫자·`/ _ - . { }` 만 */
+const BE_TILE_TEMPLATE = /^\/v1\/map\/tiles\/[a-z0-9_-]+\/[A-Za-z0-9/_{}.-]+$/;
+
+/**
+ * BE 가 준 템플릿은 같은 BE 의 타일 경로(`/v1/map/tiles/...`)여야 합니다.
+ * 응답이 변조돼도 타일 요청(보고 있는 위치가 드러납니다)이 다른 호스트로 나가지 않게 허용 문자를 좁힙니다:
+ * 역슬래시·탭·줄바꿈(브라우저가 `/\host`·`/<탭>/host` 를 다른 호스트로 풉니다), `..`, `//`, 질의 문자열을 받지 않고
+ * 자리표시자 {z} {x} {y} 는 정확히 한 번씩만 있어야 합니다.
+ */
+export function bePathTemplate(value: unknown): string | null {
+  if (typeof value !== 'string' || value.length > 200) return null;
+  if (!BE_TILE_TEMPLATE.test(value) || value.includes('..') || value.includes('//')) return null;
+  if (!PLACEHOLDERS.every((p) => value.split(p).length === 2)) return null;
+  if (value.replace(/\{[zxy]\}/g, '').includes('{') || value.replace(/\{[zxy]\}/g, '').includes('}')) return null;
+  return value;
 }
 
 function zoomOrUndefined(value: unknown): number | undefined {
@@ -56,6 +66,8 @@ export interface TileChoiceDeps {
   /** GET /v1/map/config 의 본문을 돌려줍니다. 실패하면 던지거나 null */
   fetchConfig: () => Promise<unknown>;
   apiBase: string;
+  /** BE 에 묻지 못했을 때(시간 초과·연결 실패) 불립니다 — 이 결과는 임시이므로 호출 쪽이 기억해 두지 않게 */
+  onFetchFailed?: () => void;
 }
 
 export async function resolveTileChoice(env: TileEnv, deps: TileChoiceDeps): Promise<TileChoice> {
@@ -65,7 +77,8 @@ export async function resolveTileChoice(env: TileEnv, deps: TileChoiceDeps): Pro
   try {
     body = await deps.fetchConfig();
   } catch {
-    /* BE 를 못 부름 — 기본 타일로 대체 */
+    /* BE 를 못 부름 — 이번에는 기본 타일로 대체 */
+    deps.onFetchFailed?.();
   }
   const source = tileSourceFromBe(body, deps.apiBase);
   if (source) return { provider: 'vworld', source };
@@ -89,9 +102,33 @@ let cached: Promise<TileChoice> | null = null;
 
 /**
  * 이 페이지에서 쓸 타일 선택 — BE 에는 한 번만 묻고 결과를 계속 씁니다 (지도를 다시 붙여도, 네이버 실패로 대체 지도를 띄워도 같은 값).
- * 실패해서 기본 타일로 정해진 것도 그대로 둡니다: 화면 도중에 배경 지도가 바뀌지 않도록. 새로고침하면 다시 묻습니다.
+ * BE 가 답한 결과(브이월드, 또는 `tiles: null` 이라 기본 타일)는 그대로 둡니다: 화면 도중에 배경 지도가 바뀌지 않도록.
+ * 다만 BE 에 묻지 못해 기본 타일로 정해진 경우는 기억하지 않습니다 — 한 번의 느린 응답 때문에 새로고침 전까지
+ * 계속 외부 타일(필지 경계와 6~10m 어긋남)을 쓰지 않도록, 다음에 지도를 붙일 때 다시 묻습니다.
  */
 export function loadTileChoice(): Promise<TileChoice> {
-  cached ??= resolveTileChoice(import.meta.env, { fetchConfig: () => fetchMapConfig(), apiBase: API_BASE });
-  return cached;
+  if (cached) return cached;
+  let failed = false;
+  // 빌드 변수는 필요한 두 값만 넘깁니다 (import.meta.env 통째로 넘기면 다른 VITE_ 값이 번들에 딸려 올 수 있습니다)
+  const env: TileEnv = {
+    VITE_MAP_TILE_URL: import.meta.env.VITE_MAP_TILE_URL,
+    VITE_MAP_TILE_URL_SATELLITE: import.meta.env.VITE_MAP_TILE_URL_SATELLITE,
+  };
+  const pending = resolveTileChoice(env, {
+    fetchConfig: () => fetchMapConfig(),
+    apiBase: API_BASE,
+    onFetchFailed: () => {
+      failed = true;
+    },
+  }).then((choice) => {
+    if (failed && cached === pending) cached = null;
+    return choice;
+  });
+  cached = pending;
+  return pending;
+}
+
+/** 테스트용: 기억해 둔 타일 선택을 지웁니다 */
+export function resetTileChoiceCache(): void {
+  cached = null;
 }

@@ -149,6 +149,67 @@ class ParkingBridgeAndWorkerTest {
         assertThat(out.get("message").stringValue()).startsWith(ParkingBridge.NOT_PERMITTED_MESSAGE).contains("'도로'");
     }
 
+    /** 목록이 덜 찬 상태(조례 미승인)나 모르는 상태 값에서는 건설 불가로 단정하지 않는다 */
+    @Test
+    void eligibilityStaysUnconfirmedWhenRulesIncompleteOrStatusUnknown() {
+        // 국가 법령만 승인(NO_LOCAL_VALUE): 목록에 주차장이 없어 보여도 조례 쪽이 비어 있을 수 있다
+        JsonNode partial = ParkingBridge.eligibilityFromReview(resultWithUses(uses("단독주택", "주거", "CONDITIONAL", null), "NO_LOCAL_VALUE"));
+        assertThat(partial.get("status").stringValue()).isEqualTo("MANUAL_CHECK");
+        assertThat(partial.get("reason").stringValue()).contains("일부만 승인");
+        // 단서 조항만 있는 완성된 목록은 단정한다
+        JsonNode complete = ParkingBridge.eligibilityFromReview(resultWithUses(uses("단독주택", "주거", "REVIEWABLE", null), "EXCEPTION_CLAUSE"));
+        assertThat(complete.get("status").stringValue()).isEqualTo("NOT_PERMITTED");
+        // 엔진이 새 상태 값을 내더라도 500 이 아니라 '별도 확인'
+        JsonNode unknown = ParkingBridge.eligibilityFromReview(resultWithUses(uses("주차장", "기타", "SOMETHING_NEW", null), null));
+        assertThat(unknown.get("status").stringValue()).isEqualTo("MANUAL_CHECK");
+    }
+
+    /** 대지가 상한보다 넓으면 엔진을 돌리지 않는다 (계산 시간·응답 크기가 면적에 비례) */
+    @Test
+    void simulationRefusedWhenSiteTooLarge() {
+        UUID rid = app.bean(ReviewService.class).submit(PNU_R2G, null, "owner", null);
+        ParkingBridge.Request params = new ParkingBridge.Request(null, "general", 0.5, null, 1, 3, true);
+        ParkingBridge small = new ParkingBridge(100, 2); // 상한 100㎡ — 예시 필지는 이보다 넓다
+        ObjectNode out = app.tx(em -> small.prepare(em, rid, params)).finish();
+        assertThat(out.get("simulated").booleanValue()).isFalse();
+        assertThat(out.get("constraint_reasons")).isEqualTo(Json.parse("[\"SITE_TOO_LARGE\"]"));
+        assertThat(out.get("message").stringValue()).contains("100㎡ 이하");
+        // 기본 상한에서는 같은 필지가 계산된다
+        ObjectNode ok = app.tx(em -> new ParkingBridge().prepare(em, rid, params)).finish();
+        assertThat(ok.get("simulated").booleanValue()).isTrue();
+    }
+
+    /** 경계 상자가 넓게 퍼진 대지도 상한에 걸린다 (토지대장 면적이 작아도) */
+    @Test
+    void siteAreaForLimitUsesLargerOfLedgerAreaAndBoundingBox() {
+        ObjectNode parcel = Json.object();
+        parcel.put("land_area_m2", 500.0);
+        // 약 1km × 1km 로 퍼진 가는 모양: 경계 상자 ≈ 100만㎡ → 1/4 인 25만㎡ 로 본다
+        JsonNode wide = Json.parse("{\"type\":\"Polygon\",\"coordinates\":[[[128.60,35.85],[128.6111,35.85],[128.6111,35.859],[128.60,35.85]]]}");
+        assertThat(ParkingBridge.siteAreaForLimit(parcel, wide)).isBetween(200_000.0, 300_000.0);
+        JsonNode tiny = Json.parse("{\"type\":\"Polygon\",\"coordinates\":[[[128.60,35.85],[128.6001,35.85],[128.6001,35.8501],[128.60,35.85]]]}");
+        assertThat(ParkingBridge.siteAreaForLimit(parcel, tiny)).isEqualTo(500.0);
+        assertThat(ParkingBridge.siteAreaForLimit(Json.object(), Json.object())).isNull();
+    }
+
+    /** 엔진 자리가 모두 찼으면 기다리다 SERVICE_BUSY — 요청이 몰려도 서버 전체를 붙잡지 않는다 */
+    @Test
+    void simulationBusyWhenEngineSlotsExhausted() throws Exception {
+        UUID rid = app.bean(ReviewService.class).submit(PNU_R2G, null, "owner", null);
+        ParkingBridge.Request params = new ParkingBridge.Request(null, "general", 0.5, null, 1, 3, true);
+        ParkingBridge one = new ParkingBridge(ParkingBridge.DEFAULT_MAX_SITE_AREA_M2, 1);
+        ParkingBridge.Prepared prepared = app.tx(em -> one.prepare(em, rid, params));
+        one.engineSlots.acquire(); // 다른 요청이 계산 중
+        try {
+            org.assertj.core.api.Assertions.assertThatThrownBy(prepared::finish).isInstanceOf(ParkingBridge.SimulationUnavailable.class)
+                    .satisfies(e -> assertThat(((ParkingBridge.SimulationUnavailable) e).code()).isEqualTo("SERVICE_BUSY"));
+        } finally {
+            one.engineSlots.release();
+        }
+        assertThat(prepared.finish().get("simulated").booleanValue()).isTrue(); // 자리가 나면 계산된다
+        assertThat(one.engineSlots.availablePermits()).isEqualTo(1); // 자리를 돌려놓는다
+    }
+
     /** test_simulation_gated_when_parking_use_unconfirmed */
     @Test
     void simulationGatedWhenParkingUseUnconfirmed() {
@@ -191,6 +252,35 @@ class ParkingBridgeAndWorkerTest {
             app.txRun(em -> em.find(ReviewRequest.class, rid).setClaimedAt(Times.now().minusSeconds(3600))); // 가져간 워커가 죽은 지 오래
             assertThat(wsvc.reclaimStale(900)).isEqualTo(1);
             assertThat(wsvc.get(rid).state()).isEqualTo("queued");
+        }
+    }
+    /** thread 모드: 재시작 전에 끝내지 못한 요청(queued·running)을 서버 시작 때 다시 실행한다 — 남아서 대기 상한을 채우지 않는다. */
+    @Test
+    void threadModeResumesOrphanedReviewsOnStartup() throws Exception {
+        UUID queued;
+        UUID running;
+        // 이전 프로세스: 요청만 받아 두고(worker 모드라 아무도 실행하지 않음) 하나는 실행 중에 죽었다고 치자
+        try (ReviewService before = new ReviewService(app.em(), app.bean(PlatformTransactionManager.class), app.bean(RuleQueries.class),
+                app.bean(ParcelService.class), app.bean(ExplanationService.class), "worker", 4, app.settings.timezone,
+                app.settings.maxPendingReviews)) {
+            queued = before.submit(PNU_R2G, null, "owner", null);
+            running = before.submit(PNU_R2G, null, "architect", null);
+            assertThat(before.claimNext()).isNotNull(); // 가장 오래된 것(queued 로 만든 첫 요청)이 running 이 된다
+            assertThat(before.resumeOrphans()).isEqualTo(0); // thread 모드가 아니면 아무 일도 하지 않는다
+        }
+        // 새 프로세스(thread 모드)가 뜨면서 이어받는다
+        try (ReviewService after = new ReviewService(app.em(), app.bean(PlatformTransactionManager.class), app.bean(RuleQueries.class),
+                app.bean(ParcelService.class), app.bean(ExplanationService.class), "thread", 2, app.settings.timezone,
+                app.settings.maxPendingReviews)) {
+            assertThat(after.resumeOrphans()).isEqualTo(2);
+            long deadline = System.nanoTime() + 30_000_000_000L;
+            while (System.nanoTime() < deadline
+                    && !(after.get(queued).state().equals("done") && after.get(running).state().equals("done"))) {
+                Thread.sleep(50);
+            }
+            assertThat(after.get(queued).state()).isEqualTo("done");
+            assertThat(after.get(running).state()).isEqualTo("done");
+            assertThat(after.resumeOrphans()).isEqualTo(0); // 남은 것이 없다
         }
     }
 }

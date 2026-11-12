@@ -104,7 +104,9 @@ public final class Cli {
             return 0;
         }
         if (cmd.equals("serve")) {
-            start(settings, true, a.opt("host", "127.0.0.1"), a.opt("port", "8000"));
+            ConfigurableApplicationContext web = start(settings, true, a.opt("host", "127.0.0.1"), a.opt("port", "8000"));
+            // thread 모드: 재시작 전에 끝내지 못한 검토를 이어서 처리한다 (다른 모드에서는 아무 일도 하지 않는다)
+            web.getBean(com.autoparkingplan.server.review.ReviewService.class).resumeOrphans();
             return KEEP_RUNNING;
         }
         if (!CliCommands.NAMES.contains(cmd)) {

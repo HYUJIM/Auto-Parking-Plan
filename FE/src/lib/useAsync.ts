@@ -34,8 +34,11 @@ function sameDeps(a: DependencyList, b: DependencyList): boolean {
  *
  * deps 가 바뀌면 새 key 가 만들어지고, 마지막 결과의 key 와 다르면 '불러오는 중'으로 봅니다.
  * 그래서 이전 요청의 늦은 응답은 key 가 달라 무시되고, effect 안에서 상태를 동기적으로 바꿀 필요도 없습니다.
+ *
+ * fn 은 AbortSignal 을 받습니다. deps 가 바뀌거나 화면을 떠나면 진행 중인 요청을 중단하므로, 오래 걸리는 작업(법규 검토 폴링)이
+ * 떠난 화면을 위해 계속 서버를 부르지 않습니다. fn 이 signal 을 fetch 에 넘겨야 실제로 끊깁니다.
  */
-export function useAsync<T>(fn: () => Promise<T>, deps: DependencyList, enabled = true): AsyncState<T> {
+export function useAsync<T>(fn: (signal: AbortSignal) => Promise<T>, deps: DependencyList, enabled = true): AsyncState<T> {
   const [tick, setTick] = useState(0);
   const [request, setRequest] = useState<Request>(() => ({ deps, tick, key: {} }));
   const [snapshot, setSnapshot] = useState<Snapshot<T> | null>(null);
@@ -51,7 +54,8 @@ export function useAsync<T>(fn: () => Promise<T>, deps: DependencyList, enabled 
   useEffect(() => {
     if (!enabled) return;
     let alive = true;
-    fn().then(
+    const controller = new AbortController();
+    fn(controller.signal).then(
       (result) => {
         if (alive) setSnapshot({ key, status: 'success', data: result, error: null });
       },
@@ -61,6 +65,7 @@ export function useAsync<T>(fn: () => Promise<T>, deps: DependencyList, enabled 
     );
     return () => {
       alive = false;
+      controller.abort();
     };
     // fn 은 매 렌더마다 새 함수지만, 요청의 신원은 key 가 대표합니다
     // eslint-disable-next-line react-hooks/exhaustive-deps

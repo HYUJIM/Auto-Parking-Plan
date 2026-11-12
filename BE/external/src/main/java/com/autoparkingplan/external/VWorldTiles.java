@@ -2,6 +2,7 @@ package com.autoparkingplan.external;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Locale;
+import java.util.List;
 import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -91,6 +92,17 @@ public final class VWorldTiles {
         /** 인증키 문제인가 (등록되지 않은 키 등) — 자료 없음과 달리 설정을 고쳐야 한다. */
         public boolean isKeyError() {
             return locator.equalsIgnoreCase("key");
+        }
+
+        /** '그 타일이 없다'는 뜻인가 — 서비스 제공영역 밖(FileNotFound)이거나 타일 번호·줌이 범위 밖. */
+        public boolean isMissingTile() {
+            return code.equalsIgnoreCase("FileNotFound")
+                    || List.of("tilematrix", "tilerow", "tilecol").contains(locator.toLowerCase(java.util.Locale.ROOT));
+        }
+
+        /** 브이월드가 오류 보고서를 주긴 했는가 (XML 이 아니거나 알아볼 수 없으면 false). */
+        public boolean isReported() {
+            return !code.isEmpty() || !locator.isEmpty();
         }
     }
 

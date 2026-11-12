@@ -78,4 +78,41 @@ class AppSettingsSecurityTest {
         assertThat(settings(Map.of()).vworldWmtsUrl).isEqualTo("https://api.vworld.kr"); // 기본값: 공식 주소
         assertThat(settings(Map.of("APP_ENV", "local", "JUSO_BASE_URL", "http://api.example.net")).jusoBaseUrl).startsWith("http://"); // 로컬·테스트는 제한 없음
     }
+    /** (2026-11-12 점검) 잘못된 값은 요청 때가 아니라 시작할 때 걸러진다. */
+    @Test
+    void invalidValuesFailFastAtStartup() {
+        assertThatThrownBy(() -> settings(Map.of("TIMEZONE", "Asia/Seul"))).isInstanceOf(AppSettings.InvalidSettings.class)
+                .hasMessageContaining("TIMEZONE");
+        assertThatThrownBy(() -> settings(Map.of("REVIEW_WORKERS", "0"))).isInstanceOf(AppSettings.InvalidSettings.class);
+        assertThatThrownBy(() -> settings(Map.of("EXTERNAL_TIMEOUT_S", "0"))).isInstanceOf(AppSettings.InvalidSettings.class);
+        assertThatThrownBy(() -> settings(Map.of("EXTERNAL_TIMEOUT_S", "120"))).isInstanceOf(AppSettings.InvalidSettings.class)
+                .hasMessageContaining("EXTERNAL_TIMEOUT_S");
+        assertThat(settings(Map.of("TIMEZONE", "Asia/Seoul", "REVIEW_WORKERS", "2", "EXTERNAL_TIMEOUT_S", "5")).reviewWorkers).isEqualTo(2);
+        assertThat(settings(Map.of()).rateLimitGlobalFactor).isEqualTo(20);
+        assertThat(settings(Map.of("RATE_LIMIT_GLOBAL_FACTOR", "0")).rateLimitGlobalFactor).isEqualTo(0);
+        assertThat(settings(Map.of()).parkingMaxSiteAreaM2).isEqualTo(30_000.0);
+    }
+
+    /** 운영의 CORS 허용 출처는 https 만 (와일드카드·http 는 시작 거부). 개발에서는 제한하지 않는다. */
+    @Test
+    void prodRejectsWildcardAndPlainHttpCorsOrigins() {
+        String token = "Zx9-Kq2_Lm7.Rt4+Vb8=Np3~Yw6!Hs1@Gd5#";
+        for (String bad : List.of("[\"*\"]", "[\"http://app.example.com\"]", "[\"https://*.example.com\"]")) {
+            assertThatThrownBy(() -> settings(Map.of("APP_ENV", "prod", "ADMIN_TOKEN", token, "CORS_ORIGINS", bad)))
+                    .as(bad).isInstanceOf(AppSettings.InvalidSettings.class).hasMessageContaining("CORS_ORIGINS");
+        }
+        assertThat(settings(Map.of("APP_ENV", "prod", "ADMIN_TOKEN", token, "CORS_ORIGINS", "[\"https://app.example.com\"]")).corsOrigins)
+                .containsExactly("https://app.example.com");
+        assertThat(settings(Map.of("APP_ENV", "prod", "ADMIN_TOKEN", token)).corsOrigins).isNotEmpty(); // 기본값(이 컴퓨터 안의 개발 주소)은 허용
+        assertThat(settings(Map.of("CORS_ORIGINS", "[\"http://app.example.com\"]")).corsOrigins).containsExactly("http://app.example.com");
+    }
+
+    /** 공식 호스트 판별은 점 경계까지 본다 — 비슷한 이름의 호스트가 공식으로 통과하지 않는다. */
+    @Test
+    void officialHostsMatchOnDotBoundary() {
+        assertThat(AppConfig.officialHosts(settings(Map.of()))).isTrue();
+        assertThat(AppConfig.officialHosts(settings(Map.of("VWORLD_DATA_URL", "https://evilvworld.kr")))).isFalse();
+        assertThat(AppConfig.officialHosts(settings(Map.of("VWORLD_DATA_URL", "https://api.vworld.kr")))).isTrue();
+        assertThat(AppConfig.officialHosts(settings(Map.of("JUSO_BASE_URL", "http://127.0.0.1:8090")))).isFalse();
+    }
 }

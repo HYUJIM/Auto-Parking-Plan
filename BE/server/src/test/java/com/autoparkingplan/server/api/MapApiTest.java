@@ -182,15 +182,55 @@ class MapApiTest {
         assertThat(stub.calls).isEmpty();
     }
 
+    /** '그 타일 없음'은 잠깐(10분) 캐시한다 — 없는 타일을 계속 물어 브이월드 호출을 일으키지 못하게. */
     @Test
-    void missingTileIs404JsonWithoutCacheHeader() {
+    void missingTileIs404JsonWithShortCacheHeader() {
         StubTiles stub = new StubTiles();
         stub.result = Optional.empty();
         Http.Response r = start(stub).get(TILE).send();
         assertThat(r.status()).isEqualTo(404);
         assertThat(r.header("content-type")).startsWith("application/json");
         assertThat(code(r)).isEqualTo("TILE_NOT_FOUND");
-        assertThat(r.header("cache-control")).isNull();
+        assertThat(r.header("cache-control")).isEqualTo("public, max-age=600");
+    }
+
+    /** 타일 하나에 주소도 하나: 경로 매개변수·%xx 표기로 바꾼 주소는 같은 타일로 풀리지만 응답하지 않는다 (CDN 캐시 비켜 가기 방지). */
+    @Test
+    void nonCanonicalTileAddressesAre404BeforeAnyUpstreamCall() {
+        StubTiles stub = new StubTiles();
+        Http c = start(stub);
+        for (String path : List.of(TILE + ";v=1", "/v1/map/tiles/base;a/19;b/449482/203286", "/v1/map/tiles/base/19/449482/20328%36",
+                "/v1/map/tiles/%62ase/19/449482/203286")) {
+            Http.Response r = c.get(path).send();
+            assertThat(r.status()).as(path).isEqualTo(404);
+            assertThat(code(r)).as(path).isEqualTo("TILE_NOT_FOUND");
+            assertThat(r.header("cache-control")).as(path).isNull();
+        }
+        assertThat(stub.calls).isEmpty();
+        assertThat(c.get(TILE).send().status()).isEqualTo(200); // 표준 표기는 그대로 응답
+    }
+
+    /** 일시적인 장애 응답은 CDN·브라우저가 붙들지 않게 no-store, 재시도 시각을 알려 준다. */
+    @Test
+    void upstreamFailureIsNotCacheable() {
+        StubTiles stub = new StubTiles();
+        stub.failure = new UpstreamError("vworld", "wmts/Base 시간 초과");
+        Http.Response r = start(stub).get(TILE).send();
+        assertThat(r.status()).isEqualTo(503);
+        assertThat(r.header("cache-control")).isEqualTo("no-store");
+        assertThat(r.header("retry-after")).isEqualTo("2");
+    }
+
+    /** 브이월드가 '타일 없음'이 아닌 오류 보고서(할당량·시스템 오류 등)를 주면 빈 타일로 삼키지 않고 장애로 알린다. */
+    @Test
+    void unknownXmlErrorFromUpstreamIs503() {
+        String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?><ExceptionReport><Exception exceptionCode=\"OperationNotSupported\" locator=\"quota\">"
+                + "<ExceptionText><![CDATA[일일 사용량을 초과했습니다.]]></ExceptionText></Exception></ExceptionReport>";
+        MockTransport upstream = new MockTransport(HttpResponse.of(200, "application/xml;charset=UTF-8", xml.getBytes(StandardCharsets.UTF_8)));
+        Http.Response r = start(new VWorldTileClient(SECRET, "https://wmts.example", 3.0, upstream)).get(TILE).send();
+        assertThat(r.status()).isEqualTo(503);
+        assertThat(code(r)).isEqualTo("UPSTREAM_UNAVAILABLE");
+        assertThat(r.text()).doesNotContain("ExceptionReport").doesNotContain("일일 사용량");
     }
 
     @Test

@@ -44,7 +44,7 @@ public class ServicesConfig {
     }
 
     @Bean
-    public ParkingBridge parkingBridge() {
-        return new ParkingBridge();
+    public ParkingBridge parkingBridge(AppSettings s) {
+        return new ParkingBridge(s.parkingMaxSiteAreaM2, Math.max(1, Math.min(4, Runtime.getRuntime().availableProcessors())));
     }
 }

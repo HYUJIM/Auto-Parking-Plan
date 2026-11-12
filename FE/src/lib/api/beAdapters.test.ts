@@ -309,6 +309,17 @@ describe('주차장 배치 시뮬레이션 → ParkingSimulation', () => {
     expect(isParkingNotPermitted(toParkingSimulation(simulationS01 as BeParkingSimulation))).toBe(false);
   });
 
+  it('모양이 틀린 도형은 그 도형만 빼고 나머지를 그린다 (지도 렌더가 예외로 멈추지 않게)', () => {
+    const body = JSON.parse(JSON.stringify(simulationS02)) as BeParkingSimulation;
+    const layers = body.result!.alternatives![0].layers as unknown as { stalls: { features: { geometry: unknown }[] } };
+    const total = layers.stalls.features.length;
+    layers.stalls.features[0].geometry = { type: 'Polygon', coordinates: [1, 2] }; // 좌표가 고리의 배열이 아님
+    layers.stalls.features[1].geometry = { type: 'Polygon', coordinates: [[[128.6, 'x']]] }; // 숫자가 아닌 좌표
+    const sim = toParkingSimulation(body);
+    const stalls = sim.result!.alternatives[0].layers.features.filter((f) => f.properties.layer === 'stall');
+    expect(stalls).toHaveLength(total - 2);
+  });
+
   it('S02: 배치안 3개, 추천 ALT_A, 지표·각도·주차면수', () => {
     const sim = toParkingSimulation(simulationS02 as BeParkingSimulation);
     expect(sim.simulated).toBe(true);
