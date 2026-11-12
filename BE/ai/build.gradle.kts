@@ -11,6 +11,6 @@ dependencies {
     constraints {
         // openai-java 가 끌어오는 opentelemetry-api 1.62.0 (Spring Boot BOM 기준) 에는 CVE-2026-118259 (W3C tracestate 해석 시 CPU 소모,
         // GHSA-ccrj-gw8r-854m) 가 있어 수정판으로 올린다. 추적(OTel SDK)은 쓰지 않으므로 동작 변화는 없다
-        implementation("io.opentelemetry:opentelemetry-api:1.67.0")
+        implementation("io.opentelemetry:opentelemetry-api:1.68.0")
     }
 }
