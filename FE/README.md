@@ -84,6 +84,8 @@ npm run dev        # http://localhost:5173  — /v1/* 는 BE(127.0.0.1:8000)로 
 - **오류**: BE 는 `{ error: { code, message, details? } }` 로 답합니다. `base.ts` 가 422 → BAD_REQUEST, 404 → NOT_FOUND, 429 → RATE_LIMITED,
   503 SERVICE_BUSY → BUSY, 503 UPSTREAM_UNAVAILABLE → UPSTREAM, 409 → CONFLICT, 그 밖 5xx → SERVER 로 분류하고 BE 의 고정 안내 문구를 그대로 보여 줍니다.
   주소 검색 404 ADDRESS_NOT_FOUND 는 오류가 아니라 '결과 없음'(+ BE 안내), 필지 404 PARCEL_NOT_FOUND 는 주소·좌표만 보여 주는 '대기' 화면입니다.
+- **주소 검색어**: 한글·영문·숫자·공백과 `- . , ( ) [ ] ·` 만 받습니다 (`address.ts`, 기준은 BE 의 `JusoKeyword`). 그 밖의 문자가 있으면 요청하지 않고 안내하며,
+  BE 가 검색어를 거절(422)하면 그 안내를 보여 줍니다. 도로명주소 API 를 쓸 수 없을 때(503 UPSTREAM_UNAVAILABLE)는 지도에서 필지를 직접 고르도록 안내합니다.
 - **법규 검토**: 6항목(용도·건폐율·용적률·주차대수·주차구획·차로 폭)은 `검토 가능 / 조건부 검토 / 별도 확인 필요` 세 상태로, 기준값(`criteria_text`)·적용값(참고값·용도 목록·기준표)·
   상태 사유(`reason_code`)·BE 가 원문과 대조해 검증한 쉬운 설명·근거 트리(법률 → 시행령 → 조례, 인용·원문 링크)를 보여 줍니다.
   별도 확인 항목(도로·건축선·높이·추가 규제)과 데이터 안내, 고지는 BE 가 준 그대로입니다. 시범 지역 밖 필지는 검토를 요청하지 않고 안내만 보여 줍니다.

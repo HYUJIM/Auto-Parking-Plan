@@ -9,8 +9,11 @@ import static org.assertj.core.api.Assertions.catchThrowableOfType;
 
 import java.net.ConnectException;
 import java.net.http.HttpTimeoutException;
+import java.time.Duration;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -97,11 +100,12 @@ class JusoTest {
         assertThatThrownBy(() -> Juso.parseSearchResponse(Json.parse("{\"unexpected\": 1}"))).isInstanceOf(UpstreamError.class);
     }
 
-    /** test_sanitize_keyword. */
+    /** test_sanitize_keyword: 구두점과 공백을 정리한 검색어만 보낸다 (검사 규칙은 {@link JusoKeywordTest}). */
     @Test
-    void testSanitizeKeyword() {
-        assertThat(Juso.sanitizeKeyword("  수성구  범어로[12]% ")).isEqualTo("수성구 범어로 12");
-        assertThat(Juso.sanitizeKeyword(null)).isEqualTo("");
+    void testSendsNormalizedKeyword() {
+        MockTransport rec = mockHttp(load("synthetic_juso_ok.json"));
+        client(rec).search("  수성구  범어로[12] (범어동) ");
+        assertThat(rec.lastRequest().queryParam("keyword")).isEqualTo("수성구 범어로 12 범어동");
     }
 
     /** test_search_sends_documented_params. */
@@ -134,9 +138,74 @@ class JusoTest {
     @Test
     void testEmptyKeywordFailsWithoutNetwork() {
         MockTransport rec = mockHttp(load("synthetic_juso_ok.json"));
-        JusoQueryError e = catchThrowableOfType(JusoQueryError.class, () -> client(rec).search("  %% "));
+        JusoQueryError e = catchThrowableOfType(JusoQueryError.class, () -> client(rec).search("  ( ) "));
         assertThat(e.code()).isEqualTo("E0005");
         assertThat(rec.requests()).isEmpty();
+    }
+
+    /** 비정상 검색어는 상위 API 를 한 번도 부르지 않고 검색어 오류로 끝난다 (2026-11-12 상위 차단 재발 방지). */
+    @ParameterizedTest
+    @ValueSource(strings = {"  %% ", "<script>alert(1)</script>", "' OR '1'='1", "1; DROP TABLE users", "범어동\u0000", "union select 1", "범어동 -- x"})
+    void testAbnormalKeywordNeverReachesUpstream(String keyword) {
+        MockTransport rec = mockHttp(load("synthetic_juso_ok.json"));
+        JusoQueryError e = catchThrowableOfType(JusoQueryError.class, () -> client(rec).search(keyword));
+        assertThat(e.code()).isEqualTo("E0013");
+        assertThat(e.userMessage()).isEqualTo(JusoKeyword.REJECT_MESSAGE);
+        assertThat(e.retriable()).isFalse();
+        assertThat(rec.requests()).isEmpty();
+    }
+
+    /** 연결 오류가 3번 이어지면 차단기가 열려 더는 상위 API 를 부르지 않는다. */
+    @Test
+    void testConsecutiveFailuresOpenBreaker() {
+        MockTransport rec = mockHttp(new ConnectException("refused"));
+        JusoClient juso = client(rec);
+        for (int i = 0; i < JusoClient.BREAKER_THRESHOLD; i++) {
+            UpstreamError e = catchThrowableOfType(UpstreamError.class, () -> juso.search("범어예시로 12"));
+            assertThat(e).isNotInstanceOf(CircuitBreaker.OpenError.class);
+        }
+        assertThat(rec.count()).isEqualTo(JusoClient.BREAKER_THRESHOLD * 2); // 호출마다 재시도 1번
+        CircuitBreaker.OpenError open = catchThrowableOfType(CircuitBreaker.OpenError.class, () -> juso.search("범어예시로 12"));
+        assertThat(open.service()).isEqualTo("juso");
+        assertThat(open.retryAfterSeconds()).isBetween(1L, JusoClient.BREAKER_BASE_OPEN.toSeconds());
+        assertThat(open.getMessage()).doesNotContain(SECRET);
+        assertThat(rec.count()).isEqualTo(JusoClient.BREAKER_THRESHOLD * 2);
+        // 차단 중에도 비정상 검색어는 검색어 오류로 답한다
+        assertThat(catchThrowableOfType(JusoQueryError.class, () -> juso.search("a=b")).code()).isEqualTo("E0013");
+    }
+
+    /** 검색어 오류 응답은 상위가 살아 있다는 뜻이므로 차단기를 열지 않는다. */
+    @Test
+    void testQueryErrorsDoNotOpenBreaker() {
+        MockTransport rec = mockHttp(load("observed_juso_E0006.json"));
+        JusoClient juso = client(rec);
+        for (int i = 0; i < 6; i++) {
+            assertThat(catchThrowableOfType(JusoQueryError.class, () -> juso.search("대구광역시")).code()).isEqualTo("E0006");
+        }
+        assertThat(rec.count()).isEqualTo(6);
+    }
+
+    /** 차단 시간이 지나면 시험 호출 한 건으로 복구를 확인한다. */
+    @Test
+    void testBreakerRecoversAfterOpenTime() {
+        AtomicLong now = new AtomicLong();
+        AtomicBoolean down = new AtomicBoolean(true);
+        MockTransport rec = MockTransport.handler(req -> {
+            if (down.get()) {
+                throw new ConnectException("refused");
+            }
+            return jsonResponse(load("synthetic_juso_ok.json"), 200);
+        });
+        JusoClient juso = new JusoClient(SECRET, null, Http.DEFAULT_TIMEOUT, rec,
+                new CircuitBreaker(Juso.SERVICE, 2, Duration.ofSeconds(30), Duration.ofSeconds(60), now::get));
+        assertThatThrownBy(() -> juso.search("범어예시로 12")).isInstanceOf(UpstreamError.class);
+        assertThatThrownBy(() -> juso.search("범어예시로 12")).isInstanceOf(UpstreamError.class);
+        assertThatThrownBy(() -> juso.search("범어예시로 12")).isInstanceOf(CircuitBreaker.OpenError.class);
+        down.set(false);
+        assertThatThrownBy(() -> juso.search("범어예시로 12")).isInstanceOf(CircuitBreaker.OpenError.class); // 아직 차단 시간
+        now.addAndGet(Duration.ofSeconds(30).toNanos());
+        assertThat(juso.search("범어예시로 12")).hasSize(2);
+        assertThat(juso.search("범어예시로 12")).hasSize(2);
     }
 
     /** test_server_error_retries_once_then_raises. */

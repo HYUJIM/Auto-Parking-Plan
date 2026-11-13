@@ -34,6 +34,7 @@ import com.autoparkingplan.external.BuildingHubApi;
 import com.autoparkingplan.external.BuildingInfo;
 import com.autoparkingplan.external.CadastralParcel;
 import com.autoparkingplan.external.JusoApi;
+import com.autoparkingplan.external.CircuitBreaker;
 import com.autoparkingplan.external.JusoQueryError;
 import com.autoparkingplan.external.LandCharacteristics;
 import com.autoparkingplan.external.LandUseDesignation;
@@ -143,6 +144,8 @@ public class ParcelService implements AutoCloseable {
                 throw new AddressNotFound(e.userMessage());
             }
             throw new UpstreamUnavailable(e.message());
+        } catch (CircuitBreaker.OpenError e) { // 연속 실패로 차단 중: 언제 다시 시도하면 되는지 알려 준다
+            throw new UpstreamUnavailable(e.message(), e.retryAfterSeconds());
         } catch (UpstreamError e) {
             throw new UpstreamUnavailable(e.message());
         }

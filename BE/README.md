@@ -107,7 +107,7 @@ docker compose run --rm bootstrap
 
 | 공개 | |
 |---|---|
-| `GET /v1/address/search?q=` | 주소 후보 (도로명, 지번, PNU, 좌표, 지원 여부) |
+| `GET /v1/address/search?q=` | 주소 후보 (도로명, 지번, PNU, 좌표, 지원 여부). 검색어는 한글·영문·숫자·공백과 `- . , ( ) [ ] ·` 만 받고, 그 밖의 문자나 SQL 예약어가 있으면 도로명주소 API 를 부르지 않고 422 (`docs/SECURITY.md` 5.5) |
 | `GET /v1/parcels/{pnu}` | 필지 — 대지면적, 지목, 용도지역·지구·구역, GeoJSON 경계, 출처·조회시각 (`?refresh=true` 는 10분에 한 번만 외부 재조회) |
 | `GET /v1/parcels/at?lng=&lat=` | 지도 클릭 → 필지 |
 | `POST /v1/reviews` | 검토 시작 → 202 `{review_id}` (`pnu`, `as_of_date`, `audience`, `inputs`) |

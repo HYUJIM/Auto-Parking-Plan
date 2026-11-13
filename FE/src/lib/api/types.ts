@@ -119,7 +119,7 @@ export interface AddressSearchResult {
   hits: AddressHit[];
   /** 건수 (BE count — 최대 10건) */
   total: number;
-  /** 결과 0건일 때 BE/juso 의 안내 문구 (404 ADDRESS_NOT_FOUND 의 details.reason) */
+  /** 결과 0건일 때의 안내 문구 (404 ADDRESS_NOT_FOUND 의 details.reason, 검색어 거절 422 의 안내, 화면의 문자 검사) */
   notice?: string;
 }
 

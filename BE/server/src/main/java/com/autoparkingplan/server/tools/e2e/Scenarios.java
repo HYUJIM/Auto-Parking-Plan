@@ -330,6 +330,16 @@ final class Scenarios {
         Http.Resp r = c.get("/v1/address/search", Map.of("q", "존재하지않는주소예시"));
         rep.check("주소 없음 → 404 ADDRESS_NOT_FOUND + 기능정의서 문구", r.status() == 404 && PyStr.eq(PyStr.item(errorOf(r), "code"), "ADDRESS_NOT_FOUND")
                 && PyStr.item(errorOf(r), "message").stringValue().contains("주소를 찾을 수 없습니다"), PyStr.head(r.text(), 200));
+        // 비정상 검색어는 서버에서 끝낸다 (도로명주소 API 로 보내지 않음, 2026-11-12 상위 차단 재발 방지)
+        Map<String, String> abnormal = new LinkedHashMap<>();
+        abnormal.put("꺾쇠 태그", "수성구 <script>alert(1)</script>");
+        abnormal.put("따옴표", "수성구' OR '1'='1");
+        abnormal.put("SQL 예약어", "수성구 union select 1");
+        for (Map.Entry<String, String> a : abnormal.entrySet()) {
+            r = c.get("/v1/address/search", Map.of("q", a.getValue()));
+            rep.check("비정상 검색어(" + a.getKey() + ") → 422 INVALID_REQUEST", r.status() == 422 && PyStr.eq(PyStr.item(errorOf(r), "code"), "INVALID_REQUEST"),
+                    PyStr.head(r.text(), 200));
+        }
         r = c.get("/v1/parcels/2726099999999999999");
         rep.check("없는 필지 → 404 PARCEL_NOT_FOUND", r.status() == 404 && PyStr.eq(PyStr.item(errorOf(r), "code"), "PARCEL_NOT_FOUND"),
                 PyStr.head(r.text(), 200));

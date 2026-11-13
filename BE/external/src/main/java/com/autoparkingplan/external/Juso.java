@@ -8,7 +8,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.regex.Pattern;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -57,6 +56,9 @@ import tools.jackson.databind.node.ObjectNode;
  *          → JusoQueryError(UpstreamError 하위, retriable=false). API 계층은 이것을 사용자 입력 문제
  *            (ADDRESS_NOT_FOUND 계열)로 바꿔 보여주는 것이 맞다.
  * </pre>
+ *
+ * <p>검색어는 보내기 전에 {@link JusoKeyword} 가 먼저 검사한다. 허용 문자 밖의 글자나 SQL 예약어가 있으면 상위 API 를
+ * 부르지 않는다.
  */
 public final class Juso {
     private static final Logger log = LoggerFactory.getLogger(Juso.class);
@@ -88,8 +90,6 @@ public final class Juso {
         QUERY_ERROR_MESSAGES = Collections.unmodifiableMap(m);
     }
 
-    private static final Pattern FORBIDDEN_CHARS_RE = Pattern.compile("[%=><\\[\\]]");
-
     /** 검색 한 페이지 결과: (후보 목록, 전체 건수 totalCount). */
     public record SearchPage(List<AddressCandidate> candidates, long total) {
         public SearchPage {
@@ -98,14 +98,6 @@ public final class Juso {
     }
 
     private Juso() {
-    }
-
-    /** 가이드가 검색 불가로 정한 특수문자(%,=,&gt;,&lt;,[,])를 지우고 공백을 정리한다. */
-    public static String sanitizeKeyword(String keyword) {
-        if (keyword == null || keyword.isEmpty()) {
-            return "";
-        }
-        return Py.strip(PyStr.subWhitespace(FORBIDDEN_CHARS_RE.matcher(keyword).replaceAll(" "), " "));
     }
 
     private static AddressCandidate recordToCandidate(JsonNode rec, OffsetDateTime fetchedAt) {

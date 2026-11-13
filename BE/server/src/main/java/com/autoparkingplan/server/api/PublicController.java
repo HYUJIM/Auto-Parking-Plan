@@ -12,6 +12,8 @@ import java.util.regex.Pattern;
 
 import jakarta.persistence.EntityManager;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -33,6 +35,7 @@ import com.autoparkingplan.db.entity.RuleCondition;
 import com.autoparkingplan.db.entity.RuleEvidence;
 import com.autoparkingplan.db.entity.RuleValue;
 import com.autoparkingplan.db.entity.SourceDocument;
+import com.autoparkingplan.external.JusoKeyword;
 import com.autoparkingplan.server.config.AppSettings;
 import com.autoparkingplan.server.parcels.ParcelExceptions.AddressNotFound;
 import com.autoparkingplan.server.parcels.ParcelExceptions.ParcelNotFound;
@@ -64,6 +67,7 @@ import tools.jackson.databind.node.ObjectNode;
 @RestController
 @RequestMapping("/v1")
 public class PublicController {
+    private static final Logger log = LoggerFactory.getLogger(PublicController.class);
     private static final Pattern PNU = Pattern.compile("^\\d{19}$");
 
     private final EntityManager em;
@@ -96,6 +100,14 @@ public class PublicController {
         if (n < 2 || n > 200) {
             throw queryError("q", "2~200자여야 합니다");
         }
+        // 비정상 검색어는 여기서 끝낸다: 도로명주소 API 로 보내지 않는다 (2026-11-12 상위 차단 재발 방지)
+        JusoKeyword.Check kw = JusoKeyword.check(q);
+        if (!kw.ok()) {
+            if ("E0013".equals(kw.code())) {
+                log.warn("주소 검색어 사전 차단(허용하지 않는 문자·단어, 길이 {})", n); // 검색어 원문은 남기지 않는다
+            }
+            throw queryError("q", kw.message());
+        }
         List<ObjectNode> items = tx.execute(st -> {
             try {
                 return parcels.search(em, q);
@@ -103,6 +115,9 @@ public class PublicController {
                 String reason = e.getMessage() != null && !e.getMessage().isEmpty() && !e.getMessage().equals(q) ? e.getMessage() : null;
                 throw ApiError.withDetails("ADDRESS_NOT_FOUND", reason != null ? Map.of("reason", reason) : null); // 도로명주소 API 의 검색어 안내
             } catch (UpstreamUnavailable e) {
+                if (e.retryAfterSeconds() != null) {
+                    throw ApiError.withHeaders("UPSTREAM_UNAVAILABLE", Map.of("Retry-After", String.valueOf(e.retryAfterSeconds())));
+                }
                 throw new ApiError("UPSTREAM_UNAVAILABLE");
             }
         });
