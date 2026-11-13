@@ -1,5 +1,6 @@
 package com.autoparkingplan.external;
 
+import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -11,11 +12,20 @@ import com.autoparkingplan.common.http.HttpTransport;
  *
  * <p>baseUrl 은 scheme+host(+port) 만 받는다(경로는 고정). mock 서버를 쓰려면 baseUrl="http://127.0.0.1:8090".
  * 스레드 안전.
+ *
+ * <p>상위 API 보호: 검색어는 {@link JusoKeyword} 가 먼저 검사해 비정상 검색어를 보내지 않고, 연결·서버 오류가 이어지면
+ * {@link CircuitBreaker} 가 한동안 호출을 멈춘다.
  */
 public final class JusoClient implements JusoApi, AutoCloseable {
     private final String apiKey;
     private final String baseUrl;
     private final HttpJsonClient http;
+    private final CircuitBreaker breaker;
+
+    /** 연속 실패 3회면 60초 동안 부르지 않는다. 시험 호출이 또 실패하면 두 배씩 늘려 최대 15분. */
+    static final int BREAKER_THRESHOLD = 3;
+    static final Duration BREAKER_BASE_OPEN = Duration.ofSeconds(60);
+    static final Duration BREAKER_MAX_OPEN = Duration.ofMinutes(15);
 
     /**
      * @param apiKey    승인키 (비어 있으면 IllegalArgumentException)
@@ -24,12 +34,19 @@ public final class JusoClient implements JusoApi, AutoCloseable {
      * @param transport null 이면 기본 JDK 전송
      */
     public JusoClient(String apiKey, String baseUrl, double timeout, HttpTransport transport) {
+        this(apiKey, baseUrl, timeout, transport,
+                new CircuitBreaker(Juso.SERVICE, BREAKER_THRESHOLD, BREAKER_BASE_OPEN, BREAKER_MAX_OPEN));
+    }
+
+    /** 차단기를 바꿔 끼우는 생성자 (테스트에서 시계를 조작할 때). */
+    JusoClient(String apiKey, String baseUrl, double timeout, HttpTransport transport, CircuitBreaker breaker) {
         if (apiKey == null || apiKey.isEmpty()) {
             throw new IllegalArgumentException("도로명주소 API 승인키(api_key)가 비어 있습니다");
         }
         this.apiKey = apiKey;
         this.baseUrl = baseUrl != null ? baseUrl : Juso.JUSO_BASE_URL;
         this.http = new HttpJsonClient(Juso.SERVICE, timeout, transport, List.of(apiKey));
+        this.breaker = breaker;
     }
 
     public JusoClient(String apiKey, String baseUrl, double timeout) {
@@ -59,23 +76,29 @@ public final class JusoClient implements JusoApi, AutoCloseable {
      * 한 페이지 검색 → (후보 목록, 전체 건수).
      *
      * @throws IllegalArgumentException page·perPage 가 1 미만
-     * @throws JusoQueryError           검색어 오류 (빈 검색어는 네트워크 없이 E0005)
+     * @throws JusoQueryError           검색어 오류 ({@link JusoKeyword} 가 거른 검색어는 네트워크 없이 바로)
+     * @throws CircuitBreaker.OpenError 연속 실패로 차단 중 (네트워크 없이 바로)
      * @throws UpstreamError            인증·서버 오류 (메시지의 인증키는 가린다)
      */
     public Juso.SearchPage searchPage(String keyword, int page, int perPage) {
         if (page < 1 || perPage < 1) {
             throw new IllegalArgumentException("page, per_page 는 1 이상이어야 합니다");
         }
-        String kw = Juso.sanitizeKeyword(keyword);
-        if (kw.isEmpty()) {
-            throw new JusoQueryError("E0005", Juso.QUERY_ERROR_MESSAGES.get("E0005"));
+        JusoKeyword.Check kw = JusoKeyword.check(keyword);
+        if (!kw.ok()) { // 비정상 검색어는 상위 API 로 보내지 않는다
+            throw new JusoQueryError(kw.code(), kw.message());
         }
         Map<String, Object> params = new LinkedHashMap<>();
         params.put("confmKey", apiKey);
         params.put("currentPage", page);
         params.put("countPerPage", perPage);
-        params.put("keyword", kw);
+        params.put("keyword", kw.keyword());
         params.put("resultType", "json");
+        // 검색어 오류(JusoQueryError)는 상위가 응답한 것이므로 장애로 세지 않는다
+        return breaker.call(() -> fetch(params), e -> e instanceof UpstreamError && !(e instanceof JusoQueryError));
+    }
+
+    private Juso.SearchPage fetch(Map<String, Object> params) {
         HttpJsonClient.JsonResult r = http.getJson(Http.joinUrl(baseUrl, Juso.JUSO_SEARCH_PATH), params, "addrLinkApi");
         try {
             return Juso.parseSearchResponse(r.payload(), Http.utcnow());

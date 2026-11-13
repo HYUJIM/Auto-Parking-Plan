@@ -18,8 +18,20 @@ public final class ParcelExceptions {
     }
 
     public static class UpstreamUnavailable extends RuntimeException {
+        private final Long retryAfterSeconds;
+
         public UpstreamUnavailable(String message) {
+            this(message, null);
+        }
+
+        /** @param retryAfterSeconds 이 시간 뒤에 다시 시도하라는 안내 (모르면 null) */
+        public UpstreamUnavailable(String message, Long retryAfterSeconds) {
             super(message);
+            this.retryAfterSeconds = retryAfterSeconds;
+        }
+
+        public Long retryAfterSeconds() {
+            return retryAfterSeconds;
         }
     }
 }

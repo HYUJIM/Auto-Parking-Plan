@@ -42,6 +42,8 @@ export function SearchBox({ initialQuery = '', autoFocus, compact, ctaLabel, onS
   const [result, setResult] = useState<AddressSearchResult>(EMPTY);
   const [status, setStatus] = useState<Status>('idle');
   const [errorText, setErrorText] = useState<string | null>(null);
+  /** 주소 검색만 막혔을 때의 대안 안내 (지도에서 직접 선택) */
+  const [errorSub, setErrorSub] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(-1);
   const [submitted, setSubmitted] = useState(false);
@@ -90,7 +92,12 @@ export function SearchBox({ initialQuery = '', autoFocus, compact, ctaLabel, onS
     setStatus('error');
     // 서버가 준 고정 안내(ApiError)만 그대로 보여 주고, 브라우저 내부 오류 문구는 숨깁니다 (errors.ts 와 같은 규칙)
     const described = describeApiError(err);
-    setErrorText(err instanceof ApiError ? (described.desc ?? described.title) : content.search.error);
+    // 도로명주소 API 를 쓸 수 없을 때(503 UPSTREAM_UNAVAILABLE): 지도 클릭은 다른 경로라 계속 쓸 수 있으므로 그쪽을 안내합니다
+    const unavailable = err instanceof ApiError && err.code === 'UPSTREAM';
+    setErrorText(
+      unavailable ? content.search.unavailable : err instanceof ApiError ? (described.desc ?? described.title) : content.search.error,
+    );
+    setErrorSub(unavailable ? content.search.unavailableMap : null);
     onResultsRef.current?.([]);
   };
 
@@ -225,7 +232,7 @@ export function SearchBox({ initialQuery = '', autoFocus, compact, ctaLabel, onS
   const showList = open && hits.length > 0;
   const message = (() => {
     if (status === 'loading') return { kind: 'muted', text: content.search.searching };
-    if (status === 'error') return { kind: 'warn', text: errorText ?? content.search.error };
+    if (status === 'error') return { kind: 'warn', text: errorText ?? content.search.error, sub: errorSub ?? undefined };
     if (status === 'short' && submitted) return { kind: 'warn', text: content.search.minChars };
     if (status === 'done' && hits.length === 0 && (touched || submitted)) {
       if (result.notice) return { kind: 'warn', text: result.notice };
