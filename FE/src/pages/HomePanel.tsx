@@ -10,6 +10,7 @@ import { Icon } from '@/components/Icon';
 import { SearchBox } from '@/components/SearchBox';
 import { useToast } from '@/components/Toast';
 import styles from './HomePanel.module.css';
+import { siteHref } from '@/lib/report/links';
 
 /**
  * 1단계 — 초기화면 (주소 입력 전) 좌측 패널.
@@ -30,7 +31,7 @@ export function HomePanel() {
 
   useEffect(() => () => setPreviewPins([]), [setPreviewPins]);
 
-  const goTo = useCallback((pnu: string) => navigate(`/site?pnu=${encodeURIComponent(pnu)}`), [navigate]);
+  const goTo = useCallback((pnu: string) => navigate(siteHref(pnu)), [navigate]);
   const onSelect = useCallback((hit: AddressHit) => goTo(hit.pnu), [goTo]);
   const onResults = useCallback((hits: AddressHit[]) => setPreviewPins(hits), [setPreviewPins]);
 

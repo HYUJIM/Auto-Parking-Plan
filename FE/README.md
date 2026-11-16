@@ -1,6 +1,6 @@
 # APP 웹사이트 — FE
 
-「APP 웹사이트 제작 계획서 (초기화면 → 이용화면)」를 React 로 구현한 프론트엔드입니다.
+「APP 웹사이트 제작 계획서 (초기화면 → 이용화면 → 결과 리포트)」를 React 로 구현한 프론트엔드입니다.
 디자인은 **A안 · 클리어 블루프린트(시원한 블루)** 로 확정되어 있습니다.
 
 > **BE 연동 상태: 연동 완료.** 주소 검색·필지·법규 검토·주차장 배치안을 모두 BE(Spring, `../BE`)의 공개 API(`/v1/...`)에서 받습니다.
@@ -28,17 +28,17 @@ npm install
 npm run dev        # http://localhost:5173  — /v1/* 는 BE(127.0.0.1:8000)로 프록시
 ```
 
-| 명령                              | 설명                                                                                         |
-| --------------------------------- | -------------------------------------------------------------------------------------------- |
-| `npm run dev`                     | 개발 서버. `/v1/*` 를 BE 로 프록시합니다 (`VITE_PROXY_TARGET`, 기본 `http://127.0.0.1:8000`) |
-| `npm run build`                   | 배포용 빌드 (`dist/`). 타입 검사는 `typecheck` 가 따로 합니다                                |
-| `npm run preview`                 | 빌드 결과 미리보기 (`/v1` 프록시 포함)                                                       |
-| `npm run typecheck`               | 타입 검사 — 브라우저 코드(`tsconfig.app.json`)와 설정 파일(`tsconfig.node.json`)             |
-| `npm run lint` / `lint:fix`       | ESLint (TypeScript 권장 + React Hooks + Fast Refresh 규칙)                                   |
-| `npm run format` / `format:check` | Prettier                                                                                     |
-| `npm test` / `test:watch`         | Vitest 단위 테스트 (BE 응답 어댑터·오류 분류·검토 폴링·지도 기하·저장소 값 검사)             |
-| `npm run check:colors`            | 컴포넌트 코드에 색 코드(`#`)가 직접 들어갔는지 검사                                          |
-| `npm run check`                   | 위 검사 전부 + 빌드 — 푸시 전에 한 번                                                        |
+| 명령                              | 설명                                                                                                                      |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `npm run dev`                     | 개발 서버. `/v1/*` 를 BE 로 프록시합니다 (`VITE_PROXY_TARGET`, 기본 `http://127.0.0.1:8000`)                              |
+| `npm run build`                   | 배포용 빌드 (`dist/`). 타입 검사는 `typecheck` 가 따로 합니다                                                             |
+| `npm run preview`                 | 빌드 결과 미리보기 (`/v1` 프록시 포함)                                                                                    |
+| `npm run typecheck`               | 타입 검사 — 브라우저 코드(`tsconfig.app.json`)와 설정 파일(`tsconfig.node.json`)                                          |
+| `npm run lint` / `lint:fix`       | ESLint (TypeScript 권장 + React Hooks + Fast Refresh 규칙)                                                                |
+| `npm run format` / `format:check` | Prettier                                                                                                                  |
+| `npm test` / `test:watch`         | Vitest 단위 테스트 (BE 응답 어댑터·오류 분류·검토 폴링·지도 기하·저장소 값 검사·DXF·검토 요약·결과 리포트 계산·화면 주소) |
+| `npm run check:colors`            | 컴포넌트 코드에 색 코드(`#`)가 직접 들어갔는지 검사                                                                       |
+| `npm run check`                   | 위 검사 전부 + 빌드 — 푸시 전에 한 번                                                                                     |
 
 **Node 22.18 이상(권장 24, `.nvmrc`)** 이 필요합니다. 들여쓰기는 웹 관례대로 2칸입니다(`FE/.editorconfig`, 저장소 공통 규칙은 4칸).
 
@@ -58,15 +58,43 @@ npm run dev        # http://localhost:5173  — /v1/* 는 BE(127.0.0.1:8000)로 
 
 ## 화면
 
-| URL           | 화면                                                                                                           |
-| ------------- | -------------------------------------------------------------------------------------------------------------- |
-| `/`           | 소개 페이지 — 제품 소개(도면 그림·동작 방식·법규 근거·기능)와 '시작하기'. 모션은 anime.js                      |
-| `/app`        | 1단계 초기화면 — 좌측 패널(헤드라인·주소 검색·서비스·이용 흐름) + 수성구 전체 지도(검색 결과 미리보기 핀)      |
-| `/site?pnu=…` | 2단계 이용화면 — 검색창·주소·PNU, 탭(대지 요약 · 법규 검토 · 배치안), 위성+지적도 위 대지 경계와 배치안 레이어 |
+흐름: **초기화면(`/app`) → 이용화면(`/site`, 대지 요약 + '결과 보기') → 결과 리포트(`/report`) → 법규 상세(`/report/rules/:category`)**
+
+| URL                                      | 화면                                                                                                                                                                                |
+| ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/`                                      | 소개 페이지 — 제품 소개(도면 그림·동작 방식·법규 근거·기능)와 '시작하기'. 모션은 anime.js                                                                                           |
+| `/app`                                   | 1단계 초기화면 — 좌측 패널(헤드라인·주소 검색·서비스·이용 흐름) + 수성구 전체 지도(검색 결과 미리보기 핀)                                                                           |
+| `/site?pnu=…`                            | 2단계 이용화면 — 검색창·주소·PNU, 대지 요약(면적·용도지역·지목·접도·공시지가·토지이용계획·건축물), 법규 검토 진행 상태 한 줄, '결과 보기'                                           |
+| `/report?pnu=…&review=…`                 | 3단계 결과 리포트 — 머리(주소·PNU·기준일·진행 단계) · 현황 부지 · 주차 배치 결과(정지 위성 지도, 배치안 A/B/C) · 토지이용계획 · 법규 검토 체크리스트, 'PDF 저장' · 'CAD 저장 (DXF)' |
+| `/report/rules/:category?pnu=…&review=…` | 법규 상세 — 항목 하나의 요약(원문 인용 또는 검증을 통과한 AI 요약) · 원문 근거 · 위임 관계                                                                                          |
 
 `/app` 과 `/site` 는 같은 레이아웃(`MapShell`) 안에서 **좌측 패널만 바뀌고 지도는 그대로 이어집니다.**
+주소를 고르거나 지도에서 필지를 클릭하면 `/site` 로 갑니다. 이용화면은 결과를 패널에 펼쳐 놓지 않고, 필지를 받는 즉시 법규 검토를 뒤에서 시작해
+진행 단계와 상태별 개수(검토 가능 · 조건부 · 별도 확인)만 보여 줍니다. 하단 '결과 보기'는 필지를 받으면 바로 누를 수 있고(검토가 끝나기 전이어도)
+`/report?pnu=…` 로, 검토가 끝났으면 `&review=<id>` 를 붙여 엽니다. BE 에 없는 필지(대기)·조회 실패면 버튼이 꺼지고 그 이유를 한 줄로 알립니다.
+결과 리포트는 검토가 정해지면 주소에 `&review=<id>` 를 스스로 붙여(히스토리 교체) 새로고침·인쇄·법규 상세가 같은 검토를 다시 씁니다.
+시범 지역(대구 수성구) 밖 필지도 '결과 보기'로 결과 리포트를 열 수 있습니다 — 현황 부지·토지이용계획은 그대로 보여 주고,
+법규 검토·자동 배치 단계는 '해당 없음'으로 두고, 법규 검토 카드와 주차 배치 결과 카드(대지 경계만 그림)에는 검토·배치 대신 시범 지역 안내를 보여 줍니다.
+`/report` 와 `/report/rules/…` 는 지도 없는 레이아웃(`ReportLayout`, 상단 바 + 전체 폭 본문)에서 그려집니다.
 `/` 의 '시작하기' 는 `/app` 으로 갑니다 (소개 페이지는 지도를 띄우지 않습니다).
-`?pnu=` 는 숫자 19자리만 받습니다 — 형식이 다르면 요청 없이 '올바르지 않은 요청' 안내만 보여 줍니다.
+`?pnu=` 는 숫자 19자리만 받습니다 — 형식이 다르면 요청 없이 '올바르지 않은 요청' 안내만 보여 줍니다. `review=` 는 uuid 모양일 때만 BE 로 보냅니다(`isUuid`).
+이용화면·결과 리포트·법규 상세 사이의 주소는 `src/lib/report/links.ts`(`reportHref` · `ruleDetailHref` · `siteHref`) 한 곳에서만 만듭니다.
+
+### 결과 저장 (PDF · CAD)
+
+- **PDF**: 결과 리포트 머리의 **'PDF 저장'**은 브라우저 인쇄 대화상자를 엽니다(`window.print()`). 대상에서 **'PDF로 저장'**을 고르세요.
+  진행 중인 단계(필지 조회·법규 검토·배치 계산)가 있으면 버튼이 꺼져 있습니다. 누르면 글꼴과 지도 타일 이미지가 다 그려질 때까지(최대 8초) 기다린 뒤
+  문서 제목을 `주차검토_<주소>_<기준일>` 로 바꿔 인쇄 창을 열고(브라우저가 이 제목을 저장 파일 이름으로 씀), 인쇄 창이 닫히면 되돌립니다 (`src/lib/report/print.ts`).
+  A4 가로 **2쪽 구성**입니다 — 1쪽: 머리(주소·PNU·기준일·지역·진행 단계) + 3단(현황 부지 · 주차 배치 결과 · 토지이용계획 + 법규 검토),
+  2쪽(`data-print="page-break"`): 법규 검토 상세(항목별 상태·기준값·요약 문장과 그 출처·근거 문서 + 별도 확인 항목 — 화면에서는 숨기고 인쇄 때만) + 데이터 안내·고지·출처.
+  공통 인쇄 규칙(용지·여백, 화면 높이 고정 풀기, `data-print="hide"`·`"page-break"`)은 `src/design/print.css`, 카드별 인쇄 모양은 각 CSS 모듈의 `@media print` 에 있습니다.
+  상단 바·저장 버튼(`data-print="hide"`)과 '상세 보기' 링크(카드의 인쇄 규칙)는 인쇄에서 빠집니다. 지도는 움직이는 지도 대신 정지 지도(`StaticMap`: 타일 이미지 + SVG)라 인쇄에도 그대로 나옵니다.
+- **CAD**: **'CAD 저장 (DXF)'**은 **DXF R12**(ASCII) 파일을 브라우저에서 만들어 내려받습니다(서버 왕복 없음, `src/lib/export/resultDxf.ts` · `dxf.ts` · `download.ts`).
+  담기는 것은 대지 경계와 지도에 그린 배치안 하나(배치안 A/B/C 중 고른 것)입니다 — 파일 이름 `<주소>_배치안A.dxf`.
+  그린 배치안이 없으면(건설 불가·계산 안 함·시범 지역 밖) 대지 경계만 `<주소>_대지경계.dxf` 로 저장하고, 대지 경계가 없으면 버튼이 꺼집니다.
+  좌표는 **EPSG:5186(중부원점 TM), 단위 m** 라 지적도·현황 측량 도면 위에 그대로 겹칩니다.
+  계층(`DXF_LAYERS`): `SITE_BOUNDARY`(대지 경계) · `USABLE_AREA`(가용 영역) · `AISLE`(차로) · `STALL`(주차구획) · `GATE`(출입구) ·
+  `ANNOTATION`(제목 · 좌표계 · PNU·기준일 · 참고 배치면 그 표시 · '참고용' 고지).
 
 ## 데이터 흐름 (전부 BE 공개 API)
 
@@ -75,8 +103,15 @@ npm run dev        # http://localhost:5173  — /v1/* 는 BE(127.0.0.1:8000)로 
 /site?pnu= ─GET /v1/parcels/{pnu}───────────▶ BE ─▶ 브이월드 연속지적도(경계)·토지특성(면적·지목·도로접면·공시지가)·토지이용계획 + 건축물대장
 지도 클릭 ──GET /v1/parcels/at?lng=&lat=─────▶ BE ─▶ 그 지점의 필지 전체 → /site?pnu=
 법규 검토 ──POST /v1/reviews {pnu,audience}─▶ 202 {review_id} ─▶ GET /v1/reviews/{id} 를 Retry-After 간격으로 폴링 ─▶ review_result@1.0
-배치안 ─────POST /v1/reviews/{id}/parking-simulations ─▶ 배치안 A/B/C + GeoJSON 레이어 → 지도에 주차구획·차로·출입구
+            (/site 에서 필지를 받으면 시작 · /report?pnu= 만으로 들어오면 진행 중인 검토를 이어받거나 새로 시작 · ?review= 가 있으면 POST 없이 GET 폴링만)
+배치 계산 ──POST /v1/reviews/{id}/parking-simulations ─▶ 배치안 A/B/C + GeoJSON 레이어 → 결과 리포트의 정지 지도·DXF (/report)
+            (참고 배치 include_unverified=true 는 '참고 배치 보기'를 누를 때만)
+법규 원문 ──GET /v1/rules/{ruleId}/basis?as_of_date= ─▶ 승인 규칙의 원문 근거·위임 관계 (/report/rules/:category)
 ```
+
+- **한 번만 요청**: 검토·배치 결과는 이 탭 안에서 30분 동안 기억합니다(`review.ts` 의 `reviewForParcel` · `reviewById` · `simulationFor`). 승인된 원문은 바뀌지 않으므로 `rules.ts` 가 탭을 닫을 때까지 기억합니다.
+  이용화면 → 결과 리포트 → 법규 상세로 옮겨 다녀도 같은 필지의 검토를 다시 만들지 않고, 검토 중에 '결과 보기'를 누르면 결과 리포트가 진행 중인 검토를 이어받습니다.
+  진행 중인 요청은 Promise 로 기억해 두 화면이 동시에 불러도 한 번만 보내고, 실패하면 잊어 '다시 시도'가 새로 요청합니다.
 
 - **어댑터**: BE 응답(snake_case, `src/lib/api/beTypes.ts`)은 `src/lib/api/beAdapters.ts`(순수 함수)가 FE 모델(`types.ts`)로 바꿉니다.
   좌표는 `[lng, lat]` → `{ lat, lng }`, 경계는 MultiPolygon 중 가장 큰 폴리곤의 외곽 링, 용도지역은 `designations` 중 접함이 아닌 zoning 1·2번째.
@@ -86,13 +121,19 @@ npm run dev        # http://localhost:5173  — /v1/* 는 BE(127.0.0.1:8000)로 
   주소 검색 404 ADDRESS_NOT_FOUND 는 오류가 아니라 '결과 없음'(+ BE 안내), 필지 404 PARCEL_NOT_FOUND 는 주소·좌표만 보여 주는 '대기' 화면입니다.
 - **주소 검색어**: 한글·영문·숫자·공백과 `- . , ( ) [ ] ·` 만 받습니다 (`address.ts`, 기준은 BE 의 `JusoKeyword`). 그 밖의 문자가 있으면 요청하지 않고 안내하며,
   BE 가 검색어를 거절(422)하면 그 안내를 보여 줍니다. 도로명주소 API 를 쓸 수 없을 때(503 UPSTREAM_UNAVAILABLE)는 지도에서 필지를 직접 고르도록 안내합니다.
-- **법규 검토**: 6항목(용도·건폐율·용적률·주차대수·주차구획·차로 폭)은 `검토 가능 / 조건부 검토 / 별도 확인 필요` 세 상태로, 기준값(`criteria_text`)·적용값(참고값·용도 목록·기준표)·
-  상태 사유(`reason_code`)·BE 가 원문과 대조해 검증한 쉬운 설명·근거 트리(법률 → 시행령 → 조례, 인용·원문 링크)를 보여 줍니다.
-  별도 확인 항목(도로·건축선·높이·추가 규제)과 데이터 안내, 고지는 BE 가 준 그대로입니다. 시범 지역 밖 필지는 검토를 요청하지 않고 안내만 보여 줍니다.
-- **배치안**: 법규 검토가 끝나면(`review_id`) '배치안 계산'. 주차장 설치 가능 여부가 확인되지 않아 BE 가 계산하지 않으면(`simulated=false`) 이유를 보여 주고
-  '참고 배치 보기'(`include_unverified=true`)를 제안합니다. 주차장을 건설할 수 없는 토지(`eligibility.status = NOT_PERMITTED`: 지목이 도로·하천 등이거나
-  허용 용도에 주차장이 없음)이면 경고 알림("이 지역은 주차장 건설이 불가한 지역입니다.")을 띄우고 사유만 보여 주며, 참고 배치는 제안하지 않습니다. 배치안을 고르면 지도 어댑터 `setLayout()` 이 GeoJSON 레이어(가용 영역·차로·주차구획·출입구)를 그립니다.
-- **요청 중단과 재시도**: 필지가 바뀌거나 화면을 떠나면 진행 중인 필지 조회와 법규 검토 폴링을 끊습니다 (`useAsync` 가 `AbortSignal` 을 넘깁니다).
+- **법규 검토**: 6항목(용도·건폐율·용적률·주차대수·주차구획·차로 폭)은 `검토 가능 / 조건부 검토 / 별도 확인 필요` 세 상태입니다.
+  이용화면은 진행 단계(대지정보 → 용도지역 → 건축 법규 → 주차 기준 → 쉬운 설명)와 끝난 뒤 상태별 개수만 보여 주고(`src/pages/siteReviewSummary.ts`),
+  기준값(`criteria_text`)·적용값·상태 사유(`reason_code`)·근거는 결과 리포트의 체크리스트와 항목별 '상세 보기'(법규 상세)에서 봅니다.
+  항목 요약은 출처를 구분합니다 — `ai_verified`(AI 가 쓰고 원문 대조 검증을 통과한 문장)만 'AI 요약'이라 부르고, `template_fallback`(원문 인용)은 AI 라고 표시하지 않습니다.
+  별도 확인 항목(도로·건축선·높이·추가 규제)과 데이터 안내, 고지는 BE 가 준 그대로입니다. 시범 지역 밖 필지는 이용화면·결과 리포트 모두 검토를 요청하지 않고 안내만 보여 줍니다.
+- **배치·건설 가능 여부**: 결과 리포트가 검토 id 로 배치를 계산하고(검토가 끝난 뒤, 대지 경계가 있을 때), 배치안 A/B/C 중 추천안을 먼저 지도에 그립니다.
+  주차장 설치 가능 여부가 확인되지 않아(`PARKING_USE_NOT_CONFIRMED`) BE 가 계산하지 않으면(`simulated=false`) 그 이유와 **'참고 배치 보기'** 버튼을 보여 주고,
+  누를 때만 참고 배치(`include_unverified=true`)를 계산해 **'참고 배치'** 배지와 안내 문장을 붙여 그립니다 (이때 저장한 DXF 에도 참고 배치라고 적힘).
+  주차장을 건설할 수 없는 토지(`eligibility.status = NOT_PERMITTED`)이면 지도에 **'주차장 건설 불가 지역'**을 표시하고 대지 경계를 붉게 그린 뒤,
+  그 이유를 검토 당시의 토지이용계획(지목이 도로·하천 등 공공시설 용지인지, 용도지역의 허용 용도에 주차장이 없는지)과 근거 조문으로 설명합니다 (`src/lib/report/verdict.ts`).
+  판정은 BE 가 하고 화면은 근거만 붙입니다. 이때는 참고 배치를 제안하지 않습니다.
+- **요청 중단과 재시도**: 필지가 바뀌거나 화면을 떠나면 진행 중인 필지 조회와 그 화면의 기다림을 끊습니다 (`useAsync` 가 `AbortSignal` 을 넘깁니다).
+  법규 검토 폴링 자체는 탭 안에서 기억되어 끝까지 이어지므로(최대 60초) 다음 화면이 결과를 이어받습니다.
   폴링 중의 일시 오류(429·503·연결 끊김)는 `Retry-After` 만큼 기다렸다가 같은 검토를 이어서 확인하고, 요청 하나는 35초에 끊습니다.
 - **BE 응답을 믿지 않는 곳**: 타일 주소 템플릿은 `/v1/map/tiles/…` 모양만(`bePathTemplate`), 원문 링크는 https 만, 배치 도형은 좌표 모양이 맞는 것만 받습니다.
 - **PNU** = 법정동코드(10) + 산구분(1) + 본번(4) + 부번(4). 형식·상수는 `src/lib/api/types.ts`.
@@ -128,7 +169,9 @@ npm run dev        # http://localhost:5173  — /v1/* 는 BE(127.0.0.1:8000)로 
 - 지도 코드는 `src/lib/map/MapAdapter`(`types.ts`) 인터페이스 하나로 감싸져 있어, 카카오로 바꾸려면 `kakaoMap.ts` 를 만들고
   `createMapAdapter.ts` 한 곳만 바꾸면 됩니다. 클릭 지점 → 필지 규칙은 `pickParcel.ts`(지도 공급자와 무관).
 - 장면(scene) 세 가지: `overview`(수성구 전체) · `site`(필지 경계 + 면적 말풍선, 위성+지적도) · `point`(좌표만 있을 때 핀).
-  배치안 레이어(`setLayout`)는 `site` 장면 위에만 그려지고 필지가 바뀌면 지워집니다.
+  이용화면은 장면만 정하고 배치안 레이어는 그리지 않습니다. 배치안은 결과 리포트의 정지 지도(`src/components/report/StaticMap.tsx`,
+  계산은 `src/lib/map/staticView.ts`)가 같은 타일 출처 위에 SVG 로 그립니다 — 끌거나 확대하지 않고, 화면·인쇄 폭에 맞춰 비율로 늘어납니다.
+  지도 어댑터의 `setLayout()` 은 남아 있지만 지금은 부르는 화면이 없습니다.
 
 ## 우리가 직접 편집하는 곳 (계획서 5장)
 
@@ -151,20 +194,28 @@ npm run dev        # http://localhost:5173  — /v1/* 는 BE(127.0.0.1:8000)로 
 ```
 src/
   main.tsx / App.tsx        진입점·라우트 (ErrorBoundary 로 감싸 패널이 깨져도 빈 화면이 되지 않음)
-  layouts/MapShell          상단 바 + 좌측 패널 + 우측 지도 (지도 유지)
+  layouts/MapShell          상단 바 + 좌측 패널 + 우측 지도 (지도 유지) — /app · /site
+  layouts/ReportLayout      상단 바 + 전체 폭 본문(자체 스크롤, 인쇄 때 상단 바 숨김) — /report · /report/rules/…
   pages/landing/            소개 페이지(/): LandingPage(구조·문구) · HeroScene · StepDemos · BasisTree · RippleGrid ·
                             sceneGeometry(그림 좌표, 순수 계산 + 테스트) · useLandingMotion(anime.js 움직임 전부)
   pages/HomePanel           1단계 초기화면 패널 (/app)
-  pages/SitePanel           2단계 이용화면 패널 (대지 요약 · 법규 검토 · 대기/미지원 안내 · 하단 버튼)
-  pages/LayoutTab           배치안 탭 (시뮬레이션 호출 · 배치안 선택 · 지도 레이어)
+  pages/SitePanel           2단계 이용화면 패널 (대지 요약 · 법규 검토 진행 상태 · 대기/미지원 안내 · '결과 보기')
+  pages/siteReviewSummary   이용화면 검토 카드의 순수 계산 (상태별 개수 · 진행 단계) + 테스트
+  pages/report/             3단계 결과 리포트 ReportPage + 카드(SiteMapCard · LayoutCard · NotPermittedPanel · LandUseCard · RuleChecklistCard ·
+                            PrintRuleDetails(인쇄 2쪽) · ReportFootnotes) · 법규 상세 RuleDetailPage(+ RuleDetailSections · RuleDetailSource)
   components/               Button · Icon · Badge · SearchBox · StatCard · RuleItem(+StatusBadge·BasisList·ManualCheckItem) · AsyncBlock · ErrorBoundary · Toast · TopBar
   components/map/           MapView · MapControls · ScaleBar · MapStatusBar
-  lib/map/                  MapAdapter(types) · naverMap · mockMap · createMapAdapter · MapContext · pickParcel · layoutAnchors · geo · mapStyle
+  components/report/        StaticMap(결과 리포트·인쇄용 정지 지도: 타일 이미지 + SVG 경계·배치안) · MapOverlays · ReportCard · ReportNotice · StepIndicator
+  lib/map/                  MapAdapter(types) · naverMap · mockMap · createMapAdapter · MapContext · pickParcel · layoutAnchors · geo · mapStyle · staticView
   lib/api/                  beTypes(BE 와이어 타입) · beAdapters(BE → FE 변환) · types(FE 모델·ApiError) · base(fetch·오류 분류)
-                            address · parcel · review(검토 폴링·배치안) · errors · guards · hitCache · recent · __fixtures__/
+                            address · parcel · review(검토 폴링·배치 계산·탭 안 기억) · rules(법규 원문) · errors · guards · hitCache · recent · __fixtures__/
+  lib/report/               links(세 화면 사이 주소) · steps(진행 단계) · pageState · summary · verdict(건설 가능 여부의 근거 — 지목 · 용도지역) ·
+                            landUseRows · layoutMetrics · radioKeys(배치안 선택 방향키) · exportNames(PDF 문서 제목 · DXF 파일 이름·안내 줄) · print(인쇄 전 기다림 · 문서 제목)
+  lib/ruleDetail/           params(법규 상세 주소의 값 검사) · format
+  lib/export/               resultDxf · dxf(DXF R12 쓰기) · tm(EPSG:5186 변환) · download(파일 내려받기)
   lib/                      useAsync · content · format · landUse · cx
-  design/                   tokens.css · themes/clear-blue.css(확정 디자인의 색·글꼴·둥글기) · icons.ts · base.css
-  content/ko.json           화면 문구
+  design/                   tokens.css · themes/clear-blue.css(확정 디자인의 색·글꼴·둥글기) · icons.ts · base.css · print.css(PDF 저장 인쇄 규칙)
+  content/ko.json           화면 문구 전부 (결과 리포트는 report.*, 법규 상세는 ruleDetail.*)
 scripts/                    check-hex-colors.mjs
 public/icons/ · public/brand/
 tsconfig.app.json / tsconfig.node.json   브라우저 코드(DOM lib)와 설정 파일(node types)을 따로 검사
@@ -185,7 +236,7 @@ eslint.config.js · vitest.config.ts · .prettierrc.json · .nvmrc · .npmrc
   CI(`.github/workflows/fe-ci.yml`)가 타입 검사·린트·포맷 검사·단위 테스트·색 검사·빌드를 돌립니다 (`npm ci --ignore-scripts`, Node 는 `.nvmrc`).
 - **BE 주소**: 빌드 시 `VITE_API_BASE=https://api.example.com` 으로 BE origin 을 넣고, BE 의 `CORS_ORIGINS` 에 FE 배포 도메인을 등록합니다.
   같은 도메인 아래 `/v1` 을 BE 로 라우팅(CloudFront 동작·ALB 경로 규칙)하면 `VITE_API_BASE` 를 비워 둘 수 있습니다.
-- **SPA 경로**: `/app`·`/site?pnu=…` 는 클라이언트 라우트입니다. 이 저장소의 배포(`deploy/aws-lite`)는 CloudFront Function 으로 마지막 경로 조각에 점이 없으면
+- **SPA 경로**: `/app`·`/site?pnu=…`·`/report?…`·`/report/rules/…` 는 클라이언트 라우트입니다. 이 저장소의 배포(`deploy/aws-lite`)는 CloudFront Function 으로 마지막 경로 조각에 점이 없으면
   `/index.html` 을 줍니다 (Custom Error Response 는 API 의 404 까지 바꿔 버려 쓰지 않습니다). Amplify 는
   rewrite `</^[^.]+$|\.(?!(css|gif|ico|jpg|js|png|txt|svg|woff|woff2|ttf|map|json)$)([^.]+$)/>` → `/index.html` (200) 을 넣습니다.
 - **캐시 헤더**: `assets/*` 는 해시 파일명이므로 `Cache-Control: public,max-age=31536000,immutable`, `index.html` 은 `no-cache` 로 올리고 배포 뒤 `/index.html` 을 무효화합니다.
@@ -199,7 +250,8 @@ eslint.config.js · vitest.config.ts · .prettierrc.json · .nvmrc · .npmrc
   default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' https://tile.openstreetmap.org https://server.arcgisonline.com;
   font-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; upgrade-insecure-requests
   ```
-  인라인 스크립트·`eval` 이 없고, 인라인 스타일은 모두 CSSOM(React `style`·`el.style`)으로 넣어 `'unsafe-inline'` 이 필요 없습니다. `data:`·`blob:` 도 쓰지 않습니다.
+  인라인 스크립트·`eval` 이 없고, 인라인 스타일은 모두 CSSOM(React `style`·`el.style`)으로 넣어 `'unsafe-inline'` 이 필요 없습니다. 이미지·글꼴에 `data:`·`blob:` 을 쓰지 않습니다.
+  (CAD 저장은 `blob:` 주소를 `a[download]` 로 내려받는 것이라 CSP 의 불러오기 대상이 아니고, PDF 저장은 `window.print()` 입니다 — 둘 다 CSP 를 넓힐 필요가 없습니다.)
   네이버 지도를 켜면 그 SDK·타일 호스트를 `script-src`·`img-src`·`connect-src` 에 더해야 합니다 (실제 목록은 키를 넣고 네트워크 패널에서 확인).
   (개발 서버에는 넣지 않습니다 — Vite 의 React Refresh 프리앰블이 inline script 를 씁니다.)
   기본 지도의 타일은 BE 경유(`/v1/map/tiles`)라 화면과 API 가 같은 origin 이면 `img-src 'self'` 로 충분합니다. `VITE_API_BASE` 로 BE 를 직접 부르면
@@ -212,8 +264,8 @@ eslint.config.js · vitest.config.ts · .prettierrc.json · .nvmrc · .npmrc
   BE 가 **모의 공공 API**(`mockserver`)로 돌면 BE 모의 데이터셋의 예시 필지 12건만 검색·조회되고 실제 주소는 "검색 결과 없음"이 됩니다.
   실제 주소를 쓰려면 BE 에 도로명주소·브이월드·건축HUB 승인키를 넣고 모의 서버 주소(`*_URL`)를 비워 두세요(`../BE/.env.example`).
   BE 가 `is_example: true` 로 표시한 필지(모의 데이터)는 주소 옆에 '예시 데이터' 배지가 붙습니다.
-- 화면 하단에 출처(`sources`)·조회일을, 법규 탭에는 검토 기준일·엔진 버전을 표시합니다. 법규 값은 BE 가 검수 승인한 규칙에서만 옵니다.
+- 이용화면 하단에 출처(`sources`)·조회일을, 검토 카드에는 검토 기준일·엔진 버전을 표시합니다. 법규 값은 BE 가 검수 승인한 규칙에서만 옵니다.
 
 ## 다음 단계
 
-5. 모바일 다듬기(하단 시트 제스처) · AWS 배포 · PDF 저장(검토 결과 + 배치안 도면)
+5. 모바일 다듬기(하단 시트 제스처) · AWS 배포

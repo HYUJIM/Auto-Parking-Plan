@@ -1,0 +1,109 @@
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-sm);
+  table-layout: fixed;
+}
+.table tr + tr th,
+.table tr + tr td {
+  border-top: 1px solid var(--color-border);
+}
+.table th,
+.table td {
+  padding: var(--space-2) 0;
+  vertical-align: top;
+  text-align: left;
+}
+.table th {
+  width: 36%;
+  padding-right: var(--space-3);
+  font-weight: var(--weight-medium);
+  color: var(--color-text-muted);
+}
+.table th > span {
+  display: block;
+}
+.table th > :not(:first-child) {
+  margin-top: var(--space-1);
+}
+.table td {
+  min-width: 0;
+  color: var(--color-text);
+  overflow-wrap: anywhere;
+}
+
+.value {
+  font-weight: var(--weight-semibold);
+}
+.muted {
+  font-weight: var(--weight-regular);
+  color: var(--color-text-muted);
+}
+.sub {
+  margin-left: var(--space-2);
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+/* 건설 불가 판정의 근거 줄 */
+.highlight th,
+.highlight td {
+  background: var(--color-danger-soft);
+}
+.highlight th {
+  padding-left: var(--space-2);
+  color: var(--color-danger);
+}
+.highlight .value {
+  color: var(--color-danger);
+}
+
+.tags {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.tag {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+.tagName {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.adjacent .tagName {
+  color: var(--color-text-muted);
+}
+
+/* 인쇄 1쪽 전용 용도지구·구역 한 줄 글 — 화면에서는 배지 목록 */
+.tagsPrint {
+  display: none;
+}
+
+/*
+ * 인쇄 1쪽: 줄 ≈ 5.8mm(8pt 한 줄 + 위아래 0.8), 이름 칸 24mm('용도지구·구역'이 한 줄에 들어가는 폭)로 값 칸을 넓히고,
+ * 용도지구·구역은 배지 목록(지정마다 한 줄 ≈ 6.4mm) 대신 '이름(관계) · …' 한 줄 글(7pt, 보통 2~3줄)로 — 카드 ≈ 78mm.
+ */
+@media print {
+  .table th,
+  .table td {
+    padding: 0.8mm 0;
+  }
+  .table th {
+    width: 24mm;
+    padding-right: 2mm;
+  }
+  .highlight th {
+    padding-left: 1mm;
+  }
+  .tags {
+    display: none;
+  }
+  .tagsPrint {
+    display: inline;
+    font-size: var(--text-xs);
+    color: var(--color-text);
+  }
+}

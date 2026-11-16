@@ -63,6 +63,11 @@ import tools.jackson.databind.node.ObjectNode;
 public class ParcelService implements AutoCloseable {
     private static final Logger log = LoggerFactory.getLogger(ParcelService.class);
     static final Pattern PNU_RE = Pattern.compile("^\\d{19}$");
+    /**
+     * source_meta 안의 토지특성 부가 항목 {land_shape, terrain_height, land_use_status} (DB 열을 늘리지 않으려고 여기에 둔다).
+     * 이 키가 없는 예전 캐시는 다시 조회될 때까지 세 값 모두 null.
+     */
+    static final String LAND_ATTRIBUTES = "land_attributes";
     private static final Pattern SIGUNGU_SUFFIX = Pattern.compile("(시|군|구)$");
 
     public final JusoApi juso;
@@ -365,6 +370,17 @@ public class ParcelService implements AutoCloseable {
             row.setLandCategory(l.landCategory());
             row.setRoadSide(l.roadSide());
         }
+        // 토지형상·지형높이·토지이용상황은 토지특성(getLandCharacteristics)에만 있다. 그 조회가 실패했으면(토지임야만 받은 부분 결과 포함)
+        // 면적·지목 열처럼 이전 값을 유지한다 (이전 값이 없으면 키 없음 → 응답은 null)
+        boolean chrFailed = lcErrors != null && lcErrors.has("getLandCharacteristics");
+        if (lcOk && !chrFailed) {
+            meta.set(LAND_ATTRIBUTES, landAttributes((LandCharacteristics) lc));
+        } else {
+            JsonNode prev = row.getSourceMeta() == null ? null : row.getSourceMeta().get(LAND_ATTRIBUTES);
+            if (prev != null && prev.isObject()) {
+                meta.set(LAND_ATTRIBUTES, prev.deepCopy());
+            }
+        }
         Long price = lcOk && ((LandCharacteristics) lc).officialLandPrice() != null && ((LandCharacteristics) lc).officialLandPrice() != 0
                 ? ((LandCharacteristics) lc).officialLandPrice() : cad.officialLandPrice();
         row.setOfficialLandPrice(price == null ? null : Math.toIntExact(price));
@@ -412,6 +428,26 @@ public class ParcelService implements AutoCloseable {
         row.setExpiresAt(now.plus(partial ? Duration.ofHours(1) : Duration.ofDays(cacheDays)));
         em.flush();
         return row;
+    }
+
+    /** 토지특성의 토지형상·지형높이·토지이용상황 → source_meta.land_attributes (값 없음은 JSON null). */
+    static ObjectNode landAttributes(LandCharacteristics l) {
+        ObjectNode o = Json.object();
+        o.put("land_shape", l.landShape());
+        o.put("terrain_height", l.terrainHeight());
+        o.put("land_use_status", l.landUseStatus());
+        return o;
+    }
+
+    /** source_meta.land_attributes 의 값 하나. 키가 없는 예전 캐시·문자열이 아닌 값·빈 값 → null. */
+    static String landAttribute(JsonNode meta, String key) {
+        JsonNode attrs = meta == null ? null : meta.get(LAND_ATTRIBUTES);
+        JsonNode v = attrs == null || !attrs.isObject() ? null : attrs.get(key);
+        if (v == null || !v.isString()) {
+            return null;
+        }
+        String s = v.stringValue().strip();
+        return s.isEmpty() ? null : s;
     }
 
     private static boolean truthy(JsonNode v) {
@@ -535,7 +571,8 @@ public class ParcelService implements AutoCloseable {
         String sido = region[0] != null && !region[0].isEmpty() ? region[0] : (j != null ? j.getName() : "");
         return new ParcelSnapshot(row.getPnu(), row.getRoadAddress(), row.getJibunAddress(), row.getJurisdictionCode(), sido, region[1],
                 j != null && Boolean.TRUE.equals(j.getIsSupported()), row.getLandAreaM2(), row.getLandCategory(), designations, row.getGeom(),
-                row.getCentroid(), row.getRoadSide(), row.getOfficialLandPrice() == null ? null : row.getOfficialLandPrice().longValue(), sources,
+                row.getCentroid(), row.getRoadSide(), landAttribute(meta, "land_shape"), landAttribute(meta, "terrain_height"),
+                landAttribute(meta, "land_use_status"), row.getOfficialLandPrice() == null ? null : row.getOfficialLandPrice().longValue(), sources,
                 notices, buildings, Boolean.TRUE.equals(row.getIsExample()));
     }
 
@@ -546,7 +583,10 @@ public class ParcelService implements AutoCloseable {
         return n;
     }
 
-    /** GET /v1/parcels/{pnu} 응답: 대지면적, 지목, 용도지역·지구·구역, GeoJSON 경계, 항목별 출처·조회시각. */
+    /**
+     * GET /v1/parcels/{pnu}·/v1/parcels/at 응답: 대지면적, 지목, 도로접면·토지형상·지형높이·토지이용상황(모르면 null), 용도지역·지구·구역,
+     * GeoJSON 경계, 항목별 출처·조회시각.
+     */
     public static ObjectNode publicView(ParcelSnapshot snap) {
         ObjectNode o = Json.object();
         o.put("pnu", snap.pnu());
@@ -563,6 +603,9 @@ public class ParcelService implements AutoCloseable {
         o.put("land_category", snap.landCategory());
         o.put("official_land_price", snap.officialLandPrice());
         o.put("road_side", snap.roadSide());
+        o.put("land_shape", snap.landShape());
+        o.put("terrain_height", snap.terrainHeight());
+        o.put("land_use_status", snap.landUseStatus());
         if (snap.designations() == null) {
             o.putNull("designations");
         } else {

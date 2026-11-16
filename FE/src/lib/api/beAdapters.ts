@@ -13,6 +13,7 @@ import type {
   BeReviewItem,
   BeReviewProgress,
   BeReviewResult,
+  BeRuleBasis,
 } from './beTypes';
 import type {
   AddressHit,
@@ -29,10 +30,14 @@ import type {
   ManualCheck,
   Parcel,
   ParkingSimulation,
+  ReviewParcel,
   ReviewProgress,
+  RuleBasisDetail,
+  RuleEvidence,
   RuleItem,
   RuleReview,
   RuleStatus,
+  RuleSummary,
 } from './types';
 import { SUSEONG_SGG_CODE, isRuleStatus } from './types';
 import { outerRing, ringAreaM2, ringCentroid } from '@/lib/map/geo';
@@ -197,10 +202,29 @@ export function toParcel(body: BeParcel): Parcel {
   const access = str(body.road_side);
   if (access) parcel.road.access = access;
   if (landUses) parcel.landUses = landUses;
+  const shape = str(body.land_shape);
+  if (shape) parcel.landShape = shape;
+  const height = str(body.terrain_height);
+  if (height) parcel.terrainHeight = height;
+  const useStatus = str(body.land_use_status);
+  if (useStatus) parcel.landUseStatus = useStatus;
   return parcel;
 }
 
 // ── 법규 검토 ───────────────────────────────────────────────────────
+
+/** 원문 링크는 https 주소만 화면에 겁니다 (javascript: 같은 스킴과 평문 http 를 막습니다 — BE 도 걸러 주지만 여기서 한 번 더) */
+export function httpsUrl(value: unknown): string | null {
+  const u = str(value);
+  return u && /^https:\/\/[^\s/?#]+/.test(u) && !/\s/.test(u) ? u : null;
+}
+
+/** 규칙 id 는 UUID 모양만 받습니다 (화면 주소·API 경로에 그대로 들어가므로) */
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export function isUuid(value: unknown): value is string {
+  return typeof value === 'string' && UUID_RE.test(value);
+}
 
 export function toBasisNode(b: BeBasisNode): BasisNode {
   return {
@@ -209,9 +233,33 @@ export function toBasisNode(b: BeBasisNode): BasisNode {
     articleLabel: str(b.article_label),
     effectiveFrom: dateOnly(b.effective_from) ?? null,
     quote: str(b.quote),
-    // 원문 링크는 https 주소만 화면에 겁니다 (javascript: 같은 스킴과 평문 http 를 막습니다 — BE 도 걸러 주지만 여기서 한 번 더)
-    url: str(b.url) && /^https:\/\/[^\s/?#]+/.test(b.url as string) ? (b.url as string) : null,
-    ruleId: str(b.rule_id),
+    url: httpsUrl(b.url),
+    ruleId: isUuid(b.rule_id) ? b.rule_id : null,
+  };
+}
+
+/** 항목 요약 — 검증을 통과한 AI 문장 또는 원문 인용 문장. basis_only(요약 없음)이거나 문장이 없으면 null */
+export function toRuleSummary(e: BeReviewItem['explanation']): RuleSummary | null {
+  if (!e || (e.display_source !== 'ai_verified' && e.display_source !== 'template_fallback')) return null;
+  const sentences = (e.content?.sentences ?? [])
+    .map((x) => ({ role: str(x?.role) ?? 'summary', text: str(x?.text) }))
+    .filter((x): x is { role: string; text: string } => x.text !== null);
+  if (sentences.length === 0) return null;
+  const glossary = Array.isArray(e.content?.glossary)
+    ? e.content.glossary
+        .map((g) => ({ term: str(g?.term), plain: str(g?.plain) }))
+        .filter((g): g is { term: string; plain: string } => g.term !== null && g.plain !== null)
+        .slice(0, 3)
+    : [];
+  const v = e.verification;
+  const total = num(v?.must_mention_total);
+  const covered = num(v?.must_mention_covered);
+  return {
+    source: e.display_source,
+    sentences,
+    glossary,
+    checkedAt: dateOnly(v?.checked_at) ?? null,
+    mustMention: total !== null && covered !== null ? { total, covered } : null,
   };
 }
 
@@ -245,7 +293,20 @@ export function toRuleItem(it: BeReviewItem): RuleItem {
         }))
       : null,
     explanation: sentences.map((s) => str(s?.text)).filter((t): t is string => t !== null),
+    summary: toRuleSummary(it.explanation),
     basis: (it.basis ?? []).map(toBasisNode),
+  };
+}
+
+export function toReviewParcel(p: BeReviewResult['parcel'] | null | undefined): ReviewParcel {
+  return {
+    pnu: str(p?.pnu) ?? '',
+    roadAddress: str(p?.road_address),
+    jibunAddress: str(p?.jibun_address),
+    areaM2: num(p?.land_area_m2),
+    landCategory: str(p?.land_category),
+    landUses: Array.isArray(p?.designations) ? p.designations.filter((d) => str(d?.name)).map(toLandUse) : null,
+    polygon: geometryToRing(p?.location?.geometry),
   };
 }
 
@@ -265,6 +326,7 @@ export function toRuleReview(body: BeReviewResult): RuleReview {
   const unsupported = body.parcel?.jurisdiction?.supported === false || notices.some((n) => n.code === 'REGION_NOT_SUPPORTED');
   const review: RuleReview = {
     reviewId: body.review_id,
+    parcel: toReviewParcel(body.parcel),
     supported: !unsupported,
     asOfDate: dateOnly(body.as_of_date) ?? '',
     items: (body.items ?? []).map(toRuleItem),
@@ -373,7 +435,12 @@ export function toParkingSimulation(body: BeParkingSimulation): ParkingSimulatio
       useName: str(body.eligibility?.use_name),
       reason: str(body.eligibility?.reason),
     },
-    legalBasis: (body.legal_basis ?? []).map((b) => ({ category: b.category, status: b.status, criteria: str(b.criteria_text) })),
+    legalBasis: (body.legal_basis ?? []).map((b) => ({
+      category: b.category,
+      status: b.status,
+      criteria: str(b.criteria_text),
+      ruleIds: (b.rule_ids ?? []).filter(isUuid),
+    })),
     disclaimer: str(body.disclaimer) ?? '',
     simulated: Boolean(body.simulated),
     referenceOnly: Boolean(body.reference_only),
@@ -387,5 +454,65 @@ export function toParkingSimulation(body: BeParkingSimulation): ParkingSimulatio
           alternatives,
         }
       : null,
+  };
+}
+
+// ── 법규 원문 근거 ─────────────────────────────────────────────────
+
+/** 인용 위치: BE 의 [char_start, char_end) 가 원문과 맞으면 그대로, 아니면 인용문을 원문에서 찾아서. 못 찾으면 null */
+export function evidenceHighlight(provision: string | null, quoted: string | null, start: unknown, end: unknown): [number, number] | null {
+  if (!provision || !quoted) return null;
+  const a = num(start);
+  const b = num(end);
+  if (a !== null && b !== null && a >= 0 && b <= provision.length && a < b && provision.slice(a, b) === quoted) return [a, b];
+  const i = provision.indexOf(quoted);
+  return i >= 0 ? [i, i + quoted.length] : null;
+}
+
+export function toRuleBasisDetail(body: BeRuleBasis): RuleBasisDetail {
+  const d = body.document ?? {};
+  const evidence: RuleEvidence[] = (body.evidence ?? []).map((e) => {
+    const provisionText = str(e?.provision_text);
+    const quoted = str(e?.quoted_text);
+    return {
+      role: str(e?.role) ?? 'value',
+      articleLabel: str(e?.article_label),
+      articleHeading: str(e?.article_heading),
+      quoted,
+      provisionText,
+      highlight: evidenceHighlight(provisionText, quoted, e?.char_start, e?.char_end),
+    };
+  });
+  return {
+    ruleId: body.rule_id,
+    category: str(body.category) ?? '',
+    title: str(body.title) ?? '',
+    layer: str(body.layer) ?? 'L1_NATIONAL',
+    effectiveFrom: dateOnly(body.effective_from) ?? null,
+    effectiveTo: dateOnly(body.effective_to) ?? null,
+    document: {
+      title: str(d.title) ?? '',
+      shortTitle: str(d.short_title),
+      sourceType: str(d.source_type) ?? '',
+      promulgationNumber: str(d.promulgation_number),
+      promulgationDate: dateOnly(d.promulgation_date) ?? null,
+      effectiveFrom: dateOnly(d.effective_from) ?? null,
+      url: httpsUrl(d.source_url),
+      fetchedAt: dateOnly(d.fetched_at) ?? null,
+      isExample: Boolean(d.is_example),
+    },
+    values: (body.values ?? []).map((v) => ({
+      key: str(v?.value_key) ?? '',
+      type: str(v?.value_type) ?? '',
+      min: num(v?.num_min),
+      max: num(v?.num_max),
+      exact: num(v?.num_exact),
+      enumValue: str(v?.enum_value),
+      formula: str(v?.formula),
+      unit: str(v?.unit),
+      conditionNote: str(v?.condition_note),
+    })),
+    evidence,
+    tree: (body.basis_tree ?? []).map(toBasisNode),
   };
 }

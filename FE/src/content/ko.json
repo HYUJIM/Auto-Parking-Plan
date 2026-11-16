@@ -38,8 +38,8 @@
         },
         {
           "icon": "download",
-          "title": "PDF·DXF 출력",
-          "desc": "검토 결과와 배치 도면을 보고서와 CAD 파일로 내보냅니다. (다음 단계)"
+          "title": "PDF·CAD 출력",
+          "desc": "결과 리포트를 PDF로 저장하고, 대지 경계와 주차 배치 도면을 CAD(DXF) 파일로 내려받습니다."
         }
       ]
     },
@@ -71,11 +71,6 @@
   "site": {
     "back": "처음으로",
     "pnu": "PNU",
-    "tabs": {
-      "summary": "대지 요약",
-      "rules": "법규 검토",
-      "layout": "배치안"
-    },
     "exampleBadge": "예시 데이터",
     "noticesLabel": "데이터 안내",
     "summary": {
@@ -97,6 +92,8 @@
       "landPriceHint": "토지특성",
       "landUses": "토지이용계획 (용도지역·지구·구역)",
       "landUsesEmpty": "토지이용계획 항목이 없습니다.",
+      "landUsesMore": "{n}건 더 보기",
+      "landUsesLess": "접기",
       "landUseKinds": {
         "zoning": "용도지역",
         "district": "용도지구",
@@ -224,10 +221,30 @@
       "unsupported": "시범 지역(대구 수성구) 밖이라 배치안을 계산하지 않습니다.",
       "pending": "필지 경계를 받지 못해 배치안을 계산할 수 없습니다."
     },
+    "review": {
+      "title": "법규 검토",
+      "done": "법규 검토 완료",
+      "summary": "핵심 법규 {total}항목 — 검토 가능 {ok} · 조건부 {cond} · 별도 확인 {manual}",
+      "counts": {
+        "REVIEWABLE": "검토 가능 {n}",
+        "CONDITIONAL": "조건부 {n}",
+        "MANUAL_CHECK": "별도 확인 {n}"
+      },
+      "manualChecks": "현장·관할 기관에서 확인할 조건 {n}항목 (도로·건축선·높이·추가 규제)",
+      "next": "항목별 기준값·근거, 주차 배치와 주차장 건설 가능 여부는 결과 리포트에서 확인하세요.",
+      "background": "검토는 잠시 걸립니다. 지금 결과 보기를 눌러도 결과 리포트에서 이어서 진행됩니다.",
+      "stepsLabel": "검토 단계",
+      "stepState": {
+        "done": "완료",
+        "running": "진행 중",
+        "pending": "대기",
+        "failed": "실패"
+      }
+    },
     "footer": {
-      "layout": "배치안 생성",
-      "pdf": "PDF 저장",
-      "soon": "PDF 저장은 다음 단계에서 제공"
+      "result": "결과 보기",
+      "exportHint": "결과 리포트에서 'PDF 저장'과 'CAD 저장 (DXF)'을 할 수 있습니다.",
+      "needsParcel": "필지 경계·면적을 받은 뒤 결과 리포트를 볼 수 있습니다."
     },
     "sourceParcel": "출처 {providers} · 조회 {date}",
     "sourceParcelNoDate": "출처 {providers}",
@@ -492,6 +509,264 @@
     "footer": {
       "disclaimer": "참고용 정보입니다. 최종 확인은 인허가 기관에서 하세요.",
       "sources": "공공데이터 출처: 도로명주소 · 브이월드 · 건축HUB"
+    }
+  },
+  "report": {
+    "eyebrow": "결과 리포트",
+    "printBrand": "APP (Auto Parking Plan)",
+    "metaPnu": "PNU {pnu}",
+    "metaAsOf": "기준일 {date}",
+    "steps": {
+      "label": "진행 단계",
+      "site": "대지 입력",
+      "layout": "자동 배치",
+      "rules": "법규 검토",
+      "report": "결과 리포트",
+      "states": {
+        "done": "완료",
+        "running": "진행 중",
+        "pending": "대기",
+        "failed": "실패",
+        "skipped": "해당 없음"
+      }
+    },
+    "actions": {
+      "label": "리포트 저장",
+      "back": "이용화면으로",
+      "home": "주소 검색으로",
+      "pdf": "PDF 저장",
+      "pdfHint": "인쇄 창에서 'PDF로 저장'을 고르세요. 진행 중인 단계가 끝나면 저장할 수 있습니다.",
+      "cad": "CAD 저장 (DXF)",
+      "cadHint": "대지 경계와 고른 배치안을 EPSG:5186(m) 좌표의 DXF 도면으로 저장합니다.",
+      "cadDisabled": "대지 경계가 있어야 CAD 파일을 만들 수 있습니다.",
+      "cadSaved": "{file} 파일을 저장했습니다."
+    },
+    "export": {
+      "pdfTitle": "주차검토_{address}_{date}",
+      "pdfTitleNoDate": "주차검토_{address}",
+      "dxfFile": "{address}_배치안{letter}.dxf",
+      "dxfFileSite": "{address}_대지경계.dxf",
+      "dxfTitle": "{address} · 배치안 {letter} · 주차 {n}대",
+      "dxfNoteCrs": "좌표계 EPSG:5186 (GRS80 중부원점 TM), 단위 m",
+      "dxfNoteMeta": "PNU {pnu} · 기준일 {date}",
+      "dxfNoteMetaNoDate": "PNU {pnu}",
+      "dxfNoteReference": "참고 배치 — 주차장 설치 가능 여부가 확인되지 않은 상태에서 계산",
+      "dxfNoteDisclaimer": "참고용 · 최종 확인은 인허가 기관"
+    },
+    "site": {
+      "no": "01",
+      "title": "현황 부지",
+      "desc": "위성 지도 위 대지 경계와 대지면적",
+      "mapLabel": "{address} 대지 경계를 표시한 위성 지도",
+      "satellite": "위성 지도",
+      "noPolygon": "필지 경계를 받지 못해 지도를 그릴 수 없습니다."
+    },
+    "layout": {
+      "no": "02",
+      "title": "주차 배치 결과",
+      "desc": "법정 최소 치수로 계산한 주차장 배치안",
+      "mapLabel": "{address} 대지 위 주차장 배치안 {letter}",
+      "mapLabelSite": "{address} 대지 경계",
+      "stallCount": "주차 가능 대수",
+      "stallUnit": "대",
+      "efficiency": "주차 효율",
+      "efficiencyHint": "주차구획 면적 ÷ 가용 면적",
+      "percentUnit": "%",
+      "alternatives": "배치안 비교",
+      "altCount": "{n}대",
+      "recommended": "추천",
+      "metrics": {
+        "usable": "가용 면적",
+        "parking": "주차 면적",
+        "perStall": "1대당 면적",
+        "aisle": "차로 폭",
+        "gate": "출입구",
+        "gateValue": "{n}개소 (폭 {width} m)",
+        "gateValueNoWidth": "{n}개소",
+        "stallSize": "주차구획 크기",
+        "areaValue": "{n}㎡",
+        "lengthValue": "{n} m",
+        "stallSizeValue": "{w} × {l} m"
+      },
+      "loadingSite": "대지 정보를 불러오는 중…",
+      "referenceBadge": "참고 배치",
+      "notSimulatedHint": "참고 배치는 주차장 설치 가능 여부를 확인하지 않고 법정 치수만으로 계산합니다."
+    },
+    "notPermitted": {
+      "badge": "주차장 건설 불가 지역",
+      "title": "이 대지는 주차장 건설이 불가한 지역입니다.",
+      "basisTitle": "판정 근거",
+      "landCategory": "지목",
+      "landCategoryCause": "지목이 공공시설 용지({list})에 해당해 주차장 용도로 쓸 수 없는 토지로 판단했습니다.",
+      "landCategoryLaw": "지목의 법적 구분",
+      "zoning": "용도지역",
+      "zoningCause": "이 용도지역에서 건축할 수 있는 용도 목록에 주차장 관련 용도가 없습니다.",
+      "zoningUnknown": "용도지역 미확인",
+      "criteria": "적용 기준",
+      "basis": "근거 법령",
+      "landUses": "토지이용계획 (용도지역·지구·구역)",
+      "landUsesEmpty": "검토 당시 토지이용계획을 조회하지 못했습니다.",
+      "landUsesNone": "검토 당시 지정된 용도지역·지구·구역이 없습니다."
+    },
+    "landUse": {
+      "title": "토지이용계획",
+      "desc": "토지대장·토지특성·토지이용계획 기준",
+      "rows": {
+        "area": "대지면적",
+        "jimok": "지목",
+        "zoning": "용도지역",
+        "districts": "용도지구·구역",
+        "shape": "대지 형상",
+        "terrain": "지형",
+        "useStatus": "토지이용상황",
+        "road": "인접 도로",
+        "landPrice": "공시지가",
+        "gate": "출입구 계획"
+      },
+      "unknown": "정보 없음",
+      "notApplicable": "해당 없음",
+      "gatePlan": "{n}개소 · 폭 {width} m",
+      "gatePlanNoWidth": "{n}개소",
+      "areaValue": "{area}㎡",
+      "areaPyeong": "약 {pyeong}평",
+      "landPriceValue": "{price}원/㎡",
+      "basisMark": "판정 근거",
+      "tagInline": "{name}({relation})"
+    },
+    "rules": {
+      "title": "법규 검토",
+      "desc": "핵심 법규 {n}항목 · 별도 확인 {m}항목",
+      "verdictLabel": "주차장 설치 판단",
+      "verdict": {
+        "possible": "가능",
+        "conditional": "조건부",
+        "manual": "별도 확인",
+        "notPermitted": "건설 불가",
+        "checking": "확인 중",
+        "unavailable": "판단 보류"
+      },
+      "detail": "상세 보기",
+      "detailAria": "{title} 상세 보기",
+      "manualTitle": "별도 확인 항목",
+      "progressTitle": "법규 검토 진행",
+      "notStarted": "필지 정보를 받지 못해 법규 검토를 시작하지 못했습니다.",
+      "pendingParcel": "필지 데이터가 준비되면 법규 검토를 시작합니다.",
+      "printManual": "별도 확인 {n}항목 · 항목별 기준값·근거는 2쪽 '법규 검토 상세' 참고",
+      "printMore": "항목별 기준값·근거는 2쪽 '법규 검토 상세' 참고"
+    },
+    "footer": {
+      "notices": "데이터 안내",
+      "disclaimer": "고지",
+      "sources": "출처"
+    },
+    "print": {
+      "detailTitle": "법규 검토 상세",
+      "detailDesc": "핵심 법규 항목별 기준값·요약·근거 문서와 별도 확인 항목입니다.",
+      "criteria": "기준값",
+      "summaryTemplate": "원문 인용 요약",
+      "summaryAi": "AI 요약(검증 통과)",
+      "noSummary": "요약 문장이 없습니다. 근거 문서의 원문을 확인하세요.",
+      "basis": "근거 문서",
+      "basisEmpty": "연결된 근거 원문이 없습니다.",
+      "whatToCheck": "확인할 것"
+    }
+  },
+  "ruleDetail": {
+    "eyebrow": "법규 상세",
+    "detailLink": "상세 보기",
+    "detailAria": "{title} 상세 보기",
+    "quoteNote": "법규 원문 인용으로 정리한 문장입니다 (AI 요약 아님).",
+    "aiNote": "AI가 쓰고 법규 원문과 대조해 검증을 통과한 문장입니다.",
+    "back": "결과 리포트",
+    "backAria": "결과 리포트로 돌아가기",
+    "asOf": "기준일 {date}",
+    "pnu": "PNU {pnu}",
+    "loading": "법규 검토 결과를 불러오는 중…",
+    "invalid": {
+      "title": "법규 상세를 열 수 없습니다",
+      "category": "알 수 없는 법규 항목입니다. 결과 리포트에서 항목을 다시 선택하세요.",
+      "target": "어느 필지의 검토 결과인지 알 수 없습니다. 주소를 다시 검색해 결과 리포트에서 항목을 여세요.",
+      "toSearch": "주소 검색으로"
+    },
+    "notFound": {
+      "title": "이 검토 결과에는 해당 항목이 없습니다",
+      "desc": "결과 리포트에서 다른 항목을 선택하세요."
+    },
+    "parcelPending": "필지 경계·면적을 아직 받지 못해 법규 검토를 할 수 없습니다.",
+    "overview": {
+      "title": "한눈에 보기",
+      "criteria": "기준",
+      "applied": "적용값"
+    },
+    "summary": {
+      "titleAi": "AI 요약",
+      "titleQuote": "원문 인용 요약",
+      "titleNone": "요약",
+      "badgeAi": "AI 요약 · 원문 대조 검증 통과",
+      "badgeQuote": "원문 인용",
+      "mustMention": "필수 사실 {covered}/{total}",
+      "checkedAt": "검증일 {date}",
+      "noteAi": "AI가 쓴 문장 가운데 법규 원문과 따로 대조해 검증을 통과한 것만 보여 줍니다. 판단의 근거는 아래 원문입니다.",
+      "noteQuote": "AI 요약을 쓰지 않았거나 원문 대조 검증을 통과하지 못해, 법규 원문을 그대로 인용해 정리했습니다. AI가 쓴 문장이 아닙니다.",
+      "none": "요약 없음 — 아래 원문을 확인하세요.",
+      "noneBasis": "요약 없음 — 아래 연결된 근거 인용을 확인하세요.",
+      "noneEmpty": "요약 없음 — 이 항목에 연결된 승인 규칙이 없습니다.",
+      "roles": {
+        "headline": "핵심",
+        "summary": "요약",
+        "meaning": "의미",
+        "condition": "조건",
+        "exception": "예외",
+        "caution": "주의"
+      },
+      "glossary": "용어 풀이"
+    },
+    "manual": {
+      "title": "확인할 내용",
+      "note": "이 항목은 자동 판정하지 않습니다. 토지이용계획확인서와 관할 기관에서 직접 확인하세요.",
+      "why": "확인이 필요한 이유",
+      "whatToCheck": "확인할 것",
+      "triggeredBy": "해당 사유",
+      "relatedBasis": "관련 근거",
+      "relatedEmpty": "연결된 근거 문서가 없습니다."
+    },
+    "source": {
+      "title": "법규 원문",
+      "desc": "검토 기준일에 시행 중인 조문입니다. 규칙이 인용한 부분을 강조해 표시합니다.",
+      "promulgationNumber": "공포번호 {value}",
+      "promulgationDate": "공포일 {date}",
+      "effective": "시행일 {date}",
+      "effectiveUntil": "{date}까지 적용",
+      "original": "원문 보기",
+      "values": "규칙 값",
+      "evidence": "근거 조문",
+      "exception": "예외 조항",
+      "quoted": "인용",
+      "showAll": "전체 {n}건 보기",
+      "showLess": "접기",
+      "noRules": "검수 승인된 법규 데이터가 없어 원문을 보여 줄 수 없습니다.",
+      "noLinkedRules": "이 항목에 연결된 승인 규칙이 없어 원문을 보여 줄 수 없습니다.",
+      "notices": "데이터 안내",
+      "basisQuotes": "연결된 근거 인용",
+      "toCard": "원문으로"
+    },
+    "values": {
+      "max": "{v}{unit} 이하",
+      "min": "{v}{unit} 이상",
+      "range": "{min}~{max}{unit}",
+      "exact": "{v}{unit}",
+      "enumAllowed": "허용",
+      "enumConditional": "조건부",
+      "enumProhibited": "금지",
+      "formula": "산식 {formula}"
+    },
+    "tree": {
+      "title": "위임 관계",
+      "desc": "상위 법령에서 하위 조례 순서입니다.",
+      "empty": "연결된 위임 관계가 없습니다."
+    },
+    "footer": {
+      "back": "결과 리포트로 돌아가기"
     }
   }
 }

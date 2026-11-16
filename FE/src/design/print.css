@@ -1,0 +1,33 @@
+/*
+ * 인쇄(결과 페이지의 'PDF 저장') 공통 규칙.
+ * 화면은 html·body 높이를 고정하고 각 화면이 자기 상자 안에서 스크롤하므로, 인쇄 때는 그 고정을 풀어
+ * 보이는 부분만이 아니라 전체 내용이 여러 쪽으로 나오게 합니다.
+ * 인쇄에서 뺄 요소는 data-print="hide", 쪽을 새로 시작할 요소는 data-print="page-break".
+ */
+@page {
+  size: A4 landscape;
+  margin: 10mm;
+}
+
+@media print {
+  html,
+  body,
+  #root {
+    height: auto !important;
+    overflow: visible !important;
+    background: var(--color-surface);
+  }
+
+  [data-print='hide'] {
+    display: none !important;
+  }
+
+  [data-print='page-break'] {
+    break-before: page;
+  }
+
+  * {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+}

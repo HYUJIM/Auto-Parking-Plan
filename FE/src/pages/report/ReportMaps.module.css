@@ -1,0 +1,48 @@
+/* 결과 리포트의 두 지도 카드(현황 부지 · 주차 배치 결과)가 함께 쓰는 모양 */
+
+/* 지도가 들어갈 자리 — 경계가 없거나 아직 불러오는 중 */
+.placeholder {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 4 / 3;
+  padding: var(--space-6);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-2);
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  text-align: center;
+}
+.loading {
+  background: linear-gradient(90deg, var(--color-surface-2) 25%, var(--color-border) 50%, var(--color-surface-2) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+@keyframes shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .loading {
+    animation: none;
+  }
+}
+
+/* 지도 아래 타일 출처 (타일 공급자의 이용 조건) */
+.attribution {
+  margin-top: calc(var(--space-1) * -1);
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+@media print {
+  .loading {
+    animation: none;
+  }
+  .attribution {
+    font-size: 6.5pt;
+  }
+}

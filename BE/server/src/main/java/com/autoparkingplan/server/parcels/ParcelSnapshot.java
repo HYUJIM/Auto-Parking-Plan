@@ -13,12 +13,15 @@ import tools.jackson.databind.node.ObjectNode;
  *
  * @param jurisdictionCode 시·군·구 5자리 (PNU 앞 5자리)
  * @param designations     null = 조회 실패/미확인, 빈 목록 = 지정 없음
+ * @param landShape        토지특성의 토지형상 ('정방형' 등, 모르면 null). 공개 필지 응답에만 쓰고 review_result 에는 넣지 않는다
+ * @param terrainHeight    토지특성의 지형높이 ('평지' 등, 모르면 null)
+ * @param landUseStatus    토지특성의 토지이용상황 ('단독' 등, 모르면 null)
  * @param notices          PARCEL_PARTIAL, DESIGNATION_UNAVAILABLE ({code, message})
  */
 public record ParcelSnapshot(String pnu, String roadAddress, String jibunAddress, String jurisdictionCode, String sido, String sigungu,
         boolean supported, Double landAreaM2, String landCategory, List<Designation> designations, JsonNode geometry, JsonNode centroid,
-        String roadSide, Long officialLandPrice, List<ObjectNode> sources, List<ObjectNode> notices, List<ObjectNode> buildings,
-        boolean isExample) {
+        String roadSide, String landShape, String terrainHeight, String landUseStatus, Long officialLandPrice, List<ObjectNode> sources,
+        List<ObjectNode> notices, List<ObjectNode> buildings, boolean isExample) {
 
     /** 용도지역·지구·구역 하나 (kind: zoning|district|zone|other). */
     public record Designation(String kind, String name, String conflict, String code) {

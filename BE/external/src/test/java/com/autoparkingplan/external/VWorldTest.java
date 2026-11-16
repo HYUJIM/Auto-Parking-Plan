@@ -270,8 +270,48 @@ class VWorldTest {
         assertThat(lc.landAreaM2()).isCloseTo(624.1, within(624.1 * 1e-6));
         assertThat(lc.landCategory()).isEqualTo("대");
         assertThat(lc.roadSide()).isEqualTo("세로한면(가)");
+        assertThat(lc.landShape()).isEqualTo("정방형");
+        assertThat(lc.terrainHeight()).isEqualTo("평지");
+        assertThat(lc.landUseStatus()).isEqualTo("단독");
         assertThat(lc.officialLandPrice()).isEqualTo(3850000L);
         assertThat(lc.source()).isEqualTo("vworld:getLandCharacteristics");
+    }
+
+    /** 토지형상·지형높이·토지이용상황: 가장 최근 기준연도 값, 앞뒤 공백 정리 (자바판 추가). */
+    @Test
+    void testParseLandCharacteristicsShapeFromLatestYear() {
+        ObjectNode payload = load("synthetic_ned_landchar_ok.json");
+        for (JsonNode row : payload.get("landCharacteristicss").get("field")) {
+            boolean latest = "2026".equals(row.get("stdrYear").stringValue());
+            ((ObjectNode) row).put("tpgrphFrmCodeNm", latest ? " 가로장방 " : "부정형").put("tpgrphHgCodeNm", latest ? "완경사" : "평지")
+                    .put("ladUseSittnNm", latest ? "주차장" : "단독");
+        }
+        LandCharacteristics lc = VWorld.parseLandCharacteristicsResponse(payload, PNU).orElseThrow();
+        assertThat(lc.landShape()).isEqualTo("가로장방");
+        assertThat(lc.terrainHeight()).isEqualTo("완경사");
+        assertThat(lc.landUseStatus()).isEqualTo("주차장");
+    }
+
+    /** 토지형상·지형높이·토지이용상황의 '지정되지않음'·'-'·빈 값·키 없음 → null (도로접면과 같은 규칙, 자바판 추가). */
+    @ParameterizedTest
+    @CsvSource(value = {"지정되지않음", "-", "''", "'   '", "NULL"}, nullValues = "NULL")
+    void testParseLandCharacteristicsUnspecifiedShapeBecomesNone(String value) {
+        ObjectNode payload = load("synthetic_ned_landchar_ok.json");
+        for (JsonNode row : payload.get("landCharacteristicss").get("field")) {
+            ObjectNode r = (ObjectNode) row;
+            if (value == null) {
+                for (String k : List.of("tpgrphFrmCodeNm", "tpgrphHgCodeNm", "ladUseSittnNm")) {
+                    r.remove(k);
+                }
+            } else {
+                r.put("tpgrphFrmCodeNm", value).put("tpgrphHgCodeNm", value).put("ladUseSittnNm", value);
+            }
+        }
+        LandCharacteristics lc = VWorld.parseLandCharacteristicsResponse(payload, PNU).orElseThrow();
+        assertThat(lc.landShape()).isNull();
+        assertThat(lc.terrainHeight()).isNull();
+        assertThat(lc.landUseStatus()).isNull();
+        assertThat(lc.roadSide()).isEqualTo("세로한면(가)");
     }
 
     /** test_parse_land_characteristics_unspecified_values_become_none. */
@@ -302,6 +342,7 @@ class VWorldTest {
         assertThat(reg.landAreaM2()).isEqualTo(625.0);
         assertThat(reg.landCategory()).isEqualTo("대");
         assertThat(reg.roadSide()).isNull();
+        assertThat(reg.landShape()).isNull();
         assertThat(reg.officialLandPrice()).isNull();
         assertThat(reg.source()).isEqualTo("vworld:ladfrlList");
         UpstreamError e = catchThrowableOfType(UpstreamError.class,
@@ -333,6 +374,9 @@ class VWorldTest {
         assertThat(lc.landAreaM2()).isEqualTo(625.0); // 토지대장(ladfrlList) 면적 우선
         assertThat(lc.officialLandPrice()).isEqualTo(3850000L);
         assertThat(lc.roadSide()).isEqualTo("세로한면(가)");
+        assertThat(lc.landShape()).isEqualTo("정방형"); // 토지형상·지형높이·토지이용상황은 토지특성에서
+        assertThat(lc.terrainHeight()).isEqualTo("평지");
+        assertThat(lc.landUseStatus()).isEqualTo("단독");
         assertThat(lc.source()).isEqualTo("vworld:ladfrlList+vworld:getLandCharacteristics");
         assertThat(lc.raw().get("_errors")).isEqualTo(Json.object());
         assertThat(lc.raw().get("ladfrlList").get("lndpclAr").stringValue()).isEqualTo("625.0");
@@ -348,6 +392,9 @@ class VWorldTest {
         assertThat(lc.landAreaM2()).isEqualTo(625.0);
         assertThat(lc.landCategory()).isEqualTo("대");
         assertThat(lc.roadSide()).isNull();
+        assertThat(lc.landShape()).isNull();
+        assertThat(lc.terrainHeight()).isNull();
+        assertThat(lc.landUseStatus()).isNull();
         assertThat(lc.officialLandPrice()).isNull();
         assertThat(lc.raw().get("_errors").has("getLandCharacteristics")).isTrue();
         assertThat(lc.source()).isEqualTo("vworld:ladfrlList");

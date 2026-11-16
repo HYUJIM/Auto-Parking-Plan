@@ -201,7 +201,7 @@ public final class VWorldClient implements VWorldApi, AutoCloseable {
     }
 
     /**
-     * 토지임야 + 토지특성을 합친 결과(면적·지목·도로접면·공시지가).
+     * 토지임야 + 토지특성을 합친 결과(면적·지목·도로접면·토지형상·지형높이·토지이용상황·공시지가).
      *
      * <p>한쪽만 실패하면 나머지로 채우고 raw["_errors"] 에 실패 내용을 남긴다. 둘 다 실패하면 UpstreamError.
      * 둘 다 자료 없음이면 empty.

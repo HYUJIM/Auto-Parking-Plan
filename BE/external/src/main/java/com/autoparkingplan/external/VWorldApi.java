@@ -17,6 +17,6 @@ public interface VWorldApi {
     /** 토지이용계획 속성(용도지역·지구·구역 등). [] = 조회는 성공했으나 지정 없음. 실패는 UpstreamError. */
     List<LandUseDesignation> getLandUse(String pnu);
 
-    /** 토지임야 + 토지특성을 합친 결과(면적·지목·도로접면·공시지가). 둘 다 자료 없음이면 empty. */
+    /** 토지임야 + 토지특성을 합친 결과(면적·지목·도로접면·토지형상·지형높이·토지이용상황·공시지가). 둘 다 자료 없음이면 empty. */
     Optional<LandCharacteristics> getLandCharacteristics(String pnu);
 }

@@ -8,6 +8,7 @@ import 'pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css';
 import './design/tokens.css';
 import './design/themes/clear-blue.css';
 import './design/base.css';
+import './design/print.css';
 import './lib/map/map.css';
 
 createRoot(document.getElementById('root')!).render(

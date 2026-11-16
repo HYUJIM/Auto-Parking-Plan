@@ -104,6 +104,48 @@ describe('필지 → Parcel', () => {
     expect(s01.source.queriedAt).toBe('2026-11-10');
   });
 
+  it('S01: 토지특성 — 토지형상·지형높이·토지이용상황 (land_shape·terrain_height·land_use_status)', () => {
+    expect(s01.landShape).toBe('정방형');
+    expect(s01.terrainHeight).toBe('평지');
+    expect(s01.landUseStatus).toBe('단독');
+  });
+
+  it('토지형상·지형높이·토지이용상황: null·빈 문자열·키 없음(예전 캐시·예전 BE) → undefined', () => {
+    const nulls = toParcel({ ...(parcelS01 as BeParcel), land_shape: null, terrain_height: '', land_use_status: null });
+    expect(nulls.landShape).toBeUndefined();
+    expect(nulls.terrainHeight).toBeUndefined();
+    expect(nulls.landUseStatus).toBeUndefined();
+    expect('landShape' in nulls).toBe(false);
+
+    const legacy: BeParcel = { ...(parcelS01 as BeParcel) };
+    delete legacy.land_shape;
+    delete legacy.terrain_height;
+    delete legacy.land_use_status;
+    const p = toParcel(legacy);
+    expect(p.landShape).toBeUndefined();
+    expect(p.terrainHeight).toBeUndefined();
+    expect(p.landUseStatus).toBeUndefined();
+    // 이 키가 생기기 전에 받아 둔 샘플도 그대로 변환된다
+    expect(toParcel(parcelS04 as BeParcel).landShape).toBeUndefined();
+  });
+
+  it('토지형상 등은 BE 가 준 문자열을 그대로 옮긴다', () => {
+    const p = toParcel({ ...(parcelS01 as BeParcel), land_shape: '부정형', terrain_height: '완경사', land_use_status: '주차장' });
+    expect(p.landShape).toBe('부정형');
+    expect(p.terrainHeight).toBe('완경사');
+    expect(p.landUseStatus).toBe('주차장');
+  });
+
+  it("값 없음 표기('지정되지않음'·'-')는 FE 가 거르지 않는다 — BE(브이월드 토지특성 해석)가 null 로 바꿔 보내는 것이 계약", () => {
+    // BE 해석이 깨져 이런 값이 오면 화면에 그대로 보인다. 걸러내는 곳은 BE VWorld.specifiedName 한 곳뿐이다
+    const p = toParcel({ ...(parcelS01 as BeParcel), land_shape: '지정되지않음', terrain_height: '-', land_use_status: '지정되지않음' });
+    expect(p.landShape).toBe('지정되지않음');
+    expect(p.terrainHeight).toBe('-');
+    expect(p.landUseStatus).toBe('지정되지않음');
+    // 도로접면도 같은 계약 (BE 가 null 로 보냄)
+    expect(toParcel({ ...(parcelS01 as BeParcel), road_side: '지정되지않음' }).road.access).toBe('지정되지않음');
+  });
+
   it('S04: 근린상업지역 · 중로한면', () => {
     const p = toParcel(parcelS04 as BeParcel);
     expect(p.zoning).toBe('근린상업지역');

@@ -1,0 +1,24 @@
+.shell {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--color-bg);
+}
+
+.main {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  scroll-behavior: smooth;
+}
+
+@media print {
+  .shell {
+    display: block;
+    height: auto;
+    background: var(--color-surface);
+  }
+  .main {
+    overflow: visible;
+  }
+}

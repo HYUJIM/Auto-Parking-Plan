@@ -1,7 +1,7 @@
 import { content } from '@/lib/content';
 import type { BeParkingSimulation, BeParkingSimulationRequest, BeReviewCreated, BeReviewResponse } from './beTypes';
 import { isBeReviewResult } from './beTypes';
-import { toParkingSimulation, toReviewProgress, toRuleReview } from './beAdapters';
+import { isUuid, toParkingSimulation, toReviewProgress, toRuleReview } from './beAdapters';
 import { apiUrl, postJson, request } from './base';
 import { ApiError, type Parcel, type ParkingSimulation, type ReviewProgress, type RuleReview } from './types';
 
@@ -54,10 +54,20 @@ export function pollDelayMs(retryAfterHeader: string | null): number {
  * 시범 지역 밖 필지는 BE 가 빈 항목 + REGION_NOT_SUPPORTED 로 답하므로 supported=false 가 됩니다.
  */
 export async function getRuleReview(parcel: Parcel, opts: ReviewOptions = {}): Promise<RuleReview> {
-  const { signal, onProgress } = opts;
+  const { signal } = opts;
   const created = await postJson<BeReviewCreated>('/v1/reviews', { pnu: parcel.pnu, audience: opts.audience ?? 'owner' }, { signal });
-  if (typeof created?.review_id !== 'string' || !created.review_id) throw new ApiError(content.status.reviewFailed, 'SERVER');
-  const reviewId = created.review_id;
+  if (typeof created?.review_id !== 'string' || !isUuid(created.review_id)) throw new ApiError(content.status.reviewFailed, 'SERVER');
+  return pollReview(created.review_id, opts);
+}
+
+/** 이미 만든 검토를 id 로 다시 받습니다 (결과 페이지를 새로 열었거나 주소로 바로 들어왔을 때) — 새 검토를 만들지 않습니다 */
+export async function getReviewById(reviewId: string, opts: ReviewOptions = {}): Promise<RuleReview> {
+  if (!isUuid(reviewId)) throw new ApiError(content.status.reviewFailed, 'BAD_REQUEST');
+  return pollReview(reviewId, opts);
+}
+
+async function pollReview(reviewId: string, opts: ReviewOptions): Promise<RuleReview> {
+  const { signal, onProgress } = opts;
   const deadline = Date.now() + (opts.timeoutMs ?? TIMEOUT_MS);
 
   for (;;) {
@@ -84,6 +94,129 @@ export async function getRuleReview(parcel: Parcel, opts: ReviewOptions = {}): P
     if (Date.now() + delay > deadline) throw new ApiError(content.status.reviewTimeout, 'SERVER', { beCode: 'REVIEW_TIMEOUT' });
     await sleep(delay, signal);
   }
+}
+
+// ── 검토·배치 결과 기억 (이 탭 안에서만) ──────────────────────────────
+//
+// 이용화면 → 결과 페이지 → 법규 상세 페이지로 옮겨 다녀도 같은 검토를 다시 만들지 않도록 기억합니다.
+// 검토 생성은 IP 당 분당 10회로 제한되어 있고, 배치 계산도 매번 다시 하면 서버 일만 늘어납니다.
+// 진행 중인 요청은 Promise 로 기억해 두 화면이 동시에 불러도 한 번만 보냅니다. 실패하면 잊습니다.
+
+/** 기억해 두는 시간 — 기준일이 바뀌거나 규칙이 새로 승인되면 다시 검토하도록 */
+const CACHE_TTL_MS = 30 * 60 * 1000;
+
+interface CacheEntry<T> {
+  at: number;
+  promise: Promise<T>;
+}
+
+const reviewsByPnu = new Map<string, CacheEntry<RuleReview>>();
+const reviewsById = new Map<string, CacheEntry<RuleReview>>();
+const simulations = new Map<string, CacheEntry<ParkingSimulation>>();
+
+function fresh<T>(map: Map<string, CacheEntry<T>>, key: string): Promise<T> | null {
+  const e = map.get(key);
+  if (!e) return null;
+  if (Date.now() - e.at > CACHE_TTL_MS) {
+    map.delete(key);
+    return null;
+  }
+  return e.promise;
+}
+
+function remember<T>(map: Map<string, CacheEntry<T>>, key: string, promise: Promise<T>): Promise<T> {
+  map.set(key, { at: Date.now(), promise });
+  promise.catch(() => {
+    if (map.get(key)?.promise === promise) map.delete(key);
+  });
+  return promise;
+}
+
+/** 중단 신호를 따로 걸 수 있게 감쌉니다 — 기억해 둔 요청 자체는 한 화면이 떠나도 끊지 않습니다 */
+function withSignal<T>(promise: Promise<T>, signal?: AbortSignal): Promise<T> {
+  if (!signal) return promise;
+  if (signal.aborted) return Promise.reject(new DOMException('Aborted', 'AbortError'));
+  return new Promise<T>((resolve, reject) => {
+    const onAbort = () => reject(new DOMException('Aborted', 'AbortError'));
+    signal.addEventListener('abort', onAbort, { once: true });
+    promise.then(
+      (v) => {
+        signal.removeEventListener('abort', onAbort);
+        resolve(v);
+      },
+      (e) => {
+        signal.removeEventListener('abort', onAbort);
+        reject(e);
+      },
+    );
+  });
+}
+
+/** 진행 상태 알림을 여러 화면이 함께 받도록 */
+const progressListeners = new Map<string, Set<(p: ReviewProgress) => void>>();
+
+function listen(pnu: string, fn?: (p: ReviewProgress) => void): () => void {
+  if (!fn) return () => {};
+  const set = progressListeners.get(pnu) ?? new Set();
+  set.add(fn);
+  progressListeners.set(pnu, set);
+  return () => set.delete(fn);
+}
+
+/**
+ * 필지의 법규 검토 — 이 탭에서 같은 필지를 이미 검토했거나 검토 중이면 그 결과를 함께 씁니다.
+ * 화면이 떠나도(signal) 진행 중인 검토는 계속되어 다음 화면이 이어받습니다 (서버에서는 어차피 끝까지 돕니다).
+ */
+export function reviewForParcel(parcel: Parcel, opts: ReviewOptions = {}): Promise<RuleReview> {
+  const off = listen(parcel.pnu, opts.onProgress);
+  let p = fresh(reviewsByPnu, parcel.pnu);
+  if (!p) {
+    const created = getRuleReview(parcel, {
+      audience: opts.audience,
+      timeoutMs: opts.timeoutMs,
+      onProgress: (progress) => progressListeners.get(parcel.pnu)?.forEach((fn) => fn(progress)),
+    });
+    p = remember(reviewsByPnu, parcel.pnu, created);
+    void created.then(
+      (r) => remember(reviewsById, r.reviewId, Promise.resolve(r)),
+      () => undefined,
+    );
+  }
+  const out = withSignal(p, opts.signal);
+  out.then(off, off);
+  return out;
+}
+
+/** id 로 검토 결과 — 기억해 둔 것이 있으면 그것, 없으면 GET 폴링 (새 검토를 만들지 않음) */
+export function reviewById(reviewId: string, opts: ReviewOptions = {}): Promise<RuleReview> {
+  let p = fresh(reviewsById, reviewId);
+  if (!p) {
+    p = remember(reviewsById, reviewId, getReviewById(reviewId, { timeoutMs: opts.timeoutMs, onProgress: opts.onProgress }));
+    // 그 필지에 더 새 검토(진행 중 포함)를 이미 기억하고 있으면 덮어쓰지 않습니다 — 뒤로 가기로 연 옛 검토가 새 검토를 밀어내지 않게
+    void p.then(
+      (r) => {
+        if (!fresh(reviewsByPnu, r.parcel.pnu)) remember(reviewsByPnu, r.parcel.pnu, Promise.resolve(r));
+      },
+      () => undefined,
+    );
+  }
+  return withSignal(p, opts.signal);
+}
+
+/** 배치 계산 결과 — 같은 검토·같은 조건이면 한 번만 계산합니다 */
+export function simulationFor(reviewId: string, opts: SimulationOptions = {}): Promise<ParkingSimulation> {
+  const key = `${reviewId}:${opts.includeUnverified ? 'all' : 'verified'}`;
+  let p = fresh(simulations, key);
+  if (!p) p = remember(simulations, key, getParkingSimulation(reviewId, { includeUnverified: opts.includeUnverified }));
+  return withSignal(p, opts.signal);
+}
+
+/** 테스트용 */
+export function resetReviewCache(): void {
+  reviewsByPnu.clear();
+  reviewsById.clear();
+  simulations.clear();
+  progressListeners.clear();
 }
 
 /**
