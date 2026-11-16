@@ -18,7 +18,11 @@ export function angleLabel(angle: string): string {
   return (content.site.layout.angles as Record<string, string>)[angle] ?? angle;
 }
 
-/** 출입구 — 배치안마다 출입구는 하나이지만, 개수는 레이어에서 셉니다 (없으면 폭 값이 있을 때 1개소) */
+/**
+ * 출입구 — 개수는 레이어의 출입구 점(없으면 개구부 선)을 셉니다 (둘 다 없으면 폭 값이 있을 때 1개소).
+ * 보통은 1개소이고, 건물로 대지가 나뉘면(SITE_SPLIT_BY_BUILDINGS) BE 가 영역마다 하나씩 MultiPoint 로 주고 어댑터가 점마다 feature 로 나눕니다.
+ * BE metrics 에는 출입구 수가 없어 도형에서만 셉니다.
+ */
 export function gateInfo(alt: Pick<LayoutAlternative, 'layers' | 'metrics'>): { count: number; widthM: number | null } {
   const width = alt.metrics.gate_width_m;
   const widthM = typeof width === 'number' && Number.isFinite(width) ? width : null;

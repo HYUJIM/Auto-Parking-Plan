@@ -7,6 +7,7 @@ import {
   sourceProvider,
   splitJibun,
   toAddressSearchResult,
+  toExistingBuildings,
   toLayoutLayers,
   toParcel,
   toParkingSimulation,
@@ -24,6 +25,7 @@ import reviewU02 from './__fixtures__/review_U02_unsupported.json';
 import reviewProgress from './__fixtures__/review_progress.json';
 import simulationS01 from './__fixtures__/simulation_S01_not_simulated.json';
 import simulationS02 from './__fixtures__/simulation_S02.json';
+import simulationSplit from './__fixtures__/simulation_buildings_split.json';
 
 /**
  * BE 응답 샘플(__fixtures__/*.json — 실행 중인 BE 에서 받은 원문)이 FE 모델로 예외 없이 변환되고,
@@ -403,6 +405,77 @@ describe('주차장 배치 시뮬레이션 → ParkingSimulation', () => {
   });
 });
 
+// 기존 건물(existing_buildings) 샘플은 BE 계약(2026-11)대로 손으로 쓴 것입니다 — 건물 2동을 피해 배치, 배치안 A 는 건물로 나뉜 두 영역에 출입구 2개
+const splitBody = simulationSplit as unknown as BeParkingSimulation;
+
+describe('기존 건물 → ParkingSimulation.existingBuildings', () => {
+  it('applied: 모드·상태·동수·면적·이격·출처, 외곽선은 Polygon·MultiPolygon 만 (모양이 틀린 것은 뺌)', () => {
+    const eb = toParkingSimulation(splitBody).existingBuildings!;
+    expect(eb).toMatchObject({
+      mode: 'keep',
+      status: 'applied',
+      count: 2,
+      areaM2: 98.6,
+      clearanceM: 1,
+      source: '브이월드 도로명주소 건물',
+    });
+    expect(eb.footprints.map((f) => f.id)).toEqual(['B-1', 'B-2']);
+    expect(eb.footprints.map((f) => f.geometry.type)).toEqual(['Polygon', 'MultiPolygon']);
+    expect(eb.footprints[0]).toMatchObject({ name: '범어빌라', floors: 3 });
+    expect(eb.footprints[1]).toMatchObject({ name: null, floors: null });
+  });
+
+  it('없거나 계산하지 않은 응답이면 null — 예전 응답·simulated=false 는 지금과 같게', () => {
+    expect(toParkingSimulation(simulationS02 as BeParkingSimulation).existingBuildings).toBeNull();
+    expect(toParkingSimulation(simulationS01 as BeParkingSimulation).existingBuildings).toBeNull();
+    const notSimulated = { ...(simulationS01 as BeParkingSimulation), existing_buildings: splitBody.existing_buildings };
+    expect(toParkingSimulation(notSimulated).existingBuildings).toBeNull();
+    expect(toExistingBuildings(null)).toBeNull();
+  });
+
+  it('모르는 status 는 unavailable(외곽선 없음·0동), 숫자가 아닌 값은 null, mode 가 이상하면 요청 파라미터 → status 로', () => {
+    const eb = splitBody.existing_buildings!;
+    const odd = toExistingBuildings({ ...eb, status: 'partial', area_m2: Number.NaN, clearance_m: 'x' as never }, 'keep')!;
+    expect(odd).toMatchObject({ status: 'unavailable', count: 0, areaM2: null, clearanceM: null, footprints: [] });
+    expect(toExistingBuildings({ ...eb, mode: 'demolish' }, 'ignore')!.mode).toBe('ignore');
+    expect(toExistingBuildings({ ...eb, mode: '', status: 'ignored' })!.mode).toBe('ignore');
+    expect(toExistingBuildings({ ...eb, mode: '' })!.mode).toBe('keep');
+    // 동수가 숫자가 아니면 받은 외곽선 수로
+    expect(toExistingBuildings({ ...eb, count: null as never })!.count).toBe(2);
+    // features 가 null 이어도 예외 없이 빈 목록
+    expect(toExistingBuildings({ mode: 'keep', status: 'none', count: 0, features: null })!.footprints).toEqual([]);
+    expect(toExistingBuildings({ mode: 'keep', status: 'unavailable', count: 0, features: null })).toMatchObject({
+      status: 'unavailable',
+      count: 0,
+    });
+  });
+
+  it('건물로 나뉜 대지: MultiPoint 출입구·MultiLineString 개구부는 조각마다 feature 하나로, 가용 영역은 MultiPolygon 그대로', () => {
+    const sim = toParkingSimulation(splitBody);
+    const [a, b] = sim.result!.alternatives;
+    const gates = a.layers.features.filter((f) => f.properties.layer === 'gate');
+    const openings = a.layers.features.filter((f) => f.properties.layer === 'gate_opening');
+    expect(gates.map((g) => g.geometry.type)).toEqual(['Point', 'Point']);
+    expect(gates.map((g) => g.properties.part)).toEqual([0, 1]);
+    expect(gates[1].geometry.coordinates).toEqual([128.64414, 35.86921]);
+    expect(gates[0].properties.width_m).toBe(3);
+    expect(openings.map((g) => g.geometry.type)).toEqual(['LineString', 'LineString']);
+    expect(a.layers.features[0]).toMatchObject({ properties: { layer: 'usable_area' }, geometry: { type: 'MultiPolygon' } });
+    expect(a.constraintReasons).toEqual(['EXISTING_BUILDINGS_EXCLUDED', 'SITE_SPLIT_BY_BUILDINGS']);
+    // 나뉘지 않은 배치안은 지금처럼 Point · LineString 하나씩
+    expect(b.layers.features.filter((f) => f.properties.layer === 'gate').map((g) => g.geometry.type)).toEqual(['Point']);
+    expect(sim.constraintReasons).toContain('SITE_SPLIT_BY_BUILDINGS');
+  });
+
+  it('Multi 도형도 좌표 모양이 틀리면 뺀다', () => {
+    const layers = toLayoutLayers({
+      gate: { type: 'Feature', geometry: { type: 'MultiPoint', coordinates: [[128.6, 35.8], [128.6]] } },
+      gate_opening: { type: 'Feature', geometry: { type: 'MultiLineString', coordinates: [[128.6, 35.8]] } },
+    });
+    expect(layers.features).toEqual([]);
+  });
+});
+
 describe('모든 BE 샘플이 예외 없이 변환된다', () => {
   it('필지 샘플', () => {
     for (const body of [parcelS01, parcelS04, parcelU02]) expect(() => toParcel(body as BeParcel)).not.toThrow();
@@ -411,6 +484,7 @@ describe('모든 BE 샘플이 예외 없이 변환된다', () => {
     for (const body of [reviewS01, reviewS02, reviewU02]) expect(() => toRuleReview(body as unknown as BeReviewResult)).not.toThrow();
   });
   it('시뮬레이션 샘플', () => {
-    for (const body of [simulationS01, simulationS02]) expect(() => toParkingSimulation(body as BeParkingSimulation)).not.toThrow();
+    for (const body of [simulationS01, simulationS02, simulationSplit])
+      expect(() => toParkingSimulation(body as unknown as BeParkingSimulation)).not.toThrow();
   });
 });

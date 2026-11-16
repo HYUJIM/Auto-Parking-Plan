@@ -3,6 +3,7 @@ import type { BeParcel, BeParkingSimulation } from '@/lib/api/beTypes';
 import { toParcel, toParkingSimulation } from '@/lib/api/beAdapters';
 import parcelS01 from '@/lib/api/__fixtures__/parcel_S01.json';
 import simulationS02 from '@/lib/api/__fixtures__/simulation_S02.json';
+import simulationSplit from '@/lib/api/__fixtures__/simulation_buildings_split.json';
 import { districtTags, districtText, landUseParcelFromReview, landUseRows, toPyeong } from './landUseRows';
 import type { ParkingVerdict } from './verdict';
 
@@ -86,6 +87,9 @@ describe('토지이용계획 표', () => {
       muted: false,
     });
     expect(byKey(landUseRows({ parcel, verdict: notPermitted('zoning'), alternative: altA })).gate.value).toBe('해당 없음');
+    // 건물로 나뉜 대지 — 영역마다 출입구 (MultiPoint 의 점 수)
+    const split = toParkingSimulation(simulationSplit as unknown as BeParkingSimulation).result!.alternatives[0];
+    expect(byKey(landUseRows({ parcel, verdict: unknown, alternative: split })).gate.value).toBe('2개소 · 폭 3 m');
   });
 
   it('건설 불가 판정의 근거 줄을 강조한다', () => {

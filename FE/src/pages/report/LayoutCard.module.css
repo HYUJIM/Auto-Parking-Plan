@@ -155,6 +155,101 @@
 .swatchUsable {
   border: 1.5px dashed var(--color-text-muted);
 }
+.swatchBuilding {
+  background: var(--map-building-fill);
+  border: 1px solid var(--map-building-stroke);
+}
+.swatchBuildingDemolished {
+  background: var(--color-surface-2);
+  border: 1.5px dashed var(--map-building-fill);
+}
+
+/* 기존 건물 안내 (지도 아래) */
+.buildingNotes {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: calc(var(--space-1) * -1);
+  font-size: var(--text-sm);
+  color: var(--color-text-2);
+}
+.buildingNote {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+.buildingNote > :first-child {
+  flex: none;
+  margin-top: 3px;
+  color: var(--color-primary);
+}
+.buildingNoteWarning {
+  color: var(--color-warning);
+}
+.buildingNoteWarning > :first-child {
+  color: var(--color-warning);
+}
+
+/* 기존 건물 유지 / 철거 가정 */
+.buildingToggle {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.buildingToggleRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+}
+.segments {
+  display: inline-flex;
+  padding: 3px;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-2);
+}
+.segment {
+  /* 바깥 여백(3px × 2)과 합쳐 누르기 최소 높이 */
+  min-height: calc(var(--tap-min) - 6px);
+  padding: 0 var(--space-3);
+  border: 0;
+  border-radius: calc(var(--radius-sm) - 2px);
+  background: transparent;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  color: var(--color-text-2);
+  transition:
+    background var(--duration-fast) var(--ease),
+    color var(--duration-fast) var(--ease);
+}
+.segment:hover {
+  color: var(--color-text);
+}
+.segmentActive {
+  background: var(--color-surface);
+  color: var(--color-on-primary-soft);
+  box-shadow: var(--shadow-sm);
+}
+.toggleStatus {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+.spin {
+  animation: spin 0.9s linear infinite;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .spin {
+    animation: none;
+  }
+}
 
 .reasons {
   display: flex;
@@ -206,5 +301,9 @@
   }
   .metric {
     padding: 1mm 1.5mm;
+  }
+  .buildingNotes {
+    margin-top: 0;
+    font-size: var(--text-xs);
   }
 }

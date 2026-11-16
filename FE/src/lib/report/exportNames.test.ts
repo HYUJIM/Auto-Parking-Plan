@@ -30,6 +30,8 @@ describe('리포트 이름', () => {
     const alt = { code: 'ALT_A', stallCount: 16 };
     expect(dxfFilename('대구광역시 수성구 범어동 9001', PNU, alt)).toBe('대구광역시 수성구 범어동 9001_배치안A.dxf');
     expect(dxfFilename('범어동 "9001"', PNU, null)).toBe('범어동 _9001__대지경계.dxf');
+    expect(dxfFilename('대구광역시 수성구 범어동 9001', PNU, alt, true)).toBe('대구광역시 수성구 범어동 9001_배치안A_철거가정.dxf');
+    expect(dxfFilename('범어동 9001', PNU, null, true)).toBe('범어동 9001_대지경계.dxf');
     expect(dxfTitle('범어동 9001', PNU, alt)).toBe('범어동 9001 · 배치안 A · 주차 16대');
     expect(dxfTitle('범어동 9001', PNU, null)).toBe('범어동 9001');
   });
@@ -44,5 +46,13 @@ describe('리포트 이름', () => {
     expect(ref[1]).toBe(`PNU ${PNU}`);
     expect(ref).toHaveLength(4);
     expect(ref[2]).toContain('참고 배치');
+  });
+
+  it('DXF 안내 줄: 기존 건물을 피해서 배치했는지 · 철거 가정인지 (고지 바로 앞)', () => {
+    expect(dxfNotes(PNU, '2026-11-10', false, 'applied').slice(-2)).toEqual(['기존 건물: 피해서 배치', '참고용 · 최종 확인은 인허가 기관']);
+    expect(dxfNotes(PNU, '2026-11-10', true, 'ignored')).toHaveLength(5);
+    expect(dxfNotes(PNU, '2026-11-10', true, 'ignored')[3]).toBe('기존 건물: 철거 가정');
+    expect(dxfNotes(PNU, '2026-11-10', false, 'unavailable')[2]).toContain('불러오지 못해');
+    expect(dxfNotes(PNU, '2026-11-10', false, null)).toHaveLength(3);
   });
 });

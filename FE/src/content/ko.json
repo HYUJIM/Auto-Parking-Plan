@@ -208,14 +208,19 @@
         "GATE_SNAPPED": "출입구 위치를 경계로 옮겨 계산했습니다",
         "GATE_POINT_INVALID": "출입구 좌표가 올바르지 않습니다",
         "DIMENSION_RULES_NOT_APPROVED": "주차구획·차로 폭 법규 데이터가 검수 승인되지 않았습니다",
-        "DIMENSION_MISSING": "주차구획·차로 폭 기준값이 없습니다"
+        "DIMENSION_MISSING": "주차구획·차로 폭 기준값이 없습니다",
+        "EXISTING_BUILDINGS_EXCLUDED": "대지 위 기존 건물(이격 포함)을 피해 배치했습니다",
+        "EXISTING_BUILDINGS_UNAVAILABLE": "건물 정보를 불러오지 못해 기존 건물 없이 계산했습니다",
+        "SITE_SPLIT_BY_BUILDINGS": "건물로 대지가 나뉘어 영역마다 출입구를 두었습니다"
       },
       "legend": {
         "title": "지도 표시",
         "stall": "주차구획",
         "aisle": "차로",
         "gate": "출입구",
-        "usable": "가용 영역 (이격 후)"
+        "usable": "가용 영역 (이격 후)",
+        "building": "기존 건물",
+        "buildingDemolished": "기존 건물 (철거 가정)"
       },
       "legalBasis": "적용 기준",
       "unsupported": "시범 지역(대구 수성구) 밖이라 배치안을 계산하지 않습니다.",
@@ -545,13 +550,17 @@
       "pdfTitle": "주차검토_{address}_{date}",
       "pdfTitleNoDate": "주차검토_{address}",
       "dxfFile": "{address}_배치안{letter}.dxf",
+      "dxfFileDemolished": "{address}_배치안{letter}_철거가정.dxf",
       "dxfFileSite": "{address}_대지경계.dxf",
       "dxfTitle": "{address} · 배치안 {letter} · 주차 {n}대",
       "dxfNoteCrs": "좌표계 EPSG:5186 (GRS80 중부원점 TM), 단위 m",
       "dxfNoteMeta": "PNU {pnu} · 기준일 {date}",
       "dxfNoteMetaNoDate": "PNU {pnu}",
       "dxfNoteReference": "참고 배치 — 주차장 설치 가능 여부가 확인되지 않은 상태에서 계산",
-      "dxfNoteDisclaimer": "참고용 · 최종 확인은 인허가 기관"
+      "dxfNoteDisclaimer": "참고용 · 최종 확인은 인허가 기관",
+      "dxfNoteBuildingsKeep": "기존 건물: 피해서 배치",
+      "dxfNoteBuildingsIgnore": "기존 건물: 철거 가정",
+      "dxfNoteBuildingsUnavailable": "기존 건물: 건물 정보를 불러오지 못해 반영하지 않음"
     },
     "site": {
       "no": "01",
@@ -590,7 +599,21 @@
       },
       "loadingSite": "대지 정보를 불러오는 중…",
       "referenceBadge": "참고 배치",
-      "notSimulatedHint": "참고 배치는 주차장 설치 가능 여부를 확인하지 않고 법정 치수만으로 계산합니다."
+      "notSimulatedHint": "참고 배치는 주차장 설치 가능 여부를 확인하지 않고 법정 치수만으로 계산합니다.",
+      "buildings": {
+        "label": "기존 건물",
+        "keep": "기존 건물 유지",
+        "ignore": "철거 가정",
+        "recalculating": "배치를 다시 계산하는 중…",
+        "applied": "기존 건물 {n}동(약 {area}㎡)을 피해 배치했습니다.",
+        "appliedNoArea": "기존 건물 {n}동을 피해 배치했습니다.",
+        "clearance": "건물에서 {clearance} m 띄웠습니다.",
+        "ignored": "기존 건물 {n}동을 철거한다고 가정해 배치했습니다.",
+        "unavailable": "건물 정보를 불러오지 못해 기존 건물을 반영하지 못했습니다.",
+        "split": "건물로 나뉜 영역 {k}곳에 각각 출입구를 두었습니다.",
+        "siteLegend": "기존 건물 {n}동",
+        "sourceLine": "기존 건물 출처 {source}"
+      }
     },
     "notPermitted": {
       "badge": "주차장 건설 불가 지역",

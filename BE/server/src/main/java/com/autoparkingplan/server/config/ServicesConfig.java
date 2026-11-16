@@ -9,6 +9,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 import com.autoparkingplan.db.RuleQueries;
 import com.autoparkingplan.server.explain.ExplanationService;
 import com.autoparkingplan.server.parcels.ParcelService;
+import com.autoparkingplan.server.parking.BuildingFootprints;
 import com.autoparkingplan.server.parking.ParkingBridge;
 import com.autoparkingplan.server.review.ReviewService;
 
@@ -44,7 +45,9 @@ public class ServicesConfig {
     }
 
     @Bean
-    public ParkingBridge parkingBridge(AppSettings s) {
-        return new ParkingBridge(s.parkingMaxSiteAreaM2, Math.max(1, Math.min(4, Runtime.getRuntime().availableProcessors())));
+    public ParkingBridge parkingBridge(AppSettings s, ExternalClients ext) {
+        // 브이월드 키가 없으면(ext.vworld() == null) 기존 건물을 보지 않고 계산한다
+        return new ParkingBridge(s.parkingMaxSiteAreaM2, Math.max(1, Math.min(4, Runtime.getRuntime().availableProcessors())),
+                new BuildingFootprints(ext.vworld()));
     }
 }

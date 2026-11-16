@@ -5,6 +5,7 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -87,6 +88,18 @@ public final class ParkingEngine {
     public static final String GATE_SNAPPED = "GATE_SNAPPED";
     public static final String GATE_POINT_INVALID = "GATE_POINT_INVALID";
     public static final String GATE_UNREACHABLE = "GATE_UNREACHABLE";
+    /** 기존 건물(장애물)과 그 둘레 띄울 거리를 사용 가능 영역에서 뺐다. */
+    public static final String EXISTING_BUILDINGS_EXCLUDED = "EXISTING_BUILDINGS_EXCLUDED";
+    /** 건물이 대지를 갈라 떨어진 영역 여러 곳에 배치했다 (영역마다 출입구 하나). */
+    public static final String SITE_SPLIT_BY_BUILDINGS = "SITE_SPLIT_BY_BUILDINGS";
+
+    // ── 장애물(기존 건물) 처리 조정값 (법규 값 아님) ─────────────────────
+    /** 건물로 갈라진 영역 중 이보다 좁은 조각은 배치하지 않는다 (㎡, 구획 하나와 차로도 못 들어가는 넓이). */
+    static final double MIN_PART_AREA_M2 = 20.0;
+    /** 갈라진 영역은 넓은 순으로 이만큼만 계산한다 (계산 시간 상한). */
+    static final int MAX_PARTS = 4;
+    /** 진입로·차로가 건물과 이보다 넓게 겹치면 막힌 것으로 본다 (㎡, 경계가 맞닿는 것은 허용). */
+    private static final double HARD_OVERLAP_TOL_M2 = 1e-4;
 
     // ── 엔진 조정값 (법규 값 아님: 탐색·수치 허용오차) ───────────────────
     /** 지정 출입구가 경계에서 이보다 멀면 GATE_SNAPPED. */
@@ -1194,6 +1207,17 @@ public final class ParkingEngine {
         final double setback;
         final PreparedGeometry siteBuf;
         final double far;
+        /** 진입로가 지나갈 수 없는 곳 (기존 건물 윤곽선, 지역 좌표). 없으면 null. */
+        Geometry hardL;
+        PreparedGeometry hardPrep;
+
+        GateBuilder(Polygon siteL, Polygon network, List<Polygon> stallGeoms, Spec spec, double setback, Geometry hardL) {
+            this(siteL, network, stallGeoms, spec, setback);
+            if (hardL != null && !hardL.isEmpty()) {
+                this.hardL = hardL;
+                this.hardPrep = PreparedGeometryFactory.prepare(hardL);
+            }
+        }
 
         GateBuilder(Polygon siteL, Polygon network, List<Polygon> stallGeoms, Spec spec, double setback) {
             this.site = Shapely.orient(siteL);
@@ -1314,6 +1338,9 @@ public final class ParkingEngine {
                     BufferParameters.JOIN_MITRE, 2.0);
             if (core.isEmpty() || !siteBuf.contains(core)) {
                 return null;
+            }
+            if (hardPrep != null && hardPrep.intersects(core) && Shapely.intersection(core, hardL).getArea() > HARD_OVERLAP_TOL_M2) {
+                return null; // 진입로가 기존 건물을 지난다
             }
             Geometry clipped = Shapely.intersection(geom, site);
             List<Polygon> parts = new ArrayList<>();
@@ -1653,6 +1680,12 @@ public final class ParkingEngine {
     /** 배치안 → 출입구 연결 → EPSG:5179 기하. 실패하면 사유 문자열("EMPTY"|"NETWORK"|"GATE"). */
     private static Object buildCandidate(Spec spec, Frame fr, Plan plan, double[] origin, Polygon site,
                                          PreparedGeometry usablePrep, double setback, double[] gateTarget) {
+        return buildCandidate(spec, fr, plan, origin, site, usablePrep, setback, gateTarget, null);
+    }
+
+    /** @param hardAbs 진입로·차로가 지나갈 수 없는 곳 (기존 건물 윤곽선, EPSG:5179). 없으면 null — 그러면 원래 계산과 같다. */
+    private static Object buildCandidate(Spec spec, Frame fr, Plan plan, double[] origin, Polygon site,
+                                         PreparedGeometry usablePrep, double setback, double[] gateTarget, Geometry hardAbs) {
         Realized real = realize(spec, plan);
         if (real == null) {
             return "EMPTY";
@@ -1674,7 +1707,9 @@ public final class ParkingEngine {
         double ox = origin[0];
         double oy = origin[1];
         Polygon siteL = Shapely.affineTransform(site, c, s, -s, c, -(c * ox + s * oy), s * ox - c * oy);
-        GateBuilder gb = new GateBuilder(siteL, (Polygon) networkL, stallsL, spec, setback);
+        GateBuilder gb = hardAbs == null ? new GateBuilder(siteL, (Polygon) networkL, stallsL, spec, setback)
+                : new GateBuilder(siteL, (Polygon) networkL, stallsL, spec, setback,
+                        Shapely.affineTransform(hardAbs, c, s, -s, c, -(c * ox + s * oy), s * ox - c * oy));
         List<String> reasons = new ArrayList<>();
         GateFit gfit = gateTarget != null ? gb.forTarget(absToLocal(fr, origin, gateTarget)) : null;
         if (gfit == null) {
@@ -1723,6 +1758,9 @@ public final class ParkingEngine {
         Geometry network = Shapely.unionAll(aislePolys);
         if (!"Polygon".equals(network.getGeometryType())) {
             return "NETWORK";
+        }
+        if (hardAbs != null && Shapely.intersection(network, hardAbs).getArea() > HARD_OVERLAP_TOL_M2) {
+            return "BLOCKED"; // 안전망: 차로·진입로가 기존 건물과 겹침 (정상이면 없음 — 사용영역에서 이미 뺐다)
         }
         Point gatePt = Shapely.transform(GF.createPoint(new Coordinate(gfit.point[0], gfit.point[1])), toAbs);
         Geometry opening = Shapely.transform(gfit.opening, toAbs);
@@ -1996,8 +2034,34 @@ public final class ParkingEngine {
         return simulate(siteGeojson, dims, null);
     }
 
+    /**
+     * 배치에서 뺄 장애물 (기존 건물 윤곽선 등).
+     *
+     * @param geometries GeoJSON Polygon·MultiPolygon (EPSG:4326). 대지와 겹치지 않는 것은 무시한다
+     * @param clearanceM 장애물 둘레에 비워 둘 거리 (m, 0 이상). 구획·차로는 이 띠 밖에만 놓인다
+     */
+    public record Obstacles(List<JsonNode> geometries, double clearanceM) {
+    }
+
+    /** 장애물(기존 건물)을 피해 배치한다. obstacles 가 null 이거나 대지와 겹치는 것이 없으면 {@link #simulate(JsonNode, ParkingDimensions, SimulationParams)} 와 같다. */
+    public static SimulationResult simulate(JsonNode siteGeojson, ParkingDimensions dims, SimulationParams params, Obstacles obstacles) {
+        return simulateDetailed(siteGeojson, dims, params, obstacles).result();
+    }
+
     /** {@link #simulate} 와 같고, 대안별 내부 기하(EPSG:5179)를 함께 돌려준다. */
     public static Detailed simulateDetailed(JsonNode siteGeojson, ParkingDimensions dims, SimulationParams params) {
+        return simulateDetailed(siteGeojson, dims, params, null);
+    }
+
+    /**
+     * 장애물을 피하는 {@link #simulateDetailed(JsonNode, ParkingDimensions, SimulationParams)}.
+     *
+     * <p>장애물이 대지와 겹치면: 사용 가능 영역 = (대지를 setback 만큼 줄인 것) − (장애물을 clearance 만큼 키운 것). 진입로·차로는 장애물
+     * 윤곽선을 지나지 못한다. 영역이 여러 조각으로 갈라지면 넓은 조각부터 {@value #MAX_PARTS}곳까지 따로 배치하고(조각마다 출입구 하나),
+     * 같은 주차 형식끼리 합쳐 대안 하나로 낸다 ({@link #SITE_SPLIT_BY_BUILDINGS}). 이때 대안의 출입구는 MultiPoint,
+     * 출입구 개구부는 MultiLineString, 사용 가능 영역은 MultiPolygon 이고, 내부 기하({@link Detailed#geoms()})는 가장 넓은 조각의 것이다.
+     */
+    public static Detailed simulateDetailed(JsonNode siteGeojson, ParkingDimensions dims, SimulationParams params, Obstacles obstacles) {
         if (params == null) {
             params = SimulationParams.defaults();
         }
@@ -2013,8 +2077,22 @@ public final class ParkingEngine {
         double siteArea = prepared.total;
         Polygon site = prepared.site;
         double setback = PyFloat.max(0.0, params.setbackM() == null || params.setbackM() == 0.0 ? 0.0 : params.setbackM());
+        Geometry hard = obstacles == null ? null : obstacleUnion(obstacles, site);
+        if (hard != null) {
+            return simulateAroundObstacles(siteArea, site, setback, hard, PyFloat.max(0.0, obstacles.clearanceM()), dims, params, reasons);
+        }
         Polygon usable = usableArea(site, setback, reasons);
+        List<Spec> specs = resolveSpecs(params, dims, reasons);
+        double[] gateTarget = gateTarget(params, reasons);
+        if (usable == null) {
+            return noUsableArea(specs, siteArea, reasons);
+        }
+        Map<String, List<Candidate>> perAngle = layoutPart(usable, site, specs, params, setback, gateTarget, null, reasons);
+        return pickAlternatives(perAngle, params, siteArea, site, usable, reasons);
+    }
 
+    /** 형식(각도)별 치수. 치수가 없는 형식은 DIMENSION_MISSING:&lt;angle&gt; 를 남기고 뺀다. */
+    private static List<Spec> resolveSpecs(SimulationParams params, ParkingDimensions dims, List<String> reasons) {
         List<Spec> specs = new ArrayList<>();
         Set<String> seenAngles = new HashSet<>();
         for (String angle : params.angles() == null ? List.<String>of() : params.angles()) {
@@ -2029,19 +2107,25 @@ public final class ParkingEngine {
                 specs.add(spec);
             }
         }
-        double[] gateTarget = gateTarget(params, reasons);
+        return specs;
+    }
 
-        if (usable == null) {
-            if (!specs.isEmpty()) {
-                add(reasons, LIMIT_SITE_WIDTH_NARROW);
-                for (Spec spec : specs) {
-                    add(reasons, LIMIT_SITE_WIDTH_NARROW + ":" + spec.angle);
-                }
+    /** 사용 가능 영역이 없을 때의 결과. */
+    private static Detailed noUsableArea(List<Spec> specs, double siteArea, List<String> reasons) {
+        if (!specs.isEmpty()) {
+            add(reasons, LIMIT_SITE_WIDTH_NARROW);
+            for (Spec spec : specs) {
+                add(reasons, LIMIT_SITE_WIDTH_NARROW + ":" + spec.angle);
             }
-            add(reasons, NO_FEASIBLE_LAYOUT);
-            return new Detailed(new SimulationResult(new ArrayList<>(), reasons, r2(siteArea)), new ArrayList<>());
         }
+        add(reasons, NO_FEASIBLE_LAYOUT);
+        return new Detailed(new SimulationResult(new ArrayList<>(), reasons, r2(siteArea)), new ArrayList<>());
+    }
 
+    /** 한 조각(사용 가능 영역 하나)에서 형식별 후보 배치안. hardAbs 가 있으면 진입로·차로가 그것을 지나지 못한다. */
+    private static Map<String, List<Candidate>> layoutPart(Polygon usable, Polygon site, List<Spec> specs, SimulationParams params,
+                                                           double setback, double[] gateTarget, Geometry hardAbs,
+                                                           List<String> reasons) {
         Point centroid = usable.getCentroid();
         double[] origin = {Py.round(centroid.getX(), 3), Py.round(centroid.getY(), 3)};
         List<double[][]> rings = new ArrayList<>();
@@ -2083,7 +2167,7 @@ public final class ParkingEngine {
                 if (close) {
                     continue;
                 }
-                Object cand = buildCandidate(spec, fr, plan, origin, site, usablePrep, setback, gateTarget);
+                Object cand = buildCandidate(spec, fr, plan, origin, site, usablePrep, setback, gateTarget, hardAbs);
                 if (cand instanceof String) {
                     continue;
                 }
@@ -2108,6 +2192,12 @@ public final class ParkingEngine {
             }
         }
 
+        return perAngle;
+    }
+
+    /** 형식별 후보에서 대안을 고르고 결과를 만든다 (사용 가능 영역이 한 조각일 때). */
+    private static Detailed pickAlternatives(Map<String, List<Candidate>> perAngle, SimulationParams params, double siteArea,
+                                             Polygon site, Polygon usable, List<String> reasons) {
         // 대안 고르기: 각도 우선 다양화 → 같은 각도 내 다른 방향
         int maxAlt = Math.max(1, params.maxAlternatives() == null || params.maxAlternatives() == 0
                 ? 1 : params.maxAlternatives());
@@ -2137,7 +2227,7 @@ public final class ParkingEngine {
         List<String> baseReasons = new ArrayList<>();
         for (String r : reasons) {
             if (r.equals(MULTIPART_SITE_LARGEST_USED) || r.equals(USABLE_AREA_SPLIT_LARGEST_USED)
-                    || r.equals(SITE_GEOMETRY_REPAIRED)) {
+                    || r.equals(SITE_GEOMETRY_REPAIRED) || r.equals(EXISTING_BUILDINGS_EXCLUDED)) {
                 baseReasons.add(r);
             }
         }
@@ -2160,6 +2250,282 @@ public final class ParkingEngine {
             alternatives.set(0, alternatives.get(0).withRecommended(true));
         }
         return new Detailed(new SimulationResult(alternatives, reasons, r2(siteArea)), geoms);
+    }
+
+    // =====================================================================
+    // 장애물(기존 건물)
+    // =====================================================================
+
+    /** 대지와 겹치는 장애물을 EPSG:5179 로 합친 것. 읽을 수 없는 도형은 건너뛰고, 겹치는 것이 없으면 null. */
+    private static Geometry obstacleUnion(Obstacles obstacles, Polygon site) {
+        if (obstacles.geometries() == null || obstacles.geometries().isEmpty()) {
+            return null;
+        }
+        List<Polygon> polys = new ArrayList<>();
+        for (JsonNode gj : obstacles.geometries()) {
+            Geometry g;
+            try {
+                g = Geo.geojsonToShape(gj);
+            } catch (RuntimeException e) { // GeoJSONError 포함
+                continue;
+            }
+            if (g == null || g.isEmpty() || !Geo.lnglatBoundsOk(g)) {
+                continue;
+            }
+            Geometry abs;
+            try {
+                abs = Geo.toUtmk(g);
+            } catch (RuntimeException e) {
+                continue;
+            }
+            if (!Geo.allFinite(abs)) {
+                continue;
+            }
+            if (!new IsValidOp(abs).isValid()) {
+                abs = Shapely.makeValid(abs);
+            }
+            for (Polygon p : Geo.polygonParts(abs)) {
+                if (p.getArea() > 1e-6 && p.intersects(site)) {
+                    polys.add(p);
+                }
+            }
+        }
+        if (polys.isEmpty()) {
+            return null;
+        }
+        Geometry u = Shapely.unionAll(polys);
+        return Shapely.intersection(u, site).getArea() > HARD_OVERLAP_TOL_M2 ? u : null;
+    }
+
+    /** {@link #simulateDetailed(JsonNode, ParkingDimensions, SimulationParams, Obstacles)} 의 장애물이 있는 경로. */
+    private static Detailed simulateAroundObstacles(double siteArea, Polygon site, double setback, Geometry hard, double clearance,
+                                                    ParkingDimensions dims, SimulationParams params, List<String> reasons) {
+        add(reasons, EXISTING_BUILDINGS_EXCLUDED);
+        Geometry inner = setback > 0 ? Shapely.bufferMitre(site, -setback, 10.0) : site;
+        Geometry blocked = clearance > 0 ? Shapely.buffer(hard, clearance) : hard;
+        List<Polygon> parts = new ArrayList<>();
+        for (Polygon p : Geo.polygonParts(Shapely.difference(inner, blocked))) {
+            if (p.getArea() >= MIN_PART_AREA_M2) {
+                parts.add(Shapely.orient((Polygon) Shapely.removeRepeatedPoints(p, 1e-9)));
+            }
+        }
+        parts.sort((a, b) -> PyFloat.compare(b.getArea(), a.getArea()));
+        if (parts.size() > MAX_PARTS) {
+            parts = new ArrayList<>(parts.subList(0, MAX_PARTS));
+        }
+        List<Spec> specs = resolveSpecs(params, dims, reasons);
+        double[] gateTarget = gateTarget(params, reasons);
+        if (parts.isEmpty()) {
+            return noUsableArea(specs, siteArea, reasons);
+        }
+        if (parts.size() == 1) {
+            Polygon usable = parts.get(0);
+            Map<String, List<Candidate>> perAngle = layoutPart(usable, site, specs, params, setback, gateTarget, hard, reasons);
+            return pickAlternatives(perAngle, params, siteArea, site, usable, reasons);
+        }
+
+        // 갈라진 조각마다 따로 배치한다. 지정 출입구는 그 점에 가장 가까운 조각에만 준다
+        int targetPart = -1;
+        if (gateTarget != null) {
+            Point t = GF.createPoint(new Coordinate(gateTarget[0], gateTarget[1]));
+            double best = Double.POSITIVE_INFINITY;
+            for (int i = 0; i < parts.size(); i++) {
+                double d = parts.get(i).distance(t);
+                if (d < best) {
+                    best = d;
+                    targetPart = i;
+                }
+            }
+        }
+        List<Map<String, List<Candidate>>> perPart = new ArrayList<>();
+        List<String> partReasons = new ArrayList<>();
+        Map<Candidate, Polygon> partOf = new IdentityHashMap<>();
+        for (int i = 0; i < parts.size(); i++) {
+            Map<String, List<Candidate>> pa = layoutPart(parts.get(i), site, specs, params, setback, i == targetPart ? gateTarget : null, hard,
+                    partReasons);
+            for (List<Candidate> lst : pa.values()) {
+                for (Candidate c : lst) {
+                    partOf.put(c, parts.get(i));
+                }
+            }
+            perPart.add(pa);
+        }
+        // 형식별로 조각마다 가장 나은 안을 모아 대안 하나로 (조각 순서 = 넓은 순)
+        Map<String, List<Candidate>> groups = new LinkedHashMap<>();
+        for (Spec spec : specs) {
+            List<Candidate> g = new ArrayList<>();
+            for (Map<String, List<Candidate>> pa : perPart) {
+                List<Candidate> lst = pa.get(spec.angle);
+                if (lst != null && !lst.isEmpty()) {
+                    g.add(lst.get(0));
+                }
+            }
+            if (!g.isEmpty()) {
+                groups.put(spec.angle, g);
+            }
+        }
+        // 조각별 사유는 어느 조각에도 못 놓은 형식의 것만 남긴다 (한 조각이 좁은 것은 결과에 드러나지 않는다)
+        for (String r : partReasons) {
+            int colon = r.indexOf(':');
+            if (colon >= 0 ? !groups.containsKey(r.substring(colon + 1)) : groups.isEmpty()) {
+                add(reasons, r);
+            }
+        }
+        List<String> ranked = new ArrayList<>(groups.keySet());
+        ranked.sort((x, y) -> {
+            int c = Integer.compare(-groupCount(groups.get(x)), -groupCount(groups.get(y)));
+            if (c != 0) {
+                return c;
+            }
+            c = PyFloat.compare(Py.round(groupAisleArea(groups.get(x)), 6), Py.round(groupAisleArea(groups.get(y)), 6));
+            return c != 0 ? c : Integer.compare(ANGLE_ORDER.indexOf(x), ANGLE_ORDER.indexOf(y));
+        });
+        int maxAlt = Math.max(1, params.maxAlternatives() == null || params.maxAlternatives() == 0 ? 1 : params.maxAlternatives());
+        if (ranked.size() > maxAlt) {
+            ranked = new ArrayList<>(ranked.subList(0, maxAlt));
+        }
+        if (ranked.isEmpty()) {
+            add(reasons, NO_FEASIBLE_LAYOUT);
+        }
+        List<String> baseReasons = new ArrayList<>();
+        for (String r : reasons) {
+            if (r.equals(MULTIPART_SITE_LARGEST_USED) || r.equals(SITE_GEOMETRY_REPAIRED) || r.equals(EXISTING_BUILDINGS_EXCLUDED)) {
+                baseReasons.add(r);
+            }
+        }
+        Geometry usableAll = GF.createMultiPolygon(parts.toArray(new Polygon[0]));
+        List<Alternative> alternatives = new ArrayList<>();
+        List<LayoutGeometry> geoms = new ArrayList<>();
+        for (int i = 0; i < ranked.size(); i++) {
+            List<Candidate> group = groups.get(ranked.get(i));
+            String code = altCode(i);
+            alternatives.add(toAlternativeGroup(code, group, siteArea, usableAll, params.stallType(), baseReasons));
+            for (Candidate cand : group) {
+                for (String r : cand.reasons) {
+                    add(reasons, r);
+                }
+            }
+            if (group.size() > 1) {
+                add(reasons, SITE_SPLIT_BY_BUILDINGS);
+            }
+            Candidate cand = group.get(0); // 내부 기하는 가장 넓은 조각의 것
+            Spec spec = cand.spec;
+            geoms.add(new LayoutGeometry(code, spec.angle, cand.fr.phi, site, partOf.get(cand), cand.stalls, cand.edges,
+                    cand.aisles, cand.network, cand.gatePoint, cand.gateOpening, spec.aisleW, spec.drivewayW,
+                    spec.stallW, spec.stallL, spec.thetaDeg, spec.depth, spec.pitch));
+        }
+        if (!alternatives.isEmpty()) {
+            alternatives.set(0, alternatives.get(0).withRecommended(true));
+        }
+        return new Detailed(new SimulationResult(alternatives, reasons, r2(siteArea)), geoms);
+    }
+
+    private static int groupCount(List<Candidate> group) {
+        int n = 0;
+        for (Candidate c : group) {
+            n += c.count();
+        }
+        return n;
+    }
+
+    private static double groupAisleArea(List<Candidate> group) {
+        List<Double> a = new ArrayList<>(group.size());
+        for (Candidate c : group) {
+            a.add(c.aisleArea());
+        }
+        return PyFloat.sum(a);
+    }
+
+    /** 조각별 안을 합친 대안. 조각이 하나뿐이면 출입구는 Point·LineString, 여럿이면 MultiPoint·MultiLineString. */
+    private static Alternative toAlternativeGroup(String code, List<Candidate> group, double siteArea, Geometry usableAll, String stallType,
+                                                  List<String> baseReasons) {
+        Candidate first = group.get(0);
+        Spec spec = first.spec;
+        List<ObjectNode> stallFeats = new ArrayList<>();
+        List<ObjectNode> aisleFeats = new ArrayList<>();
+        List<Point> gates = new ArrayList<>();
+        List<LineString> openings = new ArrayList<>();
+        List<Double> stallFootprints = new ArrayList<>();
+        List<Double> aisleAreas = new ArrayList<>();
+        int n = 0;
+        for (Candidate cand : group) {
+            for (Polygon st : cand.stalls) {
+                ObjectNode p = props();
+                p.put("id", String.format("P-%03d", ++n));
+                p.put("stall_type", stallType);
+                p.put("angle", spec.angle);
+                p.put("width_m", r2(spec.stallW));
+                p.put("length_m", r2(spec.stallL));
+                stallFeats.add(Geo.feature(Geo.toWgs84(st), p));
+            }
+            for (LayoutGeometry.Aisle a : cand.aisles) {
+                ObjectNode p = props();
+                p.put("kind", a.kind());
+                p.put("width_m", r2(a.widthM()));
+                aisleFeats.add(Geo.feature(Geo.toWgs84(a.polygon()), p));
+            }
+            gates.add(cand.gatePoint);
+            for (int i = 0; i < cand.gateOpening.getNumGeometries(); i++) {
+                if (cand.gateOpening.getGeometryN(i) instanceof LineString ls) {
+                    openings.add(ls);
+                }
+            }
+            stallFootprints.add(cand.stallFootprint());
+            aisleAreas.add(cand.aisleArea());
+        }
+        double openingMin = Double.POSITIVE_INFINITY;
+        for (LineString ls : openings) {
+            openingMin = PyFloat.min(openingMin, ls.getLength());
+        }
+        ObjectNode layers = Json.object();
+        layers.set("stalls", Geo.featureCollection(stallFeats));
+        layers.set("aisles", Geo.featureCollection(aisleFeats));
+        ObjectNode gp = props();
+        gp.put("width_m", r2(spec.drivewayW));
+        Geometry gateGeom = gates.size() == 1 ? gates.get(0) : GF.createMultiPoint(gates.toArray(new Point[0]));
+        layers.set("gate", Geo.feature(Geo.toWgs84(gateGeom), gp));
+        ObjectNode op = props();
+        op.put("width_m", r2(Double.isFinite(openingMin) ? openingMin : 0.0));
+        Geometry openingGeom = group.size() == 1 ? first.gateOpening : GF.createMultiLineString(openings.toArray(new LineString[0]));
+        layers.set("gate_opening", Geo.feature(Geo.toWgs84(openingGeom), op));
+        double usableArea = usableAll.getArea();
+        ObjectNode up = props();
+        up.put("area_m2", r2(usableArea));
+        layers.set("usable_area", Geo.feature(Geo.toWgs84(usableAll), up));
+
+        double stallArea = n * spec.stallW * spec.stallL;
+        double aisleArea = PyFloat.sum(aisleAreas);
+        ObjectNode m = Json.object();
+        m.put("site_area_m2", r2(siteArea));
+        m.put("usable_area_m2", r2(usableArea));
+        m.put("parking_area_m2", r2(stallArea + aisleArea));
+        m.put("stall_area_m2", r2(stallArea));
+        m.put("stall_footprint_m2", r2(PyFloat.sum(stallFootprints)));
+        m.put("aisle_area_m2", r2(aisleArea));
+        m.put("efficiency_percent", usableArea > 0 ? r2(stallArea / usableArea * 100.0) : 0.0);
+        if (n != 0) {
+            m.put("area_per_stall_m2", r2(usableArea / n));
+        } else {
+            m.putNull("area_per_stall_m2");
+        }
+        m.put("aisle_width_m", r2(spec.aisleW));
+        m.put("stall_width_m", r2(spec.stallW));
+        m.put("stall_length_m", r2(spec.stallL));
+        m.put("orientation_deg", ori(first.fr.phi));
+        m.put("stall_count", n);
+        m.put("gate_width_m", r2(spec.drivewayW));
+        m.put("stall_row_depth_m", r2(spec.depth));
+        m.put("stall_pitch_m", r2(spec.pitch));
+        List<String> reasons = new ArrayList<>(baseReasons);
+        for (Candidate cand : group) {
+            for (String r : cand.reasons) {
+                add(reasons, r);
+            }
+        }
+        if (group.size() > 1) {
+            add(reasons, SITE_SPLIT_BY_BUILDINGS);
+        }
+        return new Alternative(code, spec.angle, stallType, ori(first.fr.phi), n, layers, m, reasons, false);
     }
 
     private static double[][] minus(double[][] xy, double[] origin) {

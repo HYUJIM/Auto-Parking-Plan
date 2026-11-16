@@ -1,11 +1,12 @@
 import { useId, type KeyboardEvent } from 'react';
-import type { LatLng, LayoutAlternative, ParkingSimulation } from '@/lib/api/types';
+import type { ExistingBuildingsMode, LatLng, LayoutAlternative, ParkingSimulation } from '@/lib/api/types';
 import type { AsyncState } from '@/lib/useAsync';
 import type { TileProvider } from '@/lib/map/tileSource';
 import type { ParkingVerdict } from '@/lib/report/verdict';
 import type { LayoutBlocker } from '@/lib/report/pageState';
 import { altLetter, angleLabel, efficiencyText, layoutMetricRows } from '@/lib/report/layoutMetrics';
 import { radioKeyTarget } from '@/lib/report/radioKeys';
+import { buildingNotes, buildingOverlay, reasonsWithoutNotes, type BuildingNote } from '@/lib/report/existingBuildings';
 import { content, fmt } from '@/lib/content';
 import { cx } from '@/lib/cx';
 import { formatInt } from '@/lib/format';
@@ -32,22 +33,47 @@ interface LayoutCardProps {
   /** 지도에 그리는 결과 — 참고 배치를 받았으면 그것 */
   shown: ParkingSimulation | null;
   selected: LayoutAlternative | null;
-  onSelect: (code: string) => void;
+  onSelect: (alt: LayoutAlternative) => void;
   /** 참고 배치(include_unverified) — 주차장 설치 가능 여부 미확인으로 계산하지 않았을 때만 */
   reference: { allowed: boolean; state: AsyncState<ParkingSimulation>; onRequest: () => void };
+  /**
+   * 기존 건물 유지/철거 가정 — available(기본 계산이 건물 1동 이상을 피함)일 때만 전환 버튼.
+   * mode 는 고른 쪽, state 는 철거 가정 계산 (기다리는 동안·실패면 지도는 유지 결과 그대로)
+   */
+  buildings: {
+    available: boolean;
+    mode: ExistingBuildingsMode;
+    state: AsyncState<ParkingSimulation>;
+    onChange: (mode: ExistingBuildingsMode) => void;
+  };
   onProvider: (provider: TileProvider) => void;
 }
 
 /**
- * 카드 02 주차 배치 결과 — 위성 지도 위 배치안(주차구획·차로·출입구·가용 영역) + 주차 가능 대수·주차 효율,
- * 배치안 A/B/C 전환, 지표 줄. 건설 불가면 경계만 붉게 그리고 판정 근거를, 계산하지 않았으면 이유와 참고 배치 버튼을 보여 줍니다.
+ * 카드 02 주차 배치 결과 — 위성 지도 위 배치안(주차구획·차로·출입구·가용 영역)과 기존 건물 + 주차 가능 대수·주차 효율,
+ * 기존 건물 안내 문장 · 유지/철거 가정 전환, 배치안 A/B/C 전환, 지표 줄.
+ * 건설 불가면 경계만 붉게 그리고 판정 근거를, 계산하지 않았으면 이유와 참고 배치 버튼을 보여 줍니다.
  */
-export function LayoutCard({ address, polygon, blocker, verdict, sim, shown, selected, onSelect, reference, onProvider }: LayoutCardProps) {
+export function LayoutCard({
+  address,
+  polygon,
+  blocker,
+  verdict,
+  sim,
+  shown,
+  selected,
+  onSelect,
+  reference,
+  buildings,
+  onProvider,
+}: LayoutCardProps) {
   const t = content.report.layout;
   const notPermitted = !blocker && verdict.kind === 'not_permitted' ? verdict : null;
   const drawn = !blocker && !notPermitted && shown?.simulated ? shown : null;
   const alternatives = drawn?.result?.alternatives ?? [];
   const alt = drawn ? selected : null;
+  const overlay = buildingOverlay(drawn);
+  const notes = buildingNotes(drawn, alt);
   const efficiency = alt ? efficiencyText(alt) : null;
   const stats: MapStat[] = alt
     ? [
@@ -74,6 +100,8 @@ export function LayoutCard({ address, polygon, blocker, verdict, sim, shown, sel
         <StaticMap
           polygon={polygon}
           layout={alt?.layers ?? null}
+          buildings={overlay?.footprints}
+          buildingMode={overlay?.drawAs}
           tone={notPermitted ? 'danger' : 'default'}
           label={alt ? fmt(t.mapLabel, { address, letter: altLetter(alt.code) }) : fmt(t.mapLabelSite, { address })}
           onProvider={onProvider}
@@ -92,6 +120,7 @@ export function LayoutCard({ address, polygon, blocker, verdict, sim, shown, sel
         <NotPermittedPanel verdict={notPermitted} />
       ) : drawn ? (
         <>
+          <BuildingNotes notes={notes} />
           {drawn.referenceOnly && (
             <p className={styles.reference}>
               <Badge variant="check" icon="alert-circle">
@@ -100,14 +129,15 @@ export function LayoutCard({ address, polygon, blocker, verdict, sim, shown, sel
               <span>{drawn.eligibility.reason ?? content.site.layout.referenceOnlyDesc}</span>
             </p>
           )}
+          {buildings.available && <BuildingToggle {...buildings} />}
           {alternatives.length > 0 ? (
             <AlternativeSwitcher alternatives={alternatives} selected={alt} onSelect={onSelect} />
           ) : (
             <ReportNotice>{reasonText('NO_FEASIBLE_LAYOUT')}</ReportNotice>
           )}
           {alt && <Metrics alt={alt} />}
-          {alt && <Legend />}
-          <Reasons codes={[...drawn.constraintReasons, ...(alt?.constraintReasons ?? [])]} />
+          {(alt || overlay) && <Legend layout={Boolean(alt)} building={overlay?.drawAs ?? null} />}
+          <Reasons codes={reasonsWithoutNotes([...drawn.constraintReasons, ...(alt?.constraintReasons ?? [])], notes)} />
         </>
       ) : sim && !sim.simulated ? (
         <NotSimulated sim={sim} reference={reference} />
@@ -130,6 +160,80 @@ function Blocker({ blocker }: { blocker: LayoutBlocker }) {
     <ReportNotice tone={blocker.tone ?? 'info'} title={blocker.title}>
       <p>{blocker.text}</p>
     </ReportNotice>
+  );
+}
+
+/** 지도 아래 기존 건물 안내 — 피해 배치(면적·이격) · 철거 가정 · 반영 못함(경고) · 영역마다 출입구. 인쇄에도 남습니다 */
+function BuildingNotes({ notes }: { notes: BuildingNote[] }) {
+  if (notes.length === 0) return null;
+  return (
+    <ul className={styles.buildingNotes}>
+      {notes.map((n) => (
+        <li key={n.text} className={cx(styles.buildingNote, n.tone === 'warning' && styles.buildingNoteWarning)}>
+          <Icon name={n.tone === 'warning' ? 'alert-circle' : 'info'} size={14} />
+          {n.text}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+const BUILDING_MODES: readonly ExistingBuildingsMode[] = ['keep', 'ignore'];
+
+/**
+ * 기존 건물 유지 / 철거 가정 — 배치안 전환과 같은 라디오 그룹(APG, 화살표·Home·End). 고르면 그 조건으로 다시 계산하고(탭 안에서 기억),
+ * 계산하는 동안은 지도에 유지 결과를 그대로 두고 '다시 계산하는 중'을 알립니다. 인쇄에서는 빠집니다.
+ */
+function BuildingToggle({ mode, state, onChange }: LayoutCardProps['buildings']) {
+  const t = content.report.layout.buildings;
+  const labelId = useId();
+  const busy = mode === 'ignore' && state.status === 'loading';
+  const label = (m: ExistingBuildingsMode) => (m === 'keep' ? t.keep : t.ignore);
+
+  const onKeyDown = (e: KeyboardEvent<HTMLButtonElement>, index: number) => {
+    const next = radioKeyTarget(e.key, index, BUILDING_MODES.length);
+    if (next === null) return;
+    e.preventDefault();
+    onChange(BUILDING_MODES[next]);
+    e.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>('[role="radio"]')[next]?.focus();
+  };
+
+  return (
+    <div className={styles.buildingToggle} data-print="hide">
+      <div className={styles.buildingToggleRow}>
+        <span className={styles.switcherLabel} id={labelId}>
+          {t.label}
+        </span>
+        <div className={styles.segments} role="radiogroup" aria-labelledby={labelId} aria-busy={busy || undefined}>
+          {BUILDING_MODES.map((m, i) => {
+            const active = m === mode;
+            return (
+              <button
+                key={m}
+                type="button"
+                role="radio"
+                aria-checked={active}
+                tabIndex={active ? 0 : -1}
+                className={cx(styles.segment, active && styles.segmentActive)}
+                onClick={() => onChange(m)}
+                onKeyDown={(e) => onKeyDown(e, i)}
+              >
+                {label(m)}
+              </button>
+            );
+          })}
+        </div>
+        <span className={styles.toggleStatus} role="status">
+          {busy && (
+            <>
+              <Icon name="loader" size={13} className={styles.spin} />
+              {t.recalculating}
+            </>
+          )}
+        </span>
+      </div>
+      {mode === 'ignore' && state.status === 'error' && <ErrorNotice error={state.error} onRetry={state.reload} />}
+    </div>
   );
 }
 
@@ -164,7 +268,7 @@ function AlternativeSwitcher({
 }: {
   alternatives: LayoutAlternative[];
   selected: LayoutAlternative | null;
-  onSelect: (code: string) => void;
+  onSelect: (alt: LayoutAlternative) => void;
 }) {
   const t = content.report.layout;
   const labelId = useId();
@@ -178,7 +282,7 @@ function AlternativeSwitcher({
     const next = radioKeyTarget(e.key, index, alternatives.length);
     if (next === null) return;
     e.preventDefault();
-    onSelect(alternatives[next].code);
+    onSelect(alternatives[next]);
     e.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>('[role="radio"]')[next]?.focus();
   };
 
@@ -198,7 +302,7 @@ function AlternativeSwitcher({
               aria-checked={active}
               tabIndex={i === focusIndex ? 0 : -1}
               className={cx(styles.alt, active && styles.altActive)}
-              onClick={() => onSelect(a.code)}
+              onClick={() => onSelect(a)}
               onKeyDown={(e) => onKeyDown(e, i)}
             >
               <span className={styles.altCode}>{altLetter(a.code)}</span>
@@ -234,26 +338,37 @@ function Metrics({ alt }: { alt: LayoutAlternative }) {
   );
 }
 
-function Legend() {
+/** 범례 — 배치안 요소(배치안이 있을 때)와 기존 건물(그렸을 때: 유지 = 진한 회색, 철거 가정 = 점선) */
+function Legend({ layout, building }: { layout: boolean; building: ExistingBuildingsMode | null }) {
   const l = content.site.layout.legend;
   return (
     <ul className={styles.legend} aria-label={l.title}>
-      <li>
-        <span className={cx(styles.swatch, styles.swatchStall)} />
-        {l.stall}
-      </li>
-      <li>
-        <span className={cx(styles.swatch, styles.swatchAisle)} />
-        {l.aisle}
-      </li>
-      <li>
-        <span className={cx(styles.swatch, styles.swatchGate)} />
-        {l.gate}
-      </li>
-      <li>
-        <span className={cx(styles.swatch, styles.swatchUsable)} />
-        {l.usable}
-      </li>
+      {layout && (
+        <>
+          <li>
+            <span className={cx(styles.swatch, styles.swatchStall)} />
+            {l.stall}
+          </li>
+          <li>
+            <span className={cx(styles.swatch, styles.swatchAisle)} />
+            {l.aisle}
+          </li>
+          <li>
+            <span className={cx(styles.swatch, styles.swatchGate)} />
+            {l.gate}
+          </li>
+          <li>
+            <span className={cx(styles.swatch, styles.swatchUsable)} />
+            {l.usable}
+          </li>
+        </>
+      )}
+      {building && (
+        <li>
+          <span className={cx(styles.swatch, building === 'ignore' ? styles.swatchBuildingDemolished : styles.swatchBuilding)} />
+          {building === 'ignore' ? l.buildingDemolished : l.building}
+        </li>
+      )}
     </ul>
   );
 }

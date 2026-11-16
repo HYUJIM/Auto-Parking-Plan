@@ -38,11 +38,30 @@
   color: var(--color-text-muted);
 }
 
+/* 지도 아래 기존 건물 표시 (현황 부지) — 색은 지도 건물 토큰 */
+.buildingLegend {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: calc(var(--space-1) * -1);
+  font-size: var(--text-xs);
+  color: var(--color-text-2);
+}
+.buildingSwatch {
+  display: inline-block;
+  width: 14px;
+  height: 10px;
+  border-radius: 2px;
+  background: var(--map-building-fill);
+  border: 1px solid var(--map-building-stroke);
+}
+
 @media print {
   .loading {
     animation: none;
   }
-  .attribution {
+  .attribution,
+  .buildingLegend {
     font-size: 6.5pt;
   }
 }

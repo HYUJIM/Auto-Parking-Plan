@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { buildResultDxf } from './resultDxf';
+import { DXF_LAYERS, buildResultDxf } from './resultDxf';
 import { toTm } from './tm';
 import type { LayoutLayers } from '@/lib/api/types';
+import type { BeParkingSimulation } from '@/lib/api/beTypes';
+import { toParkingSimulation } from '@/lib/api/beAdapters';
+import simulationSplit from '@/lib/api/__fixtures__/simulation_buildings_split.json';
 
 const polygon = [
   { lat: 35.8582, lng: 128.6305 },
@@ -90,6 +93,31 @@ describe('buildResultDxf', () => {
     const stallStart = dxf.indexOf('8\nSTALL');
     const stallEnd = dxf.indexOf('SEQEND', stallStart);
     expect(dxf.slice(stallStart, stallEnd).split('VERTEX').length - 1).toBe(4);
+  });
+
+  it('기존 건물은 EXISTING_BUILDING 계층에 링마다 닫힌 폴리선, 건물로 나뉜 대지의 출입구는 점마다 원 하나', () => {
+    const sim = toParkingSimulation(simulationSplit as unknown as BeParkingSimulation);
+    const [split] = sim.result!.alternatives;
+    const dxf = buildResultDxf({
+      parcel: { pnu: '2726010200190020003', polygon, address: { jibun: '범어동 1' }, area: 1000 },
+      alternative: split,
+      buildings: sim.existingBuildings!.footprints,
+      title: '범어동 1 · 배치안 A',
+      notes: ['EPSG:5186', '기존 건물: 피해서 배치'],
+    });
+    const polylines = entityLayers(dxf, 'POLYLINE');
+    // 건물 2동 (Polygon 1 + MultiPolygon 1) → 링 2개
+    expect(polylines.filter((l) => l === 'EXISTING_BUILDING')).toHaveLength(2);
+    expect(polylines.slice(0, 3)).toEqual(['SITE_BOUNDARY', 'EXISTING_BUILDING', 'EXISTING_BUILDING']);
+    // 가용 영역 MultiPolygon 2조각, 개구부 MultiLineString 2줄
+    expect(polylines.filter((l) => l === 'USABLE_AREA')).toHaveLength(2);
+    expect(polylines.filter((l) => l === 'GATE')).toHaveLength(2);
+    expect(entityLayers(dxf, 'CIRCLE')).toEqual(['GATE', 'GATE']);
+    expect(entityLayers(dxf, 'TEXT')).toHaveLength(3);
+    // 계층 표: 쓰지 않는 색 번호(251)
+    const building = DXF_LAYERS.find((l) => l.name === 'EXISTING_BUILDING')!;
+    expect(DXF_LAYERS.filter((l) => l.color === building.color)).toHaveLength(1);
+    expect(dxf).toContain('2\nEXISTING_BUILDING\n70\n0\n62\n251');
   });
 
   it('배치안 없이도 경계와 제목만으로 도면을 만든다', () => {

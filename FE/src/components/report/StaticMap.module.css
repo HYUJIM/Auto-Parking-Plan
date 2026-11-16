@@ -89,6 +89,21 @@
   stroke-width: 2.5;
   vector-effect: non-scaling-stroke;
 }
+/* 기존 건물 — 유지(피해서 배치): 진한 회색 채움 · 철거 가정: 연한 채움 + 점선 외곽선 */
+.l_building {
+  fill: var(--map-building-fill);
+  fill-opacity: var(--map-building-fill-opacity);
+  stroke: var(--map-building-stroke);
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+.buildingDemolished {
+  fill: var(--map-building-demolished-fill);
+  fill-opacity: var(--map-building-demolished-fill-opacity);
+  stroke: var(--map-building-demolished-stroke);
+  stroke-dasharray: 6 4;
+}
 
 @media print {
   .map {

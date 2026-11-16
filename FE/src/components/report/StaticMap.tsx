@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import type { LatLng, LayoutLayers } from '@/lib/api/types';
+import type { ExistingBuilding, ExistingBuildingsMode, LatLng, LayoutLayers } from '@/lib/api/types';
 import { loadTileChoice } from '@/lib/map/tileConfig';
 import { tileUrl, type TileChoice, type TileProvider } from '@/lib/map/tileSource';
 import { layoutShapes, ringPath, staticView } from '@/lib/map/staticView';
@@ -15,6 +15,10 @@ interface StaticMapProps {
   polygon: LatLng[];
   /** 주차장 배치안 (없으면 경계만) */
   layout?: LayoutLayers | null;
+  /** 기존 건물 외곽선 (없으면 그리지 않음) — 같은 배열을 넘기면 지도 계산을 다시 하지 않습니다 */
+  buildings?: readonly ExistingBuilding[] | null;
+  /** 기존 건물 모양: keep = 진한 회색 채움(유지 · 현황) · ignore = 점선 외곽선(철거 가정) */
+  buildingMode?: ExistingBuildingsMode;
   /** 위성(기본) 또는 일반 지도 */
   mapType?: 'satellite' | 'normal';
   /** 지도 위에 얹는 표시 (방위표·말풍선 등) */
@@ -29,13 +33,15 @@ interface StaticMapProps {
 }
 
 /**
- * 결과 페이지의 정지 지도 — 대지 경계(와 배치안)를 위성 타일 위에 그립니다.
+ * 결과 페이지의 정지 지도 — 대지 경계(와 배치안 · 기존 건물)를 위성 타일 위에 그립니다.
  * 이용화면의 움직이는 지도와 달리 끌거나 확대하지 않고, 한 번 정한 범위를 비율로 그려서 인쇄(PDF 저장)에도 그대로 나옵니다.
  * 타일은 이용화면과 같은 출처(브이월드는 BE 경유)를 씁니다.
  */
 export function StaticMap({
   polygon,
   layout,
+  buildings,
+  buildingMode = 'keep',
   mapType = 'satellite',
   children,
   label,
@@ -72,7 +78,7 @@ export function StaticMap({
       }),
     [polygon, choice],
   );
-  const shapes = useMemo(() => (view ? layoutShapes(view, layout) : []), [view, layout]);
+  const shapes = useMemo(() => (view ? layoutShapes(view, layout, buildings ?? undefined) : []), [view, layout, buildings]);
   const template = choice?.source ? (mapType === 'satellite' ? choice.source.satellite : choice.source.normal) : null;
 
   return (
@@ -101,7 +107,12 @@ export function StaticMap({
             s.point ? (
               <circle key={i} className={styles[`l_${s.layer}`]} cx={s.point.x} cy={s.point.y} r={7} />
             ) : (
-              <path key={i} className={styles[`l_${s.layer}`]} d={s.d} fillRule="evenodd" />
+              <path
+                key={i}
+                className={cx(styles[`l_${s.layer}`], s.layer === 'building' && buildingMode === 'ignore' && styles.buildingDemolished)}
+                d={s.d}
+                fillRule="evenodd"
+              />
             ),
           )}
           <path

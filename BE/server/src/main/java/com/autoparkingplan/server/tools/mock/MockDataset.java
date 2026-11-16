@@ -273,6 +273,33 @@ public final class MockDataset {
         return out;
     }
 
+    /** 예시 건물 윤곽선 하나: 레코드(building_footprints 의 항목 — 브이월드 '도로명주소 건물' 속성 이름) + 도형. */
+    public record Footprint(JsonNode record, Geometry geom) {
+    }
+
+    /** 도형과 교차하는 예시 건물 윤곽선 (필지 파일 순서, 필지 안에서는 목록 순서). 윤곽선을 읽을 수 없는 항목은 건너뛴다. */
+    public List<Footprint> footprintsIntersecting(Geometry geom) {
+        List<Footprint> out = new ArrayList<>();
+        for (Parcel p : parcels) {
+            JsonNode list = p.record().get("building_footprints");
+            if (list == null || !list.isArray()) {
+                continue;
+            }
+            for (JsonNode f : list) {
+                Geometry g;
+                try {
+                    g = toGeometry(f.get("geometry"));
+                } catch (RuntimeException e) {
+                    continue;
+                }
+                if (g != null && !g.isEmpty() && g.intersects(geom)) {
+                    out.add(new Footprint(f, g));
+                }
+            }
+        }
+        return out;
+    }
+
     /** 주소 검색어에 걸리는 필지 ({@link Parcel#matches}). */
     public List<Parcel> search(String keyword) {
         List<Parcel> out = new ArrayList<>();

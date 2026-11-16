@@ -1,3 +1,4 @@
+import type { ExistingBuildingsStatus } from '@/lib/api/types';
 import { content, fmt } from '@/lib/content';
 import { safeFilename } from '@/lib/export/download';
 import { altLetter } from './layoutMetrics';
@@ -53,11 +54,12 @@ export interface DxfAlternative {
   stallCount: number;
 }
 
-/** <주소>_배치안A.dxf (배치안이 없으면 <주소>_대지경계.dxf) */
-export function dxfFilename(address: string, pnu: string, alt: DxfAlternative | null): string {
+/** <주소>_배치안A.dxf, 철거 가정이면 <주소>_배치안A_철거가정.dxf (배치안이 없으면 <주소>_대지경계.dxf) */
+export function dxfFilename(address: string, pnu: string, alt: DxfAlternative | null, demolished = false): string {
   const t = content.report.export;
   const a = fileAddress(address, pnu);
-  return safeFilename(alt ? fmt(t.dxfFile, { address: a, letter: altLetter(alt.code) }) : fmt(t.dxfFileSite, { address: a }));
+  if (!alt) return safeFilename(fmt(t.dxfFileSite, { address: a }));
+  return safeFilename(fmt(demolished ? t.dxfFileDemolished : t.dxfFile, { address: a, letter: altLetter(alt.code) }));
 }
 
 /** 도면 제목 줄: '<주소> · 배치안 A · 주차 16대' (배치안이 없으면 주소만) */
@@ -66,11 +68,27 @@ export function dxfTitle(address: string, pnu: string, alt: DxfAlternative | nul
   return alt ? fmt(content.report.export.dxfTitle, { address: a, letter: altLetter(alt.code), n: alt.stallCount }) : a;
 }
 
-/** 도면 안내 줄: 좌표계 · PNU·기준일 · (참고 배치) · 참고용 고지 */
-export function dxfNotes(pnu: string, asOfDate: string | null | undefined, referenceOnly = false): string[] {
+/** 기존 건물 처리 안내 줄 — 피해서 배치 · 철거 가정 · 정보 없음 (건물이 없으면 없음) */
+function buildingsNote(status: ExistingBuildingsStatus | null): string | null {
+  const t = content.report.export;
+  if (status === 'applied') return t.dxfNoteBuildingsKeep;
+  if (status === 'ignored') return t.dxfNoteBuildingsIgnore;
+  if (status === 'unavailable') return t.dxfNoteBuildingsUnavailable;
+  return null;
+}
+
+/** 도면 안내 줄: 좌표계 · PNU·기준일 · (참고 배치) · (기존 건물 처리) · 참고용 고지 */
+export function dxfNotes(
+  pnu: string,
+  asOfDate: string | null | undefined,
+  referenceOnly = false,
+  buildings: ExistingBuildingsStatus | null = null,
+): string[] {
   const t = content.report.export;
   const notes = [t.dxfNoteCrs, asOfDate ? fmt(t.dxfNoteMeta, { pnu, date: asOfDate }) : fmt(t.dxfNoteMetaNoDate, { pnu })];
   if (referenceOnly) notes.push(t.dxfNoteReference);
+  const b = buildingsNote(buildings);
+  if (b) notes.push(b);
   notes.push(t.dxfNoteDisclaimer);
   return notes;
 }

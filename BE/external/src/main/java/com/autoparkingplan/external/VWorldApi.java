@@ -19,4 +19,12 @@ public interface VWorldApi {
 
     /** 토지임야 + 토지특성을 합친 결과(면적·지목·도로접면·토지형상·지형높이·토지이용상황·공시지가). 둘 다 자료 없음이면 empty. */
     Optional<LandCharacteristics> getLandCharacteristics(String pnu);
+
+    /**
+     * 경계 상자(EPSG:4326)와 겹치는 건물 윤곽선 ('도로명주소 건물'). [] = 조회는 성공했으나 건물 없음. 실패는 UpstreamError.
+     * 건물 정보를 주지 않는 구현(시험용 가짜 등)은 기본값 [] 을 쓴다.
+     */
+    default List<BuildingFootprint> getBuildingFootprints(double minLng, double minLat, double maxLng, double maxLat) {
+        return List.of();
+    }
 }

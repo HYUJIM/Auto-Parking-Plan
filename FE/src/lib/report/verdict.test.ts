@@ -64,6 +64,7 @@ function sim(status: string, reasons: string[] = [], extra: Partial<ParkingSimul
     constraintReasons: reasons,
     message: null,
     result: null,
+    existingBuildings: null,
     ...extra,
   };
 }

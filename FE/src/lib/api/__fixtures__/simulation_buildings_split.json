@@ -1,0 +1,734 @@
+{
+  "review_id": "01a1c5d5-18ef-7287-aac7-1996fd5e7470",
+  "pnu": "2726010200190020003",
+  "as_of_date": "2026-11-16",
+  "ruleset_hash": "3819472d5b912de46595220eebe932f508abe817842afc79d137d22a06389516",
+  "eligibility": {
+    "status": "REVIEWABLE",
+    "use_name": "자동차관련시설 중 동호아목에 해당하는 것과 주차장 및 세차장",
+    "reason": "검토 가능한 용도 목록에 포함되어 있습니다."
+  },
+  "legal_basis": [],
+  "params": {
+    "angles": [
+      "PERPENDICULAR_90",
+      "ANGLE_60",
+      "ANGLE_45",
+      "PARALLEL_0"
+    ],
+    "stall_type": "general",
+    "setback_m": 0.5,
+    "gate_point": null,
+    "gate_count": 1,
+    "max_alternatives": 3,
+    "existing_buildings": "keep"
+  },
+  "disclaimer": "법정 최소 치수로 계산한 참고 배치안입니다.",
+  "simulated": true,
+  "reference_only": false,
+  "result": {
+    "site_area_m2": 1792.4,
+    "crs_internal": "EPSG:5179",
+    "recommended_alt_code": "ALT_A",
+    "alternatives": [
+      {
+        "alt_code": "ALT_A",
+        "parking_angle": "PERPENDICULAR_90",
+        "stall_type": "general",
+        "orientation_deg": 0.0,
+        "stall_count": 4,
+        "layers": {
+          "stalls": {
+            "type": "FeatureCollection",
+            "features": [
+              {
+                "type": "Feature",
+                "geometry": {
+                  "type": "Polygon",
+                  "coordinates": [
+                    [
+                      [
+                        128.64382,
+                        35.8694
+                      ],
+                      [
+                        128.64385,
+                        35.8694
+                      ],
+                      [
+                        128.64385,
+                        35.86945
+                      ],
+                      [
+                        128.64382,
+                        35.86945
+                      ],
+                      [
+                        128.64382,
+                        35.8694
+                      ]
+                    ]
+                  ]
+                },
+                "properties": {
+                  "id": "P-001",
+                  "stall_type": "general",
+                  "angle": "PERPENDICULAR_90",
+                  "width_m": 2.5,
+                  "length_m": 5.0
+                }
+              },
+              {
+                "type": "Feature",
+                "geometry": {
+                  "type": "Polygon",
+                  "coordinates": [
+                    [
+                      [
+                        128.64385,
+                        35.8694
+                      ],
+                      [
+                        128.64388,
+                        35.8694
+                      ],
+                      [
+                        128.64388,
+                        35.86945
+                      ],
+                      [
+                        128.64385,
+                        35.86945
+                      ],
+                      [
+                        128.64385,
+                        35.8694
+                      ]
+                    ]
+                  ]
+                },
+                "properties": {
+                  "id": "P-002",
+                  "stall_type": "general",
+                  "angle": "PERPENDICULAR_90",
+                  "width_m": 2.5,
+                  "length_m": 5.0
+                }
+              },
+              {
+                "type": "Feature",
+                "geometry": {
+                  "type": "Polygon",
+                  "coordinates": [
+                    [
+                      [
+                        128.64412,
+                        35.8694
+                      ],
+                      [
+                        128.64415,
+                        35.8694
+                      ],
+                      [
+                        128.64415,
+                        35.86945
+                      ],
+                      [
+                        128.64412,
+                        35.86945
+                      ],
+                      [
+                        128.64412,
+                        35.8694
+                      ]
+                    ]
+                  ]
+                },
+                "properties": {
+                  "id": "P-003",
+                  "stall_type": "general",
+                  "angle": "PERPENDICULAR_90",
+                  "width_m": 2.5,
+                  "length_m": 5.0
+                }
+              },
+              {
+                "type": "Feature",
+                "geometry": {
+                  "type": "Polygon",
+                  "coordinates": [
+                    [
+                      [
+                        128.64415,
+                        35.8694
+                      ],
+                      [
+                        128.64418,
+                        35.8694
+                      ],
+                      [
+                        128.64418,
+                        35.86945
+                      ],
+                      [
+                        128.64415,
+                        35.86945
+                      ],
+                      [
+                        128.64415,
+                        35.8694
+                      ]
+                    ]
+                  ]
+                },
+                "properties": {
+                  "id": "P-004",
+                  "stall_type": "general",
+                  "angle": "PERPENDICULAR_90",
+                  "width_m": 2.5,
+                  "length_m": 5.0
+                }
+              }
+            ]
+          },
+          "aisles": {
+            "type": "FeatureCollection",
+            "features": [
+              {
+                "type": "Feature",
+                "geometry": {
+                  "type": "Polygon",
+                  "coordinates": [
+                    [
+                      [
+                        128.64382,
+                        35.8693
+                      ],
+                      [
+                        128.6439,
+                        35.8693
+                      ],
+                      [
+                        128.6439,
+                        35.8694
+                      ],
+                      [
+                        128.64382,
+                        35.8694
+                      ],
+                      [
+                        128.64382,
+                        35.8693
+                      ]
+                    ]
+                  ]
+                },
+                "properties": {
+                  "kind": "aisle",
+                  "width_m": 6.0
+                }
+              },
+              {
+                "type": "Feature",
+                "geometry": {
+                  "type": "Polygon",
+                  "coordinates": [
+                    [
+                      [
+                        128.6441,
+                        35.8693
+                      ],
+                      [
+                        128.64418,
+                        35.8693
+                      ],
+                      [
+                        128.64418,
+                        35.8694
+                      ],
+                      [
+                        128.6441,
+                        35.8694
+                      ],
+                      [
+                        128.6441,
+                        35.8693
+                      ]
+                    ]
+                  ]
+                },
+                "properties": {
+                  "kind": "aisle",
+                  "width_m": 6.0
+                }
+              }
+            ]
+          },
+          "gate": {
+            "type": "Feature",
+            "geometry": {
+              "type": "MultiPoint",
+              "coordinates": [
+                [
+                  128.64386,
+                  35.86921
+                ],
+                [
+                  128.64414,
+                  35.86921
+                ]
+              ]
+            },
+            "properties": {
+              "width_m": 3.0
+            }
+          },
+          "gate_opening": {
+            "type": "Feature",
+            "geometry": {
+              "type": "MultiLineString",
+              "coordinates": [
+                [
+                  [
+                    128.64384,
+                    35.86921
+                  ],
+                  [
+                    128.64388,
+                    35.86921
+                  ]
+                ],
+                [
+                  [
+                    128.64412,
+                    35.86921
+                  ],
+                  [
+                    128.64416,
+                    35.86921
+                  ]
+                ]
+              ]
+            },
+            "properties": {
+              "width_m": 3.0
+            }
+          },
+          "usable_area": {
+            "type": "Feature",
+            "geometry": {
+              "type": "MultiPolygon",
+              "coordinates": [
+                [
+                  [
+                    [
+                      128.64381,
+                      35.86921
+                    ],
+                    [
+                      128.64392,
+                      35.86921
+                    ],
+                    [
+                      128.64392,
+                      35.86959
+                    ],
+                    [
+                      128.64381,
+                      35.86959
+                    ],
+                    [
+                      128.64381,
+                      35.86921
+                    ]
+                  ]
+                ],
+                [
+                  [
+                    [
+                      128.64408,
+                      35.86921
+                    ],
+                    [
+                      128.64419,
+                      35.86921
+                    ],
+                    [
+                      128.64419,
+                      35.86959
+                    ],
+                    [
+                      128.64408,
+                      35.86959
+                    ],
+                    [
+                      128.64408,
+                      35.86921
+                    ]
+                  ]
+                ]
+              ]
+            },
+            "properties": {
+              "area_m2": 812.3
+            }
+          }
+        },
+        "metrics": {
+          "site_area_m2": 1792.4,
+          "usable_area_m2": 812.3,
+          "parking_area_m2": 160.0,
+          "stall_area_m2": 50.0,
+          "aisle_area_m2": 110.0,
+          "efficiency_percent": 6.16,
+          "area_per_stall_m2": 40.0,
+          "aisle_width_m": 6.0,
+          "stall_width_m": 2.5,
+          "stall_length_m": 5.0,
+          "orientation_deg": 0.0,
+          "stall_count": 4,
+          "gate_width_m": 3.0
+        },
+        "constraint_reasons": [
+          "EXISTING_BUILDINGS_EXCLUDED",
+          "SITE_SPLIT_BY_BUILDINGS"
+        ],
+        "is_recommended": true
+      },
+      {
+        "alt_code": "ALT_B",
+        "parking_angle": "PARALLEL_0",
+        "stall_type": "general",
+        "orientation_deg": 90.0,
+        "stall_count": 2,
+        "layers": {
+          "stalls": {
+            "type": "FeatureCollection",
+            "features": [
+              {
+                "type": "Feature",
+                "geometry": {
+                  "type": "Polygon",
+                  "coordinates": [
+                    [
+                      [
+                        128.64382,
+                        35.8694
+                      ],
+                      [
+                        128.64384,
+                        35.8694
+                      ],
+                      [
+                        128.64384,
+                        35.86947
+                      ],
+                      [
+                        128.64382,
+                        35.86947
+                      ],
+                      [
+                        128.64382,
+                        35.8694
+                      ]
+                    ]
+                  ]
+                },
+                "properties": {
+                  "id": "P-001",
+                  "stall_type": "general",
+                  "angle": "PARALLEL_0",
+                  "width_m": 2.0,
+                  "length_m": 6.0
+                }
+              },
+              {
+                "type": "Feature",
+                "geometry": {
+                  "type": "Polygon",
+                  "coordinates": [
+                    [
+                      [
+                        128.64382,
+                        35.86947
+                      ],
+                      [
+                        128.64384,
+                        35.86947
+                      ],
+                      [
+                        128.64384,
+                        35.86954
+                      ],
+                      [
+                        128.64382,
+                        35.86954
+                      ],
+                      [
+                        128.64382,
+                        35.86947
+                      ]
+                    ]
+                  ]
+                },
+                "properties": {
+                  "id": "P-002",
+                  "stall_type": "general",
+                  "angle": "PARALLEL_0",
+                  "width_m": 2.0,
+                  "length_m": 6.0
+                }
+              }
+            ]
+          },
+          "aisles": {
+            "type": "FeatureCollection",
+            "features": [
+              {
+                "type": "Feature",
+                "geometry": {
+                  "type": "Polygon",
+                  "coordinates": [
+                    [
+                      [
+                        128.64384,
+                        35.86921
+                      ],
+                      [
+                        128.6439,
+                        35.86921
+                      ],
+                      [
+                        128.6439,
+                        35.86956
+                      ],
+                      [
+                        128.64384,
+                        35.86956
+                      ],
+                      [
+                        128.64384,
+                        35.86921
+                      ]
+                    ]
+                  ]
+                },
+                "properties": {
+                  "kind": "aisle",
+                  "width_m": 3.5
+                }
+              }
+            ]
+          },
+          "gate": {
+            "type": "Feature",
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                128.64387,
+                35.86921
+              ]
+            },
+            "properties": {
+              "width_m": 3.5
+            }
+          },
+          "gate_opening": {
+            "type": "Feature",
+            "geometry": {
+              "type": "LineString",
+              "coordinates": [
+                [
+                  128.64385,
+                  35.86921
+                ],
+                [
+                  128.64389,
+                  35.86921
+                ]
+              ]
+            },
+            "properties": {
+              "width_m": 3.5
+            }
+          },
+          "usable_area": {
+            "type": "Feature",
+            "geometry": {
+              "type": "Polygon",
+              "coordinates": [
+                [
+                  [
+                    128.64381,
+                    35.86921
+                  ],
+                  [
+                    128.64392,
+                    35.86921
+                  ],
+                  [
+                    128.64392,
+                    35.86959
+                  ],
+                  [
+                    128.64381,
+                    35.86959
+                  ],
+                  [
+                    128.64381,
+                    35.86921
+                  ]
+                ]
+              ]
+            },
+            "properties": {
+              "area_m2": 406.2
+            }
+          }
+        },
+        "metrics": {
+          "site_area_m2": 1792.4,
+          "usable_area_m2": 406.2,
+          "parking_area_m2": 120.0,
+          "stall_area_m2": 24.0,
+          "aisle_area_m2": 96.0,
+          "efficiency_percent": 5.91,
+          "aisle_width_m": 3.5,
+          "stall_width_m": 2.0,
+          "stall_length_m": 6.0,
+          "orientation_deg": 90.0,
+          "stall_count": 2,
+          "gate_width_m": 3.5
+        },
+        "constraint_reasons": [
+          "EXISTING_BUILDINGS_EXCLUDED"
+        ],
+        "is_recommended": false
+      }
+    ]
+  },
+  "constraint_reasons": [
+    "EXISTING_BUILDINGS_EXCLUDED",
+    "SITE_SPLIT_BY_BUILDINGS"
+  ],
+  "message": null,
+  "existing_buildings": {
+    "mode": "keep",
+    "status": "applied",
+    "count": 2,
+    "area_m2": 98.6,
+    "clearance_m": 1.0,
+    "source": "브이월드 도로명주소 건물",
+    "features": {
+      "type": "FeatureCollection",
+      "features": [
+        {
+          "type": "Feature",
+          "geometry": {
+            "type": "Polygon",
+            "coordinates": [
+              [
+                [
+                  128.64394,
+                  35.86921
+                ],
+                [
+                  128.64406,
+                  35.86921
+                ],
+                [
+                  128.64406,
+                  35.86959
+                ],
+                [
+                  128.64394,
+                  35.86959
+                ],
+                [
+                  128.64394,
+                  35.86921
+                ]
+              ]
+            ]
+          },
+          "properties": {
+            "id": "B-1",
+            "name": "범어빌라",
+            "floors": 3
+          }
+        },
+        {
+          "type": "Feature",
+          "geometry": {
+            "type": "MultiPolygon",
+            "coordinates": [
+              [
+                [
+                  [
+                    128.64382,
+                    35.86955
+                  ],
+                  [
+                    128.64386,
+                    35.86955
+                  ],
+                  [
+                    128.64386,
+                    35.86958
+                  ],
+                  [
+                    128.64382,
+                    35.86958
+                  ],
+                  [
+                    128.64382,
+                    35.86955
+                  ]
+                ]
+              ]
+            ]
+          },
+          "properties": {
+            "id": "B-2",
+            "name": null,
+            "floors": null
+          }
+        },
+        {
+          "type": "Feature",
+          "geometry": {
+            "type": "Point",
+            "coordinates": [
+              128.644,
+              35.8694
+            ]
+          },
+          "properties": {
+            "id": "B-3",
+            "name": "점 도형",
+            "floors": 1
+          }
+        },
+        {
+          "type": "Feature",
+          "geometry": {
+            "type": "Polygon",
+            "coordinates": [
+              [
+                [
+                  128.644,
+                  "x"
+                ]
+              ]
+            ]
+          },
+          "properties": {
+            "id": "B-4",
+            "name": null,
+            "floors": 1
+          }
+        }
+      ]
+    }
+  }
+}

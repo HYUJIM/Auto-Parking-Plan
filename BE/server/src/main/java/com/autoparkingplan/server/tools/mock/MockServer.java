@@ -47,7 +47,7 @@ import tools.jackson.databind.node.ObjectNode;
  *
  * <pre>
  *   GET /addrlink/addrLinkApi.do                       도로명주소 검색 API
- *   GET /req/data                                      브이월드 2D 데이터 API (LP_PA_CBND_BUBUN 만)
+ *   GET /req/data                                      브이월드 2D 데이터 API (LP_PA_CBND_BUBUN 연속지적도, LT_C_SPBD 건물 윤곽선)
  *   GET /ned/data/getLandUseAttr                       브이월드 토지이용계획속성
  *   GET /ned/data/getLandCharacteristics               브이월드 토지특성속성
  *   GET /ned/data/ladfrlList                           브이월드 토지임야목록
@@ -678,13 +678,16 @@ public final class MockServer implements AutoCloseable {
             return vwError(q, "INVALID_KEY", 2, "등록되지 않은 인증키입니다.");
         }
         String data = q.get("data");
-        if (!"LP_PA_CBND_BUBUN".equals(data)) {
-            return vwError(q, "INVALID_RANGE", 1,
-                    "<data> 파라미터의 값이 유효한 범위를 넘었습니다. 입력한 파라미터 값 : <" + pyStr(data) + "> (mock 은 LP_PA_CBND_BUBUN 만 지원)");
+        if (!"LP_PA_CBND_BUBUN".equals(data) && !"LT_C_SPBD".equals(data)) {
+            return vwError(q, "INVALID_RANGE", 1, "<data> 파라미터의 값이 유효한 범위를 넘었습니다. 입력한 파라미터 값 : <" + pyStr(data)
+                    + "> (mock 은 LP_PA_CBND_BUBUN, LT_C_SPBD 만 지원)");
         }
         String crs = (truthy(q.get("crs")) ? q.get("crs") : "EPSG:4326").toUpperCase(java.util.Locale.ROOT);
         if (!crs.equals("EPSG:4326")) {
             return vwError(q, "INVALID_RANGE", 1, "<crs> 파라미터 값 <" + crs + "> 은 mock 에서 지원하지 않습니다(EPSG:4326 만).");
+        }
+        if ("LT_C_SPBD".equals(data)) {
+            return vworldBuildings(q);
         }
 
         String attrFilter = q.get("attrFilter");
@@ -755,6 +758,66 @@ public final class MockServer implements AutoCloseable {
             fc.putArray("bbox").add(env.getMinX()).add(env.getMinY()).add(env.getMaxX()).add(env.getMaxY());
             fc.set("features", features);
         }
+        ObjectNode body = Json.object();
+        body.set("response", resp);
+        return Response.json(body);
+    }
+
+    /**
+     * 도로명주소 건물(LT_C_SPBD): geomFilter BOX(...) 와 겹치는 예시 건물 윤곽선 (parcels.json 의 building_footprints).
+     * 실제 API 처럼 영역 검색만 받고(속성 검색은 mock 에서 지원하지 않음), 응답 봉투·속성 이름은 실제와 같다.
+     */
+    private Response vworldBuildings(Map<String, String> q) {
+        String geomFilter = q.get("geomFilter");
+        if (!truthy(geomFilter)) {
+            return vwError(q, "PARAM_REQUIRED", 1, "필수 파라미터인 <geomFilter> 가 없어서 요청을 처리할수 없습니다.");
+        }
+        Matcher bm = BOX_RE.matcher(geomFilter);
+        if (!bm.matches()) {
+            return vwError(q, "INVALID_TYPE", 1, "<geomFilter> 파라미터 타입이 유효하지 않습니다. 입력한 파라미터 값 : <" + geomFilter + "> (mock 은 BOX 만 지원)");
+        }
+        List<MockDataset.Footprint> hits = ds.footprintsIntersecting(box(pyFloatOrThrow(bm.group(1)), pyFloatOrThrow(bm.group(2)),
+                pyFloatOrThrow(bm.group(3)), pyFloatOrThrow(bm.group(4))));
+        int size = clampInt(q.get("size"), 10, 1, 1000);
+        int page = clampInt(q.get("page"), 1, 1, 100000);
+        List<MockDataset.Footprint> rows = page(hits, page, size);
+        ObjectNode resp = Json.object();
+        resp.set("service", vwService(q));
+        ObjectNode record = resp.putObject("record");
+        ObjectNode pg = resp.putObject("page");
+        if (rows.isEmpty()) {
+            resp.put("status", "NOT_FOUND");
+            record.put("total", "0");
+            record.put("current", "0");
+            pg.put("total", "0");
+        } else {
+            resp.put("status", "OK");
+            record.put("total", Integer.toString(hits.size()));
+            record.put("current", Integer.toString(rows.size()));
+            pg.put("total", Integer.toString((hits.size() + size - 1) / size));
+            ArrayNode features = Json.array();
+            Envelope env = new Envelope();
+            int i = (page - 1) * size;
+            for (MockDataset.Footprint f : rows) {
+                ObjectNode feat = features.addObject();
+                feat.put("type", "Feature");
+                feat.put("id", "LT_C_SPBD." + (9100000 + ++i));
+                feat.set("geometry", f.record().get("geometry"));
+                ObjectNode props = feat.putObject("properties");
+                for (String k : List.of("bd_mgt_sn", "buld_nm", "buld_nm_dc", "gro_flo_co")) {
+                    JsonNode v = f.record().get(k);
+                    // 실제 API 는 속성을 문자열로 준다 (층수도 "3")
+                    props.put(k, v == null || v.isNull() ? null : v.isNumber() ? v.asString() : v.stringValue());
+                }
+                env.expandToInclude(f.geom().getEnvelopeInternal());
+            }
+            ObjectNode fc = resp.putObject("result").putObject("featureCollection");
+            fc.put("type", "FeatureCollection");
+            fc.putArray("bbox").add(env.getMinX()).add(env.getMinY()).add(env.getMaxX()).add(env.getMaxY());
+            fc.set("features", features);
+        }
+        pg.put("current", Integer.toString(page));
+        pg.put("size", Integer.toString(size));
         ObjectNode body = Json.object();
         body.set("response", resp);
         return Response.json(body);
