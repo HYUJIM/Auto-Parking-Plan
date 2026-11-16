@@ -32,6 +32,10 @@ BE(`../BE`, Spring Boot) 공개 API 연동은 **완료**되었습니다. 이 문
 - **지도 클릭**: `GET /v1/parcels/at` 가 필지 전체를 주므로 `getParcelAt()` 이 바로 `Parcel` 을 돌려줍니다 (재조회 없음).
 - **시범 지역 밖 필지**: `parcel.jurisdiction.supported === false` 면 FE 가 `POST /v1/reviews` 를 보내지 않고 안내만 보여 줍니다
   (BE 도 빈 결과 + `REGION_NOT_SUPPORTED` 만 주므로 결과는 같습니다).
-- **FE 전용 항목 삭제**: 목업 엔진의 '도로 접도'·'진출입 제한' 자동 항목, 도로 폭·접도 길이·도로 중심선, 토지 특성(형상·지세·이용상황),
+- **FE 전용 항목 삭제**: 목업 엔진의 '도로 접도'·'진출입 제한' 자동 항목, 도로 폭·접도 길이·도로 중심선,
   공시지가 기준연도는 BE 응답에 없어 화면에서 뺐습니다. 접도는 `road_side`(도로접면) 문구만 표시합니다.
+- **토지 특성(형상·지세·이용상황)**: BE 필지 응답의 `land_shape`·`terrain_height`·`land_use_status`(브이월드 토지특성
+  `getLandCharacteristics` 의 `tpgrphFrmCodeNm`·`tpgrphHgCodeNm`·`ladUseSittnNm`)를 `toParcel` 이 `Parcel.landShape`·`terrainHeight`·`landUseStatus` 로 옮깁니다.
+  '지정되지않음'·'-'·빈 값은 BE 가 `null` 로 바꿔 보내고(`road_side` 와 같은 규칙), FE 는 `null`·빈 문자열·키 없음(예전 캐시·예전 BE)을 `undefined` 로만 바꿀 뿐 값을 거르지 않습니다.
+  BE 가 다시 조회하다 토지특성만 실패하면 세 값은 이전 값을 유지하지만 `road_side` 는 `null` 이 될 수 있습니다 (`BE/README.md` 필지 응답 설명).
 - **501 NOT_READY 제거**: BE 에는 없는 상태입니다. 503 은 `error.code` 로 `SERVICE_BUSY → BUSY`, `UPSTREAM_UNAVAILABLE → UPSTREAM` 을 구분합니다.

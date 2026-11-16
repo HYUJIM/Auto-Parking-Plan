@@ -15,6 +15,8 @@
 | Docker 이미지 빌드 + 운영 조건 실행 (non-root, 읽기 전용 루트, capabilities 제거, `APP_ENV=prod`) | Docker Desktop | 정상 기동, 헬스체크 healthy, 문서 404, 약한 관리자 토큰이면 시작 거부 |
 | Terraform `validate` / `fmt -check` (`deploy/aws`) | hashicorp/terraform:1.9 | 통과 |
 
+위 543 은 파이썬판과 대조하던 때(2026-11-08·09)의 점검 수입니다. 파이썬판을 없앤 뒤 자바판에만 점검 3개가 더해져, 지금 `app.jar e2e-verify` 의 점검은 **546건**입니다 (2026-11-16 H2·스레드 실행 546 / 0, 시나리오 22개 모두 통과).
+
 ## 2. 모듈별 테스트
 
 | 모듈 | 테스트 | 내용 |

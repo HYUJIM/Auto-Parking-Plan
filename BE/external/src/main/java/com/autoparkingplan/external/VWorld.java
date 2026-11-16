@@ -95,7 +95,8 @@ public final class VWorld {
     public static final Set<String> AUTH_ERROR_CODES = Set.of("INVALID_KEY", "INCORRECT_KEY");
     public static final Set<String> PARAM_ERROR_CODES = Set.of("PARAM_REQUIRED", "INVALID_TYPE", "INVALID_RANGE", "URL_TYPE");
     private static final Set<String> OK_RESULT_CODES = Set.of("", "OK", "0", "00", "INFO-000", "NORMAL_SERVICE");
-    private static final Set<String> NO_ROAD_SIDE = Set.of("지정되지않음", "-");
+    /** 토지특성 코드명 중 '값 없음' 표기 (도로접면·토지형상·지형높이·토지이용상황) → null. */
+    private static final Set<String> UNSPECIFIED = Set.of("지정되지않음", "-");
 
     private static final Map<String, Integer> CONFLICT_RANK = Map.of(
             Conflict.INCLUDED, 3, Conflict.PARTIALLY_INCLUDED, 2, Conflict.ADJACENT, 1, Conflict.UNKNOWN, 0);
@@ -517,7 +518,17 @@ public final class VWorld {
         return out;
     }
 
-    /** getLandCharacteristics JSON → 가장 최근 기준연도의 LandCharacteristics. 자료 없음 → empty. */
+    /** 토지특성 코드명: 공백 정리 후 빈 값·'지정되지않음'·'-' 이면 null. */
+    static String specifiedName(JsonNode value) {
+        String s = Http.cleanStr(value);
+        return s == null || UNSPECIFIED.contains(s) ? null : s;
+    }
+
+    /**
+     * getLandCharacteristics JSON → 가장 최근 기준연도의 LandCharacteristics. 자료 없음 → empty.
+     *
+     * <p>도로접면(roadSideCodeNm)·토지형상(tpgrphFrmCodeNm)·지형높이(tpgrphHgCodeNm)·토지이용상황(ladUseSittnNm)은 '지정되지않음'·'-'·빈 값이면 null.
+     */
     public static Optional<LandCharacteristics> parseLandCharacteristicsResponse(JsonNode payload, String pnu,
             OffsetDateTime fetchedAt, UnaryOperator<String> scrub) {
         OffsetDateTime at = fetchedAt != null ? fetchedAt : Http.utcnow();
@@ -526,16 +537,15 @@ public final class VWorld {
             return Optional.empty();
         }
         ObjectNode rec = max(records, VWorld::compareYearMonth);
-        String roadSide = Http.cleanStr(rec.get("roadSideCodeNm"));
-        if (roadSide != null && NO_ROAD_SIDE.contains(roadSide)) {
-            roadSide = null;
-        }
         String recPnu = Http.cleanStr(rec.get("pnu"));
         return Optional.of(new LandCharacteristics(
                 recPnu != null ? recPnu : (pnu != null ? pnu : ""),
                 Http.toPositiveFloat(rec.get("lndpclAr")),
                 Http.cleanStr(rec.get("lndcgrCodeNm")),
-                roadSide,
+                specifiedName(rec.get("roadSideCodeNm")),
+                specifiedName(rec.get("tpgrphFrmCodeNm")),
+                specifiedName(rec.get("tpgrphHgCodeNm")),
+                specifiedName(rec.get("ladUseSittnNm")),
                 Http.toPositiveInt(rec.get("pblntfPclnd")),
                 SOURCE_LAND_CHAR,
                 at,
@@ -581,7 +591,7 @@ public final class VWorld {
     }
 
     /**
-     * 토지임야(현행 토지대장: 면적·지목 우선) + 토지특성(도로접면·공시지가, 면적·지목 보조)을 합친다.
+     * 토지임야(현행 토지대장: 면적·지목 우선) + 토지특성(도로접면·토지형상·지형높이·토지이용상황·공시지가, 면적·지목 보조)을 합친다.
      *
      * <p>raw = {"ladfrlList": {...}|null, "getLandCharacteristics": {...}|null, "_errors": {endpoint: 메시지}}
      * 한쪽 조회가 실패했으면 raw["_errors"] 에 남는다(API 계층의 PARCEL_PARTIAL 판단용).
@@ -618,6 +628,9 @@ public final class VWorld {
                 area,
                 category,
                 chr != null ? chr.roadSide() : null,
+                chr != null ? chr.landShape() : null,
+                chr != null ? chr.terrainHeight() : null,
+                chr != null ? chr.landUseStatus() : null,
                 chr != null ? chr.officialLandPrice() : null,
                 String.join("+", sources),
                 fetchedAt != null ? fetchedAt : Http.utcnow(),

@@ -1,0 +1,726 @@
+/*
+ * 법규 상세 (/report/rules/:category) — 가운데 한 줄 기둥(최대 960px, 좌우 16px 여백) 위에 구역 카드를 세로로 쌓습니다.
+ * 색은 테마 변수만 씁니다. 인쇄(PDF)에서는 접힌 목록·스크롤 상자를 모두 펼칩니다.
+ */
+
+.page {
+  width: 100%;
+  max-width: 960px;
+  margin: 0 auto;
+  padding: var(--space-6) var(--space-4) var(--space-12);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+/* ── 맨 위: 돌아가기 · 제목 ───────────────────────────── */
+
+.back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  align-self: flex-start;
+  min-height: var(--tap-min);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--color-text-2);
+}
+.back:hover {
+  color: var(--color-primary);
+}
+
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.eyebrow {
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.04em;
+  color: var(--color-primary);
+}
+.titleRow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-3);
+}
+.title {
+  font-size: var(--text-2xl);
+  font-weight: var(--weight-bold);
+  line-height: var(--leading-tight);
+  color: var(--color-text);
+  word-break: keep-all;
+}
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px var(--space-3);
+  font-size: var(--text-sm);
+  color: var(--color-text-2);
+}
+.address {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: var(--weight-medium);
+  color: var(--color-text);
+  word-break: keep-all;
+}
+.reason {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin-top: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-sm);
+  color: var(--color-warning);
+  background: var(--color-warning-soft);
+  border-radius: var(--radius-sm);
+  word-break: keep-all;
+}
+.reason > :first-child {
+  flex-shrink: 0;
+  margin-top: 3px;
+}
+
+/* ── 구역 카드 ─────────────────────────────────────── */
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-5) var(--space-6);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+.sectionHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.sectionTitle {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+  color: var(--color-text);
+}
+.sectionDesc {
+  margin-top: calc(-1 * var(--space-2));
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  word-break: keep-all;
+}
+.sectionNote {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  word-break: keep-all;
+}
+.empty {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  word-break: keep-all;
+}
+.subBlock {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-1);
+}
+.subTitle {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  color: var(--color-text-2);
+}
+.muted {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+/* ── 한눈에 보기 · 확인할 내용 (dt | dd 두 칸) ───────────── */
+
+.overview {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+}
+.overviewRow {
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr);
+  gap: var(--space-3);
+  padding: var(--space-3) 0;
+  border-top: 1px solid var(--color-border);
+}
+.overviewRow:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+.overviewRow:last-child {
+  padding-bottom: 0;
+}
+.overviewRow dt {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--color-text-muted);
+}
+.overviewRow dd {
+  margin: 0;
+  min-width: 0;
+  font-size: var(--text-sm);
+  color: var(--color-text);
+  word-break: keep-all;
+}
+.overviewRow .criteria {
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+}
+
+/* ── 요약 ─────────────────────────────────────────── */
+
+.summaryMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px var(--space-3);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  color: var(--color-text-2);
+}
+.sentences {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.sentence {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr);
+  align-items: baseline;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--color-text);
+}
+.headline {
+  padding: var(--space-3);
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  background: var(--color-primary-soft);
+  border-radius: var(--radius-sm);
+}
+.role {
+  justify-self: start;
+  padding: 1px 6px;
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  white-space: nowrap;
+  border-radius: var(--radius-pill);
+  background: var(--color-neutral-soft);
+  color: var(--color-neutral);
+}
+.roleEmpty {
+  visibility: hidden;
+}
+.role_headline {
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+}
+.role_condition {
+  background: var(--color-primary-soft);
+  color: var(--color-on-primary-soft);
+}
+.role_exception,
+.role_caution {
+  background: var(--color-warning-soft);
+  color: var(--color-warning);
+}
+.sentenceText {
+  word-break: keep-all;
+}
+
+.glossary {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-top: var(--space-3);
+  border-top: 1px dashed var(--color-border);
+}
+.glossaryList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+}
+.glossaryRow {
+  display: grid;
+  grid-template-columns: minmax(80px, max-content) minmax(0, 1fr);
+  gap: var(--space-3);
+  font-size: var(--text-sm);
+}
+.glossaryRow dt {
+  font-weight: var(--weight-semibold);
+  color: var(--color-text);
+}
+.glossaryRow dd {
+  margin: 0;
+  color: var(--color-text-2);
+  word-break: keep-all;
+}
+
+/* ── 별도 확인 항목 ─────────────────────────────────── */
+
+.manualNote,
+.emptyLead {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  font-size: var(--text-sm);
+  color: var(--color-text-2);
+  background: var(--color-surface-2);
+  border-radius: var(--radius-sm);
+  word-break: keep-all;
+}
+.manualNote > :first-child,
+.emptyLead > :first-child {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.checkList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.checkList li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.checkIcon {
+  flex-shrink: 0;
+  color: var(--color-primary);
+}
+
+/* ── 위임 관계 (세로 단계) ─────────────────────────────── */
+
+.stepper {
+  display: flex;
+  flex-direction: column;
+}
+.step {
+  position: relative;
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  gap: var(--space-3);
+  padding-bottom: var(--space-5);
+  break-inside: avoid;
+}
+.step:last-child {
+  padding-bottom: 0;
+}
+.step::before {
+  content: '';
+  position: absolute;
+  left: 9px;
+  top: 19px;
+  bottom: -5px;
+  width: 2px;
+  background: var(--color-border-strong);
+}
+.step:last-child::before {
+  display: none;
+}
+.stepDot {
+  position: relative;
+  width: 12px;
+  height: 12px;
+  margin: 5px 0 0 4px;
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
+  border: 2px solid var(--color-primary);
+}
+.stepBody {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.stepHead {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.stepDoc {
+  font-size: var(--text-sm);
+  color: var(--color-text);
+  word-break: keep-all;
+}
+.stepArticle {
+  margin-left: 6px;
+  color: var(--color-text-2);
+}
+.stepQuote {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-xs);
+  line-height: var(--leading-normal);
+  color: var(--color-text-2);
+  background: var(--color-surface-2);
+  border-left: 3px solid var(--color-border-strong);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  white-space: pre-line;
+  word-break: keep-all;
+  max-height: 200px;
+  overflow-y: auto;
+}
+.links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 var(--space-4);
+}
+.link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  align-self: flex-start;
+  min-height: 32px;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--color-primary);
+}
+.link:hover {
+  text-decoration: underline;
+}
+
+/* ── 법규 원문 카드 ───────────────────────────────────── */
+
+.notices {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-left: var(--space-5);
+  list-style: disc;
+  font-size: var(--text-sm);
+  color: var(--color-text-2);
+  word-break: keep-all;
+}
+.ruleCards {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+.ruleCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  scroll-margin-top: var(--space-4);
+}
+.ruleCard:target {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-soft);
+}
+.ruleHead {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.docTitle {
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  color: var(--color-text);
+  word-break: keep-all;
+}
+.ruleTitle {
+  font-size: var(--text-sm);
+  color: var(--color-text-2);
+  word-break: keep-all;
+}
+.docMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px var(--space-3);
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.valueList {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--color-border);
+}
+.valueItem {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--color-border);
+  font-size: var(--text-sm);
+}
+.valueMain {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  font-weight: var(--weight-medium);
+  color: var(--color-text);
+  word-break: keep-all;
+}
+.valueTag {
+  flex-shrink: 0;
+  padding: 1px 6px;
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  border-radius: var(--radius-pill);
+  background: var(--color-success-soft);
+  color: var(--color-success);
+}
+.valueTagConditional {
+  background: var(--color-warning-soft);
+  color: var(--color-warning);
+}
+.valueTagProhibited {
+  background: var(--color-danger-soft);
+  color: var(--color-danger);
+}
+.valueNote {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  word-break: keep-all;
+}
+
+.evidenceList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.evidenceItem {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: var(--space-3);
+  background: var(--color-surface-2);
+  border-radius: var(--radius-sm);
+  break-inside: avoid;
+}
+.evidenceHead {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+}
+.article {
+  font-weight: var(--weight-semibold);
+  color: var(--color-text);
+}
+.provision {
+  font-size: var(--text-sm);
+  line-height: 1.7;
+  color: var(--color-text);
+  white-space: pre-line;
+  word-break: keep-all;
+  max-height: 320px;
+  overflow-y: auto;
+}
+.mark {
+  padding: 0 2px;
+  color: var(--color-text);
+  background: var(--color-warning-soft);
+  border-radius: 2px;
+  box-shadow: inset 0 -2px 0 var(--color-warning);
+}
+.quoted {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-sm);
+  color: var(--color-text);
+  background: var(--color-surface);
+  border-left: 3px solid var(--color-warning);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  white-space: pre-line;
+  word-break: keep-all;
+}
+.quotedLabel {
+  display: block;
+  margin-bottom: 2px;
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  color: var(--color-text-muted);
+}
+
+/* 긴 목록: 펼치지 않은 목록(.listOpen 없음)의 나머지 항목(.extra)은 화면에서만 숨깁니다 — 인쇄에는 전부 */
+@media screen {
+  :not(.listOpen) > .extra {
+    display: none;
+  }
+}
+.more {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  align-self: flex-start;
+  min-height: 32px;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--color-primary);
+}
+.more:hover {
+  text-decoration: underline;
+}
+
+/* ── 맨 아래 ───────────────────────────────────────── */
+
+.footer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-border);
+}
+.disclaimer {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  word-break: keep-all;
+}
+.footerLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  align-self: flex-start;
+  min-height: var(--tap-min);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--color-primary);
+}
+.footerLink:hover {
+  text-decoration: underline;
+}
+
+/* ── 안내 (잘못된 주소 · 항목 없음 · 시범 지역 밖) ─────────── */
+
+.notice {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-6);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+}
+.noticeIcon {
+  flex-shrink: 0;
+  color: var(--color-warning);
+}
+.noticeBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+.noticeTitle {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+  color: var(--color-text);
+  word-break: keep-all;
+}
+.noticeDesc {
+  font-size: var(--text-sm);
+  color: var(--color-text-2);
+  word-break: keep-all;
+}
+.noticeLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  align-self: flex-start;
+  min-height: var(--tap-min);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--color-primary);
+}
+.noticeLink:hover {
+  text-decoration: underline;
+}
+
+/* ── 불러오는 중 ──────────────────────────────────── */
+
+.loading {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+.loadingText {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--text-sm);
+  color: var(--color-text-2);
+}
+.spin {
+  animation: spin 1s linear infinite;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .spin {
+    animation: none;
+  }
+}
+
+/* ── 좁은 화면 ────────────────────────────────────── */
+
+@media (max-width: 560px) {
+  .page {
+    padding-top: var(--space-4);
+    gap: var(--space-4);
+  }
+  .title {
+    font-size: var(--text-xl);
+  }
+  .section {
+    padding: var(--space-4);
+  }
+  .overviewRow {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4px;
+  }
+  .sentence {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4px;
+  }
+  .roleEmpty {
+    display: none;
+  }
+  .ruleCard {
+    padding: var(--space-3);
+  }
+}
+
+/* ── 인쇄 ─────────────────────────────────────────── */
+
+@media print {
+  .page {
+    max-width: none;
+    padding: 0;
+    gap: var(--space-4);
+  }
+  .section {
+    box-shadow: none;
+  }
+  .provision,
+  .stepQuote {
+    max-height: none;
+    overflow: visible;
+  }
+}

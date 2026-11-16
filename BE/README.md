@@ -35,7 +35,7 @@
 
 ### 2) 한 번에 검증 (권장)
 
-모의 공공 API 서버와 백엔드(bootstrap → serve)를 실제 프로세스로 띄워 전체 흐름을 점검합니다 (예시 필지 10개 × 조건 2개, 오류·보안·검수 흐름, 점검 543건).
+모의 공공 API 서버와 백엔드(bootstrap → serve)를 실제 프로세스로 띄워 전체 흐름을 점검합니다 (예시 필지 10개 × 조건 2개, 오류·보안·검수 흐름, 점검 546건).
 
 ```bash
 java -jar server/build/libs/app.jar e2e-verify --report var/e2e_report.json
@@ -108,8 +108,8 @@ docker compose run --rm bootstrap
 | 공개 | |
 |---|---|
 | `GET /v1/address/search?q=` | 주소 후보 (도로명, 지번, PNU, 좌표, 지원 여부). 검색어는 한글·영문·숫자·공백과 `- . , ( ) [ ] ·` 만 받고, 그 밖의 문자나 SQL 예약어가 있으면 도로명주소 API 를 부르지 않고 422 (`docs/SECURITY.md` 5.5) |
-| `GET /v1/parcels/{pnu}` | 필지 — 대지면적, 지목, 용도지역·지구·구역, GeoJSON 경계, 출처·조회시각 (`?refresh=true` 는 10분에 한 번만 외부 재조회) |
-| `GET /v1/parcels/at?lng=&lat=` | 지도 클릭 → 필지 |
+| `GET /v1/parcels/{pnu}` | 필지 — 대지면적, 지목, 도로접면(`road_side`)·토지형상(`land_shape`)·지형높이(`terrain_height`)·토지이용상황(`land_use_status`), 용도지역·지구·구역, GeoJSON 경계, 출처·조회시각 (`?refresh=true` 는 10분에 한 번만 외부 재조회) |
+| `GET /v1/parcels/at?lng=&lat=` | 지도 클릭 → 필지 (응답은 `GET /v1/parcels/{pnu}` 와 같음) |
 | `POST /v1/reviews` | 검토 시작 → 202 `{review_id}` (`pnu`, `as_of_date`, `audience`, `inputs`) |
 | `GET /v1/reviews/{id}` | 진행 중이면 단계별 진행 상태, 끝나면 검토 결과 전체 (`review_result@1.0`) |
 | `GET /v1/rules/{rule_id}/basis` | 근거 상세 — 근거 트리 + 원문 조문 + 국가법령정보센터 링크 |
@@ -124,6 +124,23 @@ docker compose run --rm bootstrap
 | `POST /admin/documents/{id}/refetch`, `POST /admin/extractions/run` | 원문 재수집(`LAWGO_OC`), AI 추출 실행(LLM) |
 | `POST /admin/zones` | L4 특화구역 수동 등록 (고시, 경계 또는 PNU 목록) |
 | `GET /admin/verifications/{report_id}`, `GET /admin/alerts`, `POST /admin/explanations/purge` | 사후 검증 보고서, 검수 알림, 설명 캐시 삭제 |
+
+필지 응답의 `land_shape`(예: 정방형·가로장방·사다리형·부정형)·`terrain_height`(예: 평지·완경사)·`land_use_status`(예: 단독·상업용·주차장)는 브이월드 토지특성(`getLandCharacteristics`, 가장 최근 기준연도)의
+`tpgrphFrmCodeNm`·`tpgrphHgCodeNm`·`ladUseSittnNm` 값입니다. 키는 늘 있고 값은 문자열 또는 `null` 입니다.
+
+- **값 없음 표기**: 원천 값이 '지정되지않음'·'-'·빈 값(공백만 포함)이거나 필드가 없으면 `null` — 도로접면(`roadSideCodeNm` → `road_side`)과 같은 해석 규칙입니다 (`VWorld.specifiedName`).
+  토지임야는 받았는데 토지특성에 그 필지 자료가 없을 때도 같습니다. 조회 실패가 아니므로 `road_side` 와 함께 이전 값을 `null` 로 덮고, 이것 때문에 `PARCEL_PARTIAL` 이 붙지는 않습니다.
+- **저장**: DB 열을 늘리지 않고 필지 캐시의 `source_meta.land_attributes` 에 저장합니다. 이 항목이 생기기 전에 저장된 캐시는 다시 조회될 때(만료 30일 또는 `?refresh=true`)까지 `null` 입니다.
+- **토지특성을 받지 못했을 때** (`PARCEL_PARTIAL`): 처음 조회면 세 값과 `road_side` 모두 `null` 입니다. 다시 조회할 때는 세 값이 늘 이전 값을 유지하지만 `road_side` 는 경우에 따라 다릅니다.
+
+  | 다시 조회할 때 | `land_shape`·`terrain_height`·`land_use_status` | `road_side` |
+  |---|---|---|
+  | 토지임야·토지특성 모두 실패 (또는 지적도 조회 실패로 저장된 정보 표시) | 이전 값 | 이전 값 |
+  | 토지특성만 실패하고 토지임야(`ladfrlList`)는 받은 부분 결과 | 이전 값 | **`null` 로 덮임** |
+
+  두 번째 경우 `road_side` 를 덮는 것은 파이썬판부터의 동작이라 그대로 두었습니다 (검토의 도로 안내 문구가 이 값을 씀). 그래서 이때는 `road_side` 가 `null` 인데 `land_shape` 등에는 이전 값이 보일 수 있습니다
+  (`ParcelLandAttributesTest` 가 두 경우를 확인).
+- 검토 결과(`review_result`)의 `parcel` 에는 넣지 않습니다.
 
 오류는 모두 `{"error": {"code", "message", "details"?}}` 형식입니다 (요청 제한 429 + `Retry-After`, 본문 상한 413, 대기열 상한 503).
 

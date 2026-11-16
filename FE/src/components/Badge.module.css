@@ -41,3 +41,15 @@
   background: var(--color-surface-2);
   color: var(--color-text-2);
 }
+
+/*
+ * 인쇄: 배지를 24px → 약 16px(4.4mm)로. 결과 리포트 1쪽(A4 가로 한 장)에 배지가 20개 가까이 들어가
+ * 높이 예산(ReportPage.module.css)을 지키려고 줄입니다. 화면 크기는 그대로입니다.
+ */
+@media print {
+  .badge {
+    height: 4.4mm;
+    padding: 0 1.5mm;
+    gap: 1mm;
+  }
+}

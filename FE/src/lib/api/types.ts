@@ -88,6 +88,12 @@ export interface Parcel {
   jimok: string;
   /** 공시지가 (원/㎡) */
   landPrice?: number;
+  /** 토지형상 (정방형 · 가로장방 · 부정형 …) — BE 토지특성. 모르면 undefined */
+  landShape?: string;
+  /** 지형높이 (평지 · 완경사 …) */
+  terrainHeight?: string;
+  /** 토지이용상황 (단독 · 주차장 …) */
+  landUseStatus?: string;
   /** 토지이용계획: 용도지역·지구·구역 전체 목록. BE 가 조회하지 못했으면 undefined (data_notices 에 안내) */
   landUses?: LandUse[];
   buildings: ParcelBuilding[];
@@ -197,8 +203,29 @@ export interface RuleItem {
   table: RuleTableRow[] | null;
   /** 쉬운 설명 — BE 가 원문과 대조해 검증한 문장만. 없으면 빈 배열 */
   explanation: string[];
+  /** 요약(쉬운 설명) 전체 — 출처(AI 검증 통과 / 원문 인용)와 검증 정보까지. 없으면 null */
+  summary: RuleSummary | null;
   /** 적용 근거 트리 (상위 → 하위) */
   basis: BasisNode[];
+}
+
+/**
+ * 항목 요약의 출처
+ *  - ai_verified: AI 가 쓰고 원문 사실표와 별도 검증 모델로 대조해 통과한 문장
+ *  - template_fallback: AI 를 쓰지 않았거나 통과하지 못해, 원문을 그대로 인용해 만든 문장 (AI 요약이 아님)
+ */
+export type SummarySource = 'ai_verified' | 'template_fallback';
+
+export interface RuleSummary {
+  source: SummarySource;
+  /** role: headline · summary · meaning · condition · exception · caution */
+  sentences: { role: string; text: string }[];
+  /** 어려운 용어 풀이 (최대 3개) */
+  glossary: { term: string; plain: string }[];
+  /** 검증 통과 시각 (YYYY-MM-DD) */
+  checkedAt: string | null;
+  /** 반드시 언급해야 하는 사실 중 언급한 수 */
+  mustMention: { total: number; covered: number } | null;
 }
 
 /** 자동 판정하지 않는 별도 확인 항목 (ROAD_ACCESS · SETBACK · HEIGHT_SUNLIGHT · SPECIAL_ZONE) */
@@ -211,8 +238,24 @@ export interface ManualCheck {
   triggeredBy: string | null;
 }
 
+/** 검토 당시의 필지 스냅숏 (review_result.parcel) — 건설 불가 같은 판정의 근거는 이 값입니다 */
+export interface ReviewParcel {
+  pnu: string;
+  roadAddress: string | null;
+  jibunAddress: string | null;
+  areaM2: number | null;
+  /** 지목 */
+  landCategory: string | null;
+  /** 토지이용계획 (용도지역·지구·구역). 조회 실패면 null */
+  landUses: LandUse[] | null;
+  /** 경계 외곽 링 (없으면 빈 배열) */
+  polygon: LatLng[];
+}
+
 export interface RuleReview {
   reviewId: string;
+  /** 검토 당시의 필지 */
+  parcel: ReviewParcel;
   /** 시범 지역 밖이면 false — 항목 없이 안내만 표시 */
   supported: boolean;
   /** 기준일 (YYYY-MM-DD) */
@@ -276,7 +319,7 @@ export interface ParkingSimulation {
   pnu: string;
   asOfDate: string;
   eligibility: { status: RuleStatus | string; useName: string | null; reason: string | null };
-  legalBasis: { category: string; status: RuleStatus | string; criteria: string | null }[];
+  legalBasis: { category: string; status: RuleStatus | string; criteria: string | null; ruleIds: string[] }[];
   disclaimer: string;
   /** false 면 계산하지 않음 — message · constraintReasons 에 이유 */
   simulated: boolean;
@@ -289,6 +332,60 @@ export interface ParkingSimulation {
     recommendedCode: string | null;
     alternatives: LayoutAlternative[];
   } | null;
+}
+
+// ── 법규 원문 근거 (GET /v1/rules/{ruleId}/basis) ──────────
+
+/** 원문 근거 한 줄 — 규칙이 인용한 조문 */
+export interface RuleEvidence {
+  /** value(기준값의 근거) · exception(예외 조항) */
+  role: string;
+  articleLabel: string | null;
+  articleHeading: string | null;
+  /** 규칙이 인용한 부분 */
+  quoted: string | null;
+  /** 인용이 들어 있는 조문(항·호) 원문 */
+  provisionText: string | null;
+  /** provisionText 안에서 인용 부분의 위치 [시작, 끝) — 원문과 맞지 않으면 null */
+  highlight: [number, number] | null;
+}
+
+export interface RuleValue {
+  key: string;
+  type: string;
+  min: number | null;
+  max: number | null;
+  exact: number | null;
+  enumValue: string | null;
+  formula: string | null;
+  unit: string | null;
+  conditionNote: string | null;
+}
+
+export interface RuleBasisDetail {
+  ruleId: string;
+  category: string;
+  title: string;
+  layer: string;
+  effectiveFrom: string | null;
+  effectiveTo: string | null;
+  document: {
+    title: string;
+    shortTitle: string | null;
+    /** law · decree · rule · ordinance · local_rule · notice · plan */
+    sourceType: string;
+    promulgationNumber: string | null;
+    promulgationDate: string | null;
+    effectiveFrom: string | null;
+    /** https 원문 링크만 */
+    url: string | null;
+    fetchedAt: string | null;
+    isExample: boolean;
+  };
+  values: RuleValue[];
+  evidence: RuleEvidence[];
+  /** 위임 관계 (법률 → 시행령 → 조례) */
+  tree: BasisNode[];
 }
 
 // ── 오류 ─────────────────────────────────────────────────────────────

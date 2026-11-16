@@ -1,0 +1,99 @@
+/* 결과 페이지 정지 지도. 색은 --map-* 토큰 */
+.map {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  border-radius: var(--radius-sm);
+  margin: 0;
+  isolation: isolate;
+}
+.satellite {
+  background: var(--map-bg-satellite);
+}
+.normal {
+  background: var(--map-bg-normal);
+}
+
+.tiles {
+  position: absolute;
+  inset: 0;
+}
+.tile {
+  position: absolute;
+  max-width: none;
+  user-select: none;
+  /* 타일 경계에 생기는 머리카락 같은 틈을 덮습니다 */
+  outline: 0.5px solid transparent;
+}
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.site {
+  fill: var(--map-site-fill);
+  fill-opacity: var(--map-site-fill-opacity);
+  stroke: var(--map-site-stroke);
+  stroke-width: calc(var(--map-site-stroke-width) * 1px);
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+.siteWithLayout {
+  fill: none;
+}
+/* 주차장 건설 불가 대지 */
+.siteDanger {
+  stroke: var(--color-danger);
+  fill: var(--color-danger);
+  fill-opacity: 0.22;
+}
+
+.l_usable_area {
+  fill: none;
+  stroke: var(--map-layout-usable-stroke);
+  stroke-width: 1.5;
+  stroke-dasharray: 5 4;
+  opacity: 0.9;
+  vector-effect: non-scaling-stroke;
+}
+.l_aisle {
+  fill: var(--map-layout-aisle-fill);
+  fill-opacity: var(--map-layout-aisle-fill-opacity);
+  stroke: var(--map-layout-usable-stroke);
+  stroke-width: 1;
+  stroke-opacity: 0.6;
+  vector-effect: non-scaling-stroke;
+}
+.l_stall {
+  fill: var(--map-layout-stall-fill);
+  fill-opacity: var(--map-layout-stall-fill-opacity);
+  stroke: var(--map-layout-stall-stroke);
+  stroke-width: 1;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+.l_gate_opening {
+  fill: none;
+  stroke: var(--map-layout-gate-stroke);
+  stroke-width: calc(var(--map-layout-gate-stroke-width) * 1px);
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+.l_gate {
+  fill: var(--map-layout-gate-stroke);
+  stroke: var(--map-marker-ring);
+  stroke-width: 2.5;
+  vector-effect: non-scaling-stroke;
+}
+
+@media print {
+  .map {
+    break-inside: avoid;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+}
