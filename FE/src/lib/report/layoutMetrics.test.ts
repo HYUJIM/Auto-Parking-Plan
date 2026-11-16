@@ -3,6 +3,7 @@ import type { BeParkingSimulation } from '@/lib/api/beTypes';
 import { toParkingSimulation } from '@/lib/api/beAdapters';
 import type { LayoutAlternative } from '@/lib/api/types';
 import simulationS02 from '@/lib/api/__fixtures__/simulation_S02.json';
+import simulationSplit from '@/lib/api/__fixtures__/simulation_buildings_split.json';
 import { altLetter, angleLabel, efficiencyText, gateInfo, gatePlanText, layoutMetricRows } from './layoutMetrics';
 
 const sim = toParkingSimulation(simulationS02 as BeParkingSimulation);
@@ -37,6 +38,14 @@ describe('배치안 표시 값', () => {
     // 레이어가 비어도 폭이 있으면 1개소, 둘 다 없으면 표시하지 않음
     expect(gatePlanText(alt({ gate_width_m: 5 }))).toBe('1개소 · 폭 5 m');
     expect(gatePlanText(alt({}))).toBeNull();
+  });
+
+  it('건물로 나뉜 대지: 출입구 MultiPoint 를 나눈 점의 수가 개소 수 (지표 줄 · 토지이용계획 줄)', () => {
+    const [split, single] = toParkingSimulation(simulationSplit as unknown as BeParkingSimulation).result!.alternatives;
+    expect(gateInfo(split)).toEqual({ count: 2, widthM: 3 });
+    expect(gatePlanText(split)).toBe('2개소 · 폭 3 m');
+    expect(layoutMetricRows(split).find((r) => r.key === 'gate')?.value).toBe('2개소 (폭 3 m)');
+    expect(gatePlanText(single)).toBe('1개소 · 폭 3.5 m');
   });
 
   it('주차 효율은 소수 1자리', () => {

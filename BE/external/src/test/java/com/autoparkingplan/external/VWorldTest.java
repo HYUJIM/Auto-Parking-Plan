@@ -66,6 +66,52 @@ class VWorldTest {
         assertThat(parcel.raw().get("bonbun").stringValue()).isEqualTo("9001");
     }
 
+    // ---------------------------------------------------------------- 도로명주소 건물 (건물 윤곽선)
+
+    @Test
+    void testParseBuildingsKeepsOutlinesAndCleansAttributes() {
+        List<BuildingFootprint> b = VWorld.parseBuildingResponse(load("synthetic_vworld_buildings_ok.json"));
+        assertThat(b).hasSize(2); // 윤곽선이 점인 건물은 뺀다
+        assertThat(b.get(0).id()).isEqualTo("2726010100190010004000001");
+        assertThat(b.get(0).name()).isEqualTo("예시빌라 가동");
+        assertThat(b.get(0).floors()).isEqualTo(3);
+        assertThat(b.get(0).geometry().get("type").stringValue()).isEqualTo("MultiPolygon");
+        // 빈 이름·0층은 null, 열린 고리는 닫는다
+        assertThat(b.get(1).name()).isNull();
+        assertThat(b.get(1).floors()).isNull();
+        JsonNode ring = b.get(1).geometry().get("coordinates").get(0).get(0);
+        assertThat(ring.get(0)).isEqualTo(ring.get(ring.size() - 1));
+    }
+
+    @Test
+    void testGetBuildingFootprintsUsesBoxFilter() {
+        MockTransport rec = mockHttp(load("synthetic_vworld_buildings_ok.json"));
+        List<BuildingFootprint> b = client(rec, "https://app.example", Http.DEFAULT_TIMEOUT).getBuildingFootprints(128.626, 35.8604, 128.62626,
+                35.86063);
+        assertThat(b).hasSize(2);
+        HttpRequest p = rec.lastRequest();
+        assertThat(p.uri().getPath()).isEqualTo("/req/data");
+        assertThat(p.queryParam("data")).isEqualTo("LT_C_SPBD");
+        assertThat(p.queryParam("geomFilter")).isEqualTo("BOX(128.62600000,35.86040000,128.62626000,35.86063000)");
+        assertThat(p.queryParam("size")).isEqualTo("1000");
+        assertThat(p.queryParam("crs")).isEqualTo("EPSG:4326");
+        assertThat(p.queryParam("key")).isEqualTo(SECRET);
+        assertThat(p.queryParam("domain")).isEqualTo("https://app.example");
+    }
+
+    @Test
+    void testGetBuildingFootprintsNotFoundAndErrors() {
+        assertThat(client(mockHttp(load("synthetic_vworld_not_found.json"))).getBuildingFootprints(128.0, 35.0, 128.1, 35.1)).isEmpty();
+        UpstreamError e = catchThrowableOfType(UpstreamError.class,
+                () -> client(mockHttp(load("observed_vworld_data_invalid_key.json"))).getBuildingFootprints(128.0, 35.0, 128.1, 35.1));
+        assertThat(e.retriable()).isFalse();
+        assertThat(e.getMessage()).contains("LT_C_SPBD").doesNotContain(SECRET);
+        MockTransport rec = mockHttp(load("synthetic_vworld_buildings_ok.json"));
+        assertThatThrownBy(() -> client(rec).getBuildingFootprints(128.1, 35.0, 128.0, 35.1)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> client(rec).getBuildingFootprints(Double.NaN, 35.0, 128.0, 35.1)).isInstanceOf(IllegalArgumentException.class);
+        assertThat(rec.requests()).isEmpty();
+    }
+
     /** test_normalize_polygon_closes_ring_and_wraps. */
     @Test
     void testNormalizePolygonClosesRingAndWraps() {

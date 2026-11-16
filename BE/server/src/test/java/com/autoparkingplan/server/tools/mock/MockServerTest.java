@@ -130,6 +130,27 @@ class MockServerTest {
         assertThat(recordedRequests().map(r -> r.get("status").intValue()).distinct()).containsExactlyInAnyOrder(200, 307, 403, 404, 405, 500);
     }
 
+    /** 도로명주소 건물(LT_C_SPBD, 자바판 추가): BOX 와 겹치는 예시 건물 윤곽선을 실제 API 모양으로 돌려준다. */
+    @Test
+    void servesBuildingFootprintsByBox() throws Exception {
+        String base = "/req/data?service=data&version=2.0&request=GetFeature&data=LT_C_SPBD&format=json&errorFormat=json&crs=EPSG%3A4326"
+                + "&geometry=true&attribute=true&size=1000&page=1&key=k&geomFilter=";
+        org.locationtech.jts.geom.Envelope s07 = server.dataset().byPnu("2726010100190070000").geom().getEnvelopeInternal();
+        String box = "BOX(" + s07.getMinX() + "," + s07.getMinY() + "," + s07.getMaxX() + "," + s07.getMaxY() + ")";
+        JsonNode body = Json.parse(send("GET", base + java.net.URLEncoder.encode(box, StandardCharsets.UTF_8)).body());
+        assertThat(body.get("response").get("status").stringValue()).isEqualTo("OK");
+        JsonNode feats = body.get("response").get("result").get("featureCollection").get("features");
+        assertThat(feats).hasSize(1);
+        JsonNode props = feats.get(0).get("properties");
+        assertThat(props.get("bd_mgt_sn").stringValue()).isEqualTo("2726010100190070000000001");
+        assertThat(props.get("gro_flo_co").stringValue()).isEqualTo("1"); // 실제 API 처럼 문자열
+        assertThat(feats.get(0).get("geometry").get("type").stringValue()).isEqualTo("MultiPolygon");
+        JsonNode none = Json.parse(send("GET", base + java.net.URLEncoder.encode("BOX(127.0,37.0,127.001,37.001)", StandardCharsets.UTF_8)).body());
+        assertThat(none.get("response").get("status").stringValue()).isEqualTo("NOT_FOUND");
+        JsonNode point = Json.parse(send("GET", base + java.net.URLEncoder.encode("POINT(128.6 35.8)", StandardCharsets.UTF_8)).body());
+        assertThat(point.get("response").get("error").get("code").stringValue()).isEqualTo("INVALID_TYPE");
+    }
+
     /** 여러 스레드가 동시에 불러도 (slow 가 아닌) 모든 응답이 기록과 같다. */
     @Test
     void servesConcurrentRequestsIdentically() throws Exception {

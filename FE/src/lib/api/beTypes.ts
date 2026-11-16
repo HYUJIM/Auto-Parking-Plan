@@ -177,7 +177,10 @@ export interface BeGeoFeatureCollection {
   features: BeGeoFeature[];
 }
 
-/** 배치안 하나의 지도 레이어 — stalls·aisles 는 FeatureCollection, gate·gate_opening·usable_area 는 Feature 하나 */
+/**
+ * 배치안 하나의 지도 레이어 — stalls·aisles 는 FeatureCollection, gate·gate_opening·usable_area 는 Feature 하나.
+ * 건물로 대지가 나뉘면(SITE_SPLIT_BY_BUILDINGS) gate 는 MultiPoint, gate_opening 은 MultiLineString, usable_area 는 MultiPolygon (영역마다 하나씩)
+ */
 export interface BeLayoutLayers {
   stalls?: BeGeoFeatureCollection | null;
   aisles?: BeGeoFeatureCollection | null;
@@ -218,6 +221,25 @@ export interface BeParkingSimulation {
   } | null;
   constraint_reasons?: string[] | null;
   message?: string | null;
+  /** 기존 건물 반영 결과 — simulated=true 일 때만 (그 밖에는 없거나 null) */
+  existing_buildings?: BeExistingBuildings | null;
+}
+
+/** 배치 계산이 본 기존 건물 (브이월드 '도로명주소 건물' 레이어) */
+export interface BeExistingBuildings {
+  /** 요청의 메아리: keep | ignore */
+  mode: string;
+  /** applied (keep · 1동 이상) | ignored (ignore · 1동 이상) | none (대지 위 건물 없음) | unavailable (조회 실패, count 0 · features null) */
+  status: string;
+  /** 대지와 겹치는 건물 수 */
+  count: number;
+  /** 대지 안 건물 면적 (㎡, 0.1 단위) */
+  area_m2?: number | null;
+  /** 건물에서 띄우는 거리 (m) */
+  clearance_m?: number | null;
+  source?: string | null;
+  /** EPSG:4326 [경도, 위도] — Polygon | MultiPolygon, properties { id, name, floors } */
+  features?: BeGeoFeatureCollection | null;
 }
 
 export interface BeParkingSimulationRequest {
@@ -228,6 +250,8 @@ export interface BeParkingSimulationRequest {
   gate_point?: [number, number];
   gate_count?: 1 | 2;
   max_alternatives?: number;
+  /** 기존 건물: keep(피해서 배치, 생략 시 기본) | ignore(철거 가정). 그 밖의 값은 422 */
+  existing_buildings?: 'keep' | 'ignore';
 }
 
 /** GET /v1/rules/{ruleId}/basis?as_of_date= — 승인된 법규 규칙 하나의 원문 근거 */

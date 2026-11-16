@@ -8,6 +8,7 @@ import java.util.Map;
 import java.util.Optional;
 
 import com.autoparkingplan.common.Json;
+import com.autoparkingplan.external.BuildingFootprint;
 import com.autoparkingplan.external.CadastralParcel;
 import com.autoparkingplan.external.LandCharacteristics;
 import com.autoparkingplan.external.LandUseDesignation;
@@ -34,6 +35,11 @@ public class StubVWorld implements VWorldApi {
     }
 
     public final Map<String, StubParcel> parcels;
+    /** 건물 윤곽선 (경계 상자와 상관없이 모두 돌려준다). */
+    public final List<BuildingFootprint> footprints = new ArrayList<>();
+    /** true 이면 건물 조회가 UpstreamError. */
+    public volatile boolean buildingError;
+    public final java.util.concurrent.atomic.AtomicInteger buildingCalls = new java.util.concurrent.atomic.AtomicInteger();
 
     public StubVWorld(Map<String, StubParcel> parcels) {
         this.parcels = parcels;
@@ -88,5 +94,14 @@ public class StubVWorld implements VWorldApi {
     public Optional<LandCharacteristics> getLandCharacteristics(String pnu) {
         StubParcel p = parcels.get(pnu);
         return Optional.of(new LandCharacteristics(pnu, p.area(), p.category() != null ? p.category() : "대", null, null, "stub:landchar", NOW));
+    }
+
+    @Override
+    public List<BuildingFootprint> getBuildingFootprints(double minLng, double minLat, double maxLng, double maxLat) {
+        buildingCalls.incrementAndGet();
+        if (buildingError) {
+            throw new UpstreamError("vworld", "LT_C_SPBD 오류(SYSTEM_ERROR): 시험", true);
+        }
+        return List.copyOf(footprints);
     }
 }

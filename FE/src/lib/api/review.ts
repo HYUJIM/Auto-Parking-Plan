@@ -3,7 +3,7 @@ import type { BeParkingSimulation, BeParkingSimulationRequest, BeReviewCreated, 
 import { isBeReviewResult } from './beTypes';
 import { isUuid, toParkingSimulation, toReviewProgress, toRuleReview } from './beAdapters';
 import { apiUrl, postJson, request } from './base';
-import { ApiError, type Parcel, type ParkingSimulation, type ReviewProgress, type RuleReview } from './types';
+import { ApiError, type ExistingBuildingsMode, type Parcel, type ParkingSimulation, type ReviewProgress, type RuleReview } from './types';
 
 export type ReviewAudience = 'owner' | 'architect';
 
@@ -203,11 +203,21 @@ export function reviewById(reviewId: string, opts: ReviewOptions = {}): Promise<
   return withSignal(p, opts.signal);
 }
 
-/** 배치 계산 결과 — 같은 검토·같은 조건이면 한 번만 계산합니다 */
+/**
+ * 배치 계산 결과 — 같은 검토·같은 조건(참고 배치 여부 · 기존 건물 유지/철거 가정)이면 한 번만 계산합니다.
+ * 기존 건물을 생략하면 keep 과 같은 계산이라 같은 자리에 기억합니다 — 철거 가정을 보고 돌아와도 다시 부르지 않습니다.
+ */
 export function simulationFor(reviewId: string, opts: SimulationOptions = {}): Promise<ParkingSimulation> {
-  const key = `${reviewId}:${opts.includeUnverified ? 'all' : 'verified'}`;
+  const buildings = opts.existingBuildings ?? 'keep';
+  const key = `${reviewId}:${opts.includeUnverified ? 'all' : 'verified'}:${buildings}`;
   let p = fresh(simulations, key);
-  if (!p) p = remember(simulations, key, getParkingSimulation(reviewId, { includeUnverified: opts.includeUnverified }));
+  if (!p) {
+    p = remember(
+      simulations,
+      key,
+      getParkingSimulation(reviewId, { includeUnverified: opts.includeUnverified, existingBuildings: buildings }),
+    );
+  }
   return withSignal(p, opts.signal);
 }
 
@@ -230,13 +240,19 @@ export function isParkingNotPermitted(sim: Pick<ParkingSimulation, 'eligibility'
 export interface SimulationOptions {
   /** 주차장 설치 가능 여부가 확인되지 않아도 참고 배치를 계산 */
   includeUnverified?: boolean;
+  /** 기존 건물: keep(피해서 배치, 기본) · ignore(철거 가정) */
+  existingBuildings?: ExistingBuildingsMode;
   signal?: AbortSignal;
 }
 
-/** 주차장 배치 시뮬레이션 — `POST /v1/reviews/{id}/parking-simulations`. 결과의 layers 는 지도에 그릴 GeoJSON 입니다. */
+/**
+ * 주차장 배치 시뮬레이션 — `POST /v1/reviews/{id}/parking-simulations`. 결과의 layers 는 지도에 그릴 GeoJSON 입니다.
+ * existing_buildings 는 철거 가정(ignore)일 때만 보냅니다 — 생략이 곧 keep 이라, 기본 요청은 이 키를 모르는 BE 에도 그대로 통합니다.
+ */
 export async function getParkingSimulation(reviewId: string, opts: SimulationOptions = {}): Promise<ParkingSimulation> {
   const body: BeParkingSimulationRequest = {};
   if (opts.includeUnverified) body.include_unverified = true;
+  if (opts.existingBuildings === 'ignore') body.existing_buildings = 'ignore';
   const res = await postJson<BeParkingSimulation>(`/v1/reviews/${encodeURIComponent(reviewId)}/parking-simulations`, body, {
     signal: opts.signal,
   });

@@ -61,7 +61,7 @@ import tools.jackson.databind.node.ObjectNode;
  *   GET  /v1/reviews/{id}             진행 중이면 단계별 진행상태, 완료면 review_result 전체
  *   GET  /v1/rules/{rule_id}/basis    근거 상세: 근거 트리 + 원문 조문 전체 + 국가법령정보센터 링크
  *   GET  /v1/regions                  지원 지역 목록
- *   POST /v1/reviews/{id}/parking-simulations   주차장 배치 시뮬레이션 (지도 오버레이용 GeoJSON)
+ *   POST /v1/reviews/{id}/parking-simulations   주차장 배치 시뮬레이션 (지도 오버레이용 GeoJSON, 기존 건물은 피하거나 철거 가정)
  * </pre>
  */
 @RestController
@@ -357,8 +357,8 @@ public class PublicController {
     @PostMapping("/reviews/{reviewId}/parking-simulations")
     public ObjectNode parkingSimulation(@PathVariable("reviewId") UUID reviewId, @RequestBody(required = false) JsonNode body) {
         JsonNode b = body == null || body.isNull() ? Json.object() : body;
-        Req r = Req.body(b, Req.keys("angles", "stall_type", "setback_m", "gate_point", "gate_count", "max_alternatives", "include_unverified"),
-                true);
+        Req r = Req.body(b, Req.keys("angles", "stall_type", "setback_m", "gate_point", "gate_count", "max_alternatives", "include_unverified",
+                "existing_buildings"), true);
         JsonNode anglesNode = r.array("angles", null, true, 8);
         List<String> angles = null;
         if (anglesNode != null) {
@@ -397,12 +397,13 @@ public class PublicController {
         }
         Long maxAlt = r.integer("max_alternatives", 3L, false, null, null, 1L, 6L);
         Boolean includeUnverified = r.bool("include_unverified", false, false);
+        String existingBuildings = r.choice("existing_buildings", "keep", Set.of("keep", "ignore"));
         r.done();
         if (angles != null) {
             angles = new ArrayList<>(new java.util.LinkedHashSet<>(angles)); // 같은 각도를 여러 번 보내 계산을 부풀리지 못하게
         }
         ParkingBridge.Request req = new ParkingBridge.Request(angles == null || angles.isEmpty() ? null : angles, stallType, setback, gate,
-                gateCount.intValue(), maxAlt.intValue(), includeUnverified);
+                gateCount.intValue(), maxAlt.intValue(), includeUnverified, existingBuildings);
         try {
             // DB 읽기만 트랜잭션 안에서 하고, 배치 계산(CPU 를 오래 쓴다)은 연결을 돌려준 뒤에 한다
             ParkingBridge.Prepared prepared = tx.execute(st -> parking.prepare(em, reviewId, req));

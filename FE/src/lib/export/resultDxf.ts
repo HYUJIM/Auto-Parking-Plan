@@ -1,10 +1,11 @@
-import type { LatLng, LayoutAlternative, Parcel } from '@/lib/api/types';
+import type { GeoJsonGeometry, LatLng, LayoutAlternative, Parcel } from '@/lib/api/types';
 import { toTm, type TmPoint } from './tm';
 import { writeDxf, type DxfEntity, type DxfLayer } from './dxf';
 
 /**
  * 결과 → CAD 도면(DXF). 좌표는 EPSG:5186(중부원점 TM, m) 이라 지적도·현황 측량 도면 위에 그대로 겹칩니다.
- * 계층: 대지 경계 · 가용 영역 · 차로 · 주차구획 · 출입구 · 글자(제목·좌표계 안내).
+ * 계층: 대지 경계 · 가용 영역 · 차로 · 주차구획 · 출입구 · 기존 건물 · 글자(제목·좌표계 안내).
+ * 기존 건물은 유지(피해서 배치)든 철거 가정이든 같은 계층에 외곽선으로 넣고, 어느 쪽으로 계산했는지는 안내 줄에 적습니다.
  */
 export const DXF_LAYERS: DxfLayer[] = [
   { name: 'SITE_BOUNDARY', color: 5 },
@@ -12,6 +13,7 @@ export const DXF_LAYERS: DxfLayer[] = [
   { name: 'AISLE', color: 9 },
   { name: 'STALL', color: 4 },
   { name: 'GATE', color: 2 },
+  { name: 'EXISTING_BUILDING', color: 251 },
   { name: 'ANNOTATION', color: 7 },
 ];
 
@@ -45,10 +47,33 @@ function ring(raw: unknown): TmPoint[] {
 export interface ResultDxfInput {
   parcel: Pick<Parcel, 'pnu' | 'polygon' | 'address' | 'area'>;
   alternative?: Pick<LayoutAlternative, 'code' | 'stallCount' | 'layers'> | null;
+  /** 기존 건물 외곽선 (지도에 그린 결과의 것) — 없으면 계층만 있고 비어 있음 */
+  buildings?: readonly { geometry: GeoJsonGeometry }[] | null;
   /** 도면 제목 줄 (예: '대구광역시 수성구 … · 배치안 A · 주차 24면') */
   title: string;
   /** 좌표계·출처 안내 줄들 */
   notes: string[];
+}
+
+/** 도형 하나 → DXF 요소: 면은 링마다 닫힌 폴리선, 선은 열린 폴리선, 점은 원(출입구 표시 — 나뉜 대지는 점마다 하나) */
+function geometryEntities(layer: string, g: GeoJsonGeometry): DxfEntity[] {
+  const out: DxfEntity[] = [];
+  const closedRing = (r: unknown) => {
+    const pts = ring(r);
+    if (pts.length >= 3) out.push({ kind: 'polyline', layer, points: pts, closed: true });
+  };
+  if (g.type === 'Polygon') {
+    g.coordinates.forEach(closedRing);
+  } else if (g.type === 'MultiPolygon') {
+    for (const poly of g.coordinates) poly.forEach(closedRing);
+  } else if (g.type === 'LineString') {
+    const pts = g.coordinates.map(lngLatToTm).filter((p): p is TmPoint => p !== null);
+    if (pts.length >= 2) out.push({ kind: 'polyline', layer, points: pts, closed: false });
+  } else if (g.type === 'Point') {
+    const p = lngLatToTm(g.coordinates);
+    if (p) out.push({ kind: 'circle', layer, center: p, radius: 0.6 });
+  }
+  return out;
 }
 
 export function buildResultDxf(input: ResultDxfInput): string {
@@ -56,28 +81,14 @@ export function buildResultDxf(input: ResultDxfInput): string {
   const boundary = input.parcel.polygon.map((p: LatLng) => toTm(p));
   if (boundary.length >= 3) entities.push({ kind: 'polyline', layer: 'SITE_BOUNDARY', points: boundary, closed: true });
 
+  for (const b of input.buildings ?? []) {
+    if (b.geometry.type === 'Polygon' || b.geometry.type === 'MultiPolygon')
+      entities.push(...geometryEntities('EXISTING_BUILDING', b.geometry));
+  }
+
   for (const f of input.alternative?.layers.features ?? []) {
     const layer = LAYER_OF[String(f.properties?.layer ?? '')];
-    if (!layer) continue;
-    const g = f.geometry;
-    if (g.type === 'Polygon') {
-      for (const r of g.coordinates) {
-        const pts = ring(r);
-        if (pts.length >= 3) entities.push({ kind: 'polyline', layer, points: pts, closed: true });
-      }
-    } else if (g.type === 'MultiPolygon') {
-      for (const poly of g.coordinates)
-        for (const r of poly) {
-          const pts = ring(r);
-          if (pts.length >= 3) entities.push({ kind: 'polyline', layer, points: pts, closed: true });
-        }
-    } else if (g.type === 'LineString') {
-      const pts = g.coordinates.map(lngLatToTm).filter((p): p is TmPoint => p !== null);
-      if (pts.length >= 2) entities.push({ kind: 'polyline', layer, points: pts, closed: false });
-    } else if (g.type === 'Point') {
-      const p = lngLatToTm(g.coordinates);
-      if (p) entities.push({ kind: 'circle', layer, center: p, radius: 0.6 });
-    }
+    if (layer) entities.push(...geometryEntities(layer, f.geometry));
   }
 
   // 제목·안내: 대지 경계 아래쪽에 (도면 크기에 맞춘 글자 높이)

@@ -21,7 +21,7 @@ import tools.jackson.databind.node.ObjectNode;
 
 /**
  * 브이월드(공간정보 오픈플랫폼)의 상수·응답 해석 (파이썬 {@code app.external.vworld} 의 모듈 함수):
- * 연속지적도, 토지이용계획 속성, 토지특성, 토지임야. 클라이언트는 {@link VWorldClient}.
+ * 연속지적도, 토지이용계획 속성, 토지특성, 토지임야, 도로명주소 건물(윤곽선). 클라이언트는 {@link VWorldClient}.
  *
  * <pre>
  * 1) 연속지적도 — 2D 데이터 API 2.0
@@ -61,6 +61,13 @@ import tools.jackson.databind.node.ObjectNode;
  *          posesnSeCode/Nm, cnrsPsnCo, ladFrtlSc/Nm, lastUpdtDt, numOfRows, pageNo, totalCount
  *    출처: https://www.vworld.kr/dtna/dtna_apiSvcFc_s001.do?apiNum=128
  *
+ * 5) 도로명주소 건물(건물 윤곽선) — 2D 데이터 API 2.0, data=LT_C_SPBD (자바판 추가, 배치 계산의 기존 건물)
+ *    GET https://api.vworld.kr/req/data?...&amp;data=LT_C_SPBD&amp;geomFilter=BOX(최소경도,최소위도,최대경도,최대위도)&amp;size=1000
+ *    속성: bd_mgt_sn(건물관리번호 — 최초 등록 때의 필지번호 + 일련번호), buld_nm, buld_nm_dc(동 이름), gro_flo_co(지상 층수),
+ *          sido, sigungu, rd_nm, buld_no, ag_geom(윤곽선 폴리곤). 봉투는 1) 과 같다. 영역 검색은 2㎢ 이하만 받는다.
+ *    출처: https://www.vworld.kr/dev/v4dv_2ddataguide2_s002.do?svcIde=spbd (2026-11-16 확인, 실호출로 응답 모양 확인)
+ *    * 도로명주소가 붙은 건물만 있다 (주소 없는 부속 건물·가설물은 빠질 수 있다).
+ *
  * 국가중점데이터 API 의 JSON 봉투(공식 표에 없음, [미확인]·실응답 관찰 기반):
  *    성공  {"landUses": {"field": [...], "pageNo", "numOfRows", "totalCount", "resultCode": "", "resultMsg": ""}}
  *          {"landCharacteristicss": {"field": [...], ...}}        (키 철자 's' 두 개가 실제 응답)
@@ -86,8 +93,13 @@ public final class VWorld {
     public static final String LAND_CHAR_PATH = "/ned/data/getLandCharacteristics";
     public static final String LADFRL_PATH = "/ned/data/ladfrlList";
     public static final String CADASTRAL_DATASET = "LP_PA_CBND_BUBUN";
+    /** 도로명주소 건물 (건물 윤곽선). 영역(BOX·POLYGON) 검색은 2㎢ 이하만 받는다. */
+    public static final String BUILDING_DATASET = "LT_C_SPBD";
+    /** 건물 윤곽선 한 번에 받는 수 (API 상한 1000). 배치 계산 대지(3만㎡ 이하)의 경계 상자 안 건물은 이보다 적다. */
+    public static final int BUILDING_PAGE_SIZE = 1000;
 
     public static final String SOURCE_CADASTRAL = "vworld:" + CADASTRAL_DATASET;
+    public static final String SOURCE_BUILDINGS = "vworld:" + BUILDING_DATASET;
     public static final String SOURCE_LAND_USE = "vworld:getLandUseAttr";
     public static final String SOURCE_LAND_CHAR = "vworld:getLandCharacteristics";
     public static final String SOURCE_LADFRL = "vworld:ladfrlList";
@@ -272,9 +284,54 @@ public final class VWorld {
     public static List<CadastralParcel> parseCadastralResponse(JsonNode payload, OffsetDateTime fetchedAt,
             UnaryOperator<String> scrub) {
         OffsetDateTime at = fetchedAt != null ? fetchedAt : Http.utcnow();
+        List<CadastralParcel> parcels = new ArrayList<>();
+        for (JsonNode feat : dataFeatures(payload, CADASTRAL_DATASET, "연속지적도", scrub)) {
+            CadastralParcel parcel = featureToParcel(feat, at);
+            if (parcel != null) {
+                parcels.add(parcel);
+            }
+        }
+        return parcels;
+    }
+
+    public static List<CadastralParcel> parseCadastralResponse(JsonNode payload) {
+        return parseCadastralResponse(payload, null, null);
+    }
+
+    /**
+     * Data API(GetFeature, LT_C_SPBD) JSON → 건물 윤곽선 목록. NOT_FOUND → []. 윤곽선을 읽을 수 없는 건물은 뺀다.
+     *
+     * @param scrub null 이면 그대로
+     */
+    public static List<BuildingFootprint> parseBuildingResponse(JsonNode payload, UnaryOperator<String> scrub) {
+        List<BuildingFootprint> out = new ArrayList<>();
+        for (JsonNode feat : dataFeatures(payload, BUILDING_DATASET, "도로명주소 건물", scrub)) {
+            ObjectNode geom = normalizeMultipolygon(feat.get("geometry"));
+            if (geom == null) {
+                continue;
+            }
+            JsonNode props = Juso.objectOrEmpty(feat.get("properties"));
+            String name = Http.cleanStr(props.get("buld_nm"));
+            String wing = Http.cleanStr(props.get("buld_nm_dc"));
+            if (wing != null) {
+                name = name == null ? wing : name + " " + wing;
+            }
+            Long floors = Http.toPositiveInt(props.get("gro_flo_co"));
+            out.add(new BuildingFootprint(Http.cleanStr(props.get("bd_mgt_sn")), name,
+                    floors != null && floors <= 300 ? Integer.valueOf(floors.intValue()) : null, geom));
+        }
+        return out;
+    }
+
+    public static List<BuildingFootprint> parseBuildingResponse(JsonNode payload) {
+        return parseBuildingResponse(payload, null);
+    }
+
+    /** Data API 봉투 → Feature 목록 (객체만). NOT_FOUND → []. 오류 봉투·형식 오류는 UpstreamError. */
+    private static List<JsonNode> dataFeatures(JsonNode payload, String dataset, String label, UnaryOperator<String> scrub) {
         JsonNode resp = payload != null && payload.isObject() ? payload.get("response") : null;
         if (resp == null || !resp.isObject()) {
-            throw new UpstreamError(SERVICE, "연속지적도 응답 형식이 예상과 다릅니다(response 없음)", true);
+            throw new UpstreamError(SERVICE, label + " 응답 형식이 예상과 다릅니다(response 없음)", true);
         }
         String status = upper(PyStr.str(resp.has("status") ? resp.get("status") : (Object) ""));
         if (status.equals("NOT_FOUND")) {
@@ -282,11 +339,11 @@ public final class VWorld {
         }
         if (status.equals("ERROR")) {
             JsonNode err = Juso.objectOrEmpty(resp.get("error"));
-            throw errorFromCode(err.get("code"), err.get("text"), CADASTRAL_DATASET, scrub);
+            throw errorFromCode(err.get("code"), err.get("text"), dataset, scrub);
         }
         if (!status.equals("OK")) {
             throw new UpstreamError(SERVICE,
-                    "연속지적도 응답 status 를 알 수 없습니다(" + (status.isEmpty() ? "없음" : status) + ")", true);
+                    label + " 응답 status 를 알 수 없습니다(" + (status.isEmpty() ? "없음" : status) + ")", true);
         }
         JsonNode result = resp.get("result");
         JsonNode fc = null;
@@ -302,22 +359,15 @@ public final class VWorld {
             }
         }
         JsonNode features = fc != null && fc.isObject() ? fc.get("features") : null;
-        List<CadastralParcel> parcels = new ArrayList<>();
+        List<JsonNode> out = new ArrayList<>();
         if (features != null && features.isArray()) {
             for (JsonNode feat : features) {
                 if (feat.isObject()) {
-                    CadastralParcel parcel = featureToParcel(feat, at);
-                    if (parcel != null) {
-                        parcels.add(parcel);
-                    }
+                    out.add(feat);
                 }
             }
         }
-        return parcels;
-    }
-
-    public static List<CadastralParcel> parseCadastralResponse(JsonNode payload) {
-        return parseCadastralResponse(payload, null, null);
+        return out;
     }
 
     /** 국가중점데이터 API JSON 봉투에서 레코드 목록을 꺼낸다. 오류 봉투면 UpstreamError. */
@@ -651,6 +701,12 @@ public final class VWorld {
 
     static String formatPoint(double lng, double lat) {
         return "POINT(" + PyStr.formatFixed(lng, 8) + " " + PyStr.formatFixed(lat, 8) + ")";
+    }
+
+    /** 브이월드 geomFilter 경계 상자: BOX(최소경도,최소위도,최대경도,최대위도). */
+    static String formatBox(double minLng, double minLat, double maxLng, double maxLat) {
+        return "BOX(" + PyStr.formatFixed(minLng, 8) + "," + PyStr.formatFixed(minLat, 8) + "," + PyStr.formatFixed(maxLng, 8) + ","
+                + PyStr.formatFixed(maxLat, 8) + ")";
     }
 
     static String floatRepr(double x) {

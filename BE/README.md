@@ -35,7 +35,7 @@
 
 ### 2) 한 번에 검증 (권장)
 
-모의 공공 API 서버와 백엔드(bootstrap → serve)를 실제 프로세스로 띄워 전체 흐름을 점검합니다 (예시 필지 10개 × 조건 2개, 오류·보안·검수 흐름, 점검 546건).
+모의 공공 API 서버와 백엔드(bootstrap → serve)를 실제 프로세스로 띄워 전체 흐름을 점검합니다 (예시 필지 10개 × 조건 2개, 오류·보안·검수 흐름, 점검 554건).
 
 ```bash
 java -jar server/build/libs/app.jar e2e-verify --report var/e2e_report.json
@@ -114,7 +114,7 @@ docker compose run --rm bootstrap
 | `GET /v1/reviews/{id}` | 진행 중이면 단계별 진행 상태, 끝나면 검토 결과 전체 (`review_result@1.0`) |
 | `GET /v1/rules/{rule_id}/basis` | 근거 상세 — 근거 트리 + 원문 조문 + 국가법령정보센터 링크 |
 | `GET /v1/regions` | 지원 지역 |
-| `POST /v1/reviews/{id}/parking-simulations` | 주차장 배치 시뮬레이션 (지도 오버레이용 GeoJSON). 주차장 설치 가능 여부(`eligibility.status`)가 미확인(`MANUAL_CHECK`)이면 계산을 보류하고(`include_unverified=true` 로 참고 배치 요청 가능), 건설 불가(`NOT_PERMITTED`: 지목이 도로·하천 등 공공시설 용지이거나 승인된 용도 목록에 주차장 관련 용도가 없음)이면 계산하지 않고 경고 문구(`message`, 사유 코드 `PARKING_NOT_PERMITTED`)를 돌려준다 |
+| `POST /v1/reviews/{id}/parking-simulations` | 주차장 배치 시뮬레이션 (지도 오버레이용 GeoJSON). 주차장 설치 가능 여부(`eligibility.status`)가 미확인(`MANUAL_CHECK`)이면 계산을 보류하고(`include_unverified=true` 로 참고 배치 요청 가능), 건설 불가(`NOT_PERMITTED`: 지목이 도로·하천 등 공공시설 용지이거나 승인된 용도 목록에 주차장 관련 용도가 없음)이면 계산하지 않고 경고 문구(`message`, 사유 코드 `PARKING_NOT_PERMITTED`)를 돌려준다. 기존 건물은 아래 '기존 건물을 피하는 배치' 참고 |
 | `GET /v1/map/config` | 화면이 쓸 배경지도 타일 소스 — 브이월드 키가 있으면 `{"tiles": {"provider": "vworld", "normal", "satellite", "min_zoom", "max_zoom"}}`, 없으면 `{"tiles": null}` |
 | `GET /v1/map/tiles/{layer}/{z}/{x}/{y}` | 배경지도 타일 이미지 (`layer` = `base`·`satellite`, 줌 6~19, 표준 XYZ 번호). 브이월드 타일을 서버 키로 대신 받아 준다 — `Cache-Control: public, max-age=86400` |
 | **관리자** | |
@@ -145,6 +145,29 @@ docker compose run --rm bootstrap
 오류는 모두 `{"error": {"code", "message", "details"?}}` 형식입니다 (요청 제한 429 + `Retry-After`, 본문 상한 413, 대기열 상한 503).
 
 배경지도 타일을 서버가 대신 받아 주는 이유: 필지 경계(브이월드 연속지적도)는 브이월드 배경지도 위에서만 건물·도로와 정확히 맞습니다 (OpenStreetMap·Esri 타일은 국내 지적과 6~10m 어긋남). 브이월드 타일 주소에는 인증키가 들어가므로 브라우저가 직접 부르지 않고 `/v1/map/tiles` 를 거칩니다. 타일 오류: 번호·레이어가 틀리면 422 `INVALID_REQUEST`, 그 타일이 없거나(서비스 제공영역 밖) 키가 설정되지 않았으면 404 `TILE_NOT_FOUND`, 브이월드 장애·시간 초과·키 오류는 503 `UPSTREAM_UNAVAILABLE`. 타일 주소는 `VWORLD_WMTS_URL`(기본 `https://api.vworld.kr`)로 바꿉니다 — 모의 서버를 쓸 때는 다른 브이월드 주소와 함께 모의 서버로 돌려야 합니다 (안 돌리면 모의 키로 실제 브이월드를 불러 타일이 전부 404).
+
+### 기존 건물을 피하는 배치
+
+배치를 계산할 때 브이월드 2D 데이터 API '도로명주소 건물'(`LT_C_SPBD`)에서 대지 경계 상자와 겹치는 건물 윤곽선을 받는다 (필지·경계 상자별로 24시간 메모리 캐시, 실패는 캐시하지 않음).
+
+- **대지 위 건물**: 대지와 겹친 면적이 윤곽선의 10% 이상이고 1㎡ 이상인 건물. 지적도와 건물 윤곽선은 1m 안팎 어긋날 수 있어, 경계를 살짝 넘은 이웃 건물은 뺀다. 건물관리번호 앞자리(최초 등록 때의 필지번호)는 합필·분할 뒤 필지번호와 다를 수 있어 쓰지 않는다.
+- **요청** `existing_buildings`: `keep`(기본, 건물과 그 둘레 1.0m 를 빼고 배치) 또는 `ignore`(철거 가정, 건물을 무시). 다른 값은 422.
+- **엔진**: 사용 가능 영역 = (대지를 setback 만큼 줄인 것) − (건물을 1.0m 키운 것). 진입로·차로는 건물 윤곽선을 지나지 못한다. 건물이 대지를 가르면 넓은 조각부터 4곳까지 따로 배치하고(조각마다 출입구 하나) 같은 주차 형식끼리 합쳐 대안 하나로 낸다. 이때 `layers.gate` 는 MultiPoint, `gate_opening` 은 MultiLineString, `usable_area` 는 MultiPolygon. 건물이 없으면 결과는 예전과 바이트까지 같다 (`EngineObstaclesTest`, 동등성 시험).
+- **응답** (`simulated: true` 일 때만, 브이월드 키가 없으면 블록 없음):
+
+```json
+"existing_buildings": {
+  "mode": "keep", "status": "applied", "count": 1, "area_m2": 98.6, "clearance_m": 1.0,
+  "source": "브이월드 도로명주소 건물",
+  "features": {"type": "FeatureCollection", "features": [{"type": "Feature", "geometry": {"type": "MultiPolygon", "coordinates": []},
+               "properties": {"id": "건물관리번호", "name": "건물명", "floors": 2}}]}
+}
+```
+
+`status`: `applied`(유지, 건물 있음) · `ignored`(철거 가정, 건물 있음) · `none`(대지 위 건물 없음) · `unavailable`(조회 실패, `features: null`, 건물 없이 계산). `params.existing_buildings` 에 요청 값을 돌려준다.
+- **사유 코드**: `EXISTING_BUILDINGS_EXCLUDED`(건물을 뺐음), `SITE_SPLIT_BY_BUILDINGS`(갈라진 영역 여러 곳에 배치), `EXISTING_BUILDINGS_UNAVAILABLE`(조회 실패).
+- **한계**: 도로명주소가 붙은 건물만 있다 (주소 없는 부속 건물·가설물, 조경·담장·나무는 없다). 둘레 1.0m 는 법규 값이 아니라 문 열림·보행 여유를 둔 참고값이다.
+- **모의 데이터**: `data/mock/parcels.json` 의 `building_footprints` — S01(대지 모서리 단독주택), S07(대지를 가로질러 둘로 나누는 창고). 모의 서버는 `LT_C_SPBD` 의 BOX 검색만 지원한다.
 
 ## 구조
 

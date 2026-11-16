@@ -4,6 +4,7 @@ import { resetReviewCache, reviewById, reviewForParcel, simulationFor } from './
 import reviewS02 from './__fixtures__/review_S02.json';
 import reviewProgress from './__fixtures__/review_progress.json';
 import simulationS02 from './__fixtures__/simulation_S02.json';
+import simulationSplit from './__fixtures__/simulation_buildings_split.json';
 
 const REVIEW_ID = reviewS02.review_id;
 const parcel = { pnu: reviewS02.parcel.pnu } as Parcel;
@@ -12,16 +13,17 @@ function json(status: number, body: unknown, headers: Record<string, string> = {
   return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json', ...headers } });
 }
 
-/** 요청 경로·메서드에 따라 답하는 가짜 서버 — 호출 기록은 calls 에 */
-function stubServer(handler: (method: string, path: string) => Response) {
-  const calls: { method: string; path: string }[] = [];
+/** 요청 경로·메서드에 따라 답하는 가짜 서버 — 호출 기록(바디 포함)은 calls 에 */
+function stubServer(handler: (method: string, path: string, body: unknown) => Response) {
+  const calls: { method: string; path: string; body?: unknown }[] = [];
   vi.stubGlobal(
     'fetch',
     vi.fn(async (url: string, init?: RequestInit) => {
       const method = init?.method ?? 'GET';
       const path = new URL(url, 'http://test.invalid').pathname;
-      calls.push({ method, path });
-      return handler(method, path);
+      const body = typeof init?.body === 'string' ? (JSON.parse(init.body) as unknown) : undefined;
+      calls.push({ method, path, body });
+      return handler(method, path, body);
     }),
   );
   return calls;
@@ -132,5 +134,30 @@ describe('배치 계산 기억', () => {
     expect(a.legalBasis.every((l) => Array.isArray(l.ruleIds))).toBe(true);
     await simulationFor(REVIEW_ID, { includeUnverified: true });
     expect(calls).toHaveLength(2);
+  });
+
+  it('기존 건물 유지(keep)·철거 가정(ignore)은 따로 계산해 기억하고, 생략은 keep 과 같은 계산이다', async () => {
+    const ignored = {
+      ...simulationSplit,
+      existing_buildings: { ...simulationSplit.existing_buildings, mode: 'ignore', status: 'ignored' },
+    };
+    const calls = stubServer((method, path, body) => {
+      if (method !== 'POST' || !path.endsWith('/parking-simulations')) return json(404, {});
+      return json(200, (body as { existing_buildings?: string })?.existing_buildings === 'ignore' ? ignored : simulationSplit);
+    });
+    const keep = await simulationFor(REVIEW_ID);
+    const ignore = await simulationFor(REVIEW_ID, { existingBuildings: 'ignore' });
+    expect(keep.existingBuildings?.mode).toBe('keep');
+    expect(ignore.existingBuildings).toMatchObject({ mode: 'ignore', status: 'ignored' });
+    // 바디: 기본(keep)은 지금과 똑같이 키 없이, 철거 가정만 existing_buildings 를 보냄
+    expect(calls.map((c) => c.body)).toEqual([{}, { existing_buildings: 'ignore' }]);
+    // 다시 바꿔도(되돌아가도) 서버를 부르지 않음
+    expect(await simulationFor(REVIEW_ID, { existingBuildings: 'keep' })).toBe(keep);
+    expect(await simulationFor(REVIEW_ID, { existingBuildings: 'ignore' })).toBe(ignore);
+    expect(calls).toHaveLength(2);
+    // 참고 배치의 철거 가정은 또 다른 계산
+    await simulationFor(REVIEW_ID, { includeUnverified: true, existingBuildings: 'ignore' });
+    expect(calls.at(-1)?.body).toEqual({ include_unverified: true, existing_buildings: 'ignore' });
+    expect(calls).toHaveLength(3);
   });
 });

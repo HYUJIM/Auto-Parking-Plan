@@ -1,0 +1,72 @@
+{
+  "response": {
+    "service": {
+      "name": "data",
+      "version": "2.0",
+      "operation": "GetFeature",
+      "time": "9(ms)"
+    },
+    "status": "OK",
+    "record": {
+      "total": "3",
+      "current": "3"
+    },
+    "page": {
+      "total": "1",
+      "current": "1",
+      "size": "1000"
+    },
+    "result": {
+      "featureCollection": {
+        "type": "FeatureCollection",
+        "bbox": [128.626, 35.8604, 128.62626, 35.86063],
+        "features": [
+          {
+            "type": "Feature",
+            "geometry": {
+              "type": "MultiPolygon",
+              "coordinates": [[[[128.62605, 35.86045], [128.62615, 35.86045], [128.62615, 35.86052], [128.62605, 35.86052], [128.62605, 35.86045]]]]
+            },
+            "properties": {
+              "bd_mgt_sn": "2726010100190010004000001",
+              "buld_nm": "예시빌라",
+              "buld_nm_dc": "가동",
+              "gro_flo_co": "3",
+              "sido": "대구광역시",
+              "sigungu": "수성구",
+              "rd_nm": "범어예시로",
+              "buld_no": "12"
+            },
+            "id": "LT_C_SPBD.1"
+          },
+          {
+            "type": "Feature",
+            "geometry": {
+              "type": "Polygon",
+              "coordinates": [[[128.6262, 35.8606], [128.62624, 35.8606], [128.62624, 35.86062]]]
+            },
+            "properties": {
+              "bd_mgt_sn": "2726010100190010004000002",
+              "buld_nm": "",
+              "buld_nm_dc": null,
+              "gro_flo_co": "0"
+            },
+            "id": "LT_C_SPBD.2"
+          },
+          {
+            "type": "Feature",
+            "geometry": {
+              "type": "Point",
+              "coordinates": [128.6261, 35.8605]
+            },
+            "properties": {
+              "bd_mgt_sn": "2726010100190010004000003",
+              "buld_nm": "윤곽선 없음"
+            },
+            "id": "LT_C_SPBD.3"
+          }
+        ]
+      }
+    }
+  }
+}

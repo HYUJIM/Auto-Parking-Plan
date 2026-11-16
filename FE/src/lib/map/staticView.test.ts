@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { layoutShapes, staticView } from './staticView';
-import type { LayoutLayers } from '@/lib/api/types';
+import type { LayoutFeature, LayoutLayers } from '@/lib/api/types';
 
 const SQUARE = [
   { lat: 35.8582, lng: 128.6305 },
@@ -105,5 +105,55 @@ describe('layoutShapes', () => {
     expect(shapes[0].d.match(/[ML]/g)).toHaveLength(2);
     expect(shapes[3].point).toBeDefined();
     expect(layoutShapes(v, null)).toEqual([]);
+  });
+
+  it('기존 건물은 주차구획 위·출입구 아래에, 출입구는 점마다 하나 (나뉜 대지의 출입구 2개)', () => {
+    const v = staticView(SQUARE, { width: 800, height: 600 })!;
+    const gate = (lng: number, part: number): LayoutFeature => ({
+      type: 'Feature',
+      properties: { layer: 'gate', part },
+      geometry: { type: 'Point', coordinates: [lng, 35.8578] },
+    });
+    const layers: LayoutLayers = {
+      type: 'FeatureCollection',
+      features: [
+        gate(128.6306, 0),
+        gate(128.6314, 1),
+        {
+          type: 'Feature',
+          properties: { layer: 'stall' },
+          geometry: {
+            type: 'Polygon',
+            coordinates: [
+              [
+                [128.631, 35.858],
+                [128.6311, 35.858],
+                [128.6311, 35.8579],
+              ],
+            ],
+          },
+        },
+      ],
+    };
+    const building = {
+      geometry: {
+        type: 'MultiPolygon' as const,
+        coordinates: [
+          [
+            [
+              [128.6308, 35.858],
+              [128.6309, 35.858],
+              [128.6309, 35.8579],
+              [128.6308, 35.858],
+            ],
+          ],
+        ],
+      },
+    };
+    const shapes = layoutShapes(v, layers, [building]);
+    expect(shapes.map((s) => s.layer)).toEqual(['stall', 'building', 'gate', 'gate']);
+    expect(shapes[1].d.startsWith('M')).toBe(true);
+    expect(shapes[2].point!.x).toBeLessThan(shapes[3].point!.x);
+    expect(layoutShapes(v, null, [building]).map((s) => s.layer)).toEqual(['building']);
   });
 });

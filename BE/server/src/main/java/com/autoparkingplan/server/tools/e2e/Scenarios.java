@@ -311,8 +311,40 @@ final class Scenarios {
                         double wantW = List.of("PERPENDICULAR_90").equals(angles) ? 2.5 : 2.0;
                         rep.check(tag + " 배치: 법정 치수(" + Py.floatRepr(wantW) + "m) 사용", PyStr.numEq(PyStr.item(metrics, "stall_width_m"), wantW),
                                 PyStr.str(PyStr.item(metrics, "stall_width_m")));
+                        // 건물이 대지를 가르면 영역마다 출입구 하나 (MultiPoint)
+                        boolean split = PyStr.str(PyStr.item(a, "constraint_reasons")).contains("SITE_SPLIT_BY_BUILDINGS");
                         rep.check(tag + " 배치: 출입구·차로 레이어", PyStr.truthy(PyStr.item(PyStr.item(layers, "aisles"), "features"))
-                                && PyStr.eq(PyStr.item(PyStr.item(PyStr.item(layers, "gate"), "geometry"), "type"), "Point"));
+                                && PyStr.eq(PyStr.item(PyStr.item(PyStr.item(layers, "gate"), "geometry"), "type"), split ? "MultiPoint" : "Point"));
+                        // 기존 건물: 유지(기본)면 구획·차로가 건물 윤곽선과 겹치지 않는다
+                        JsonNode eb = sim.get("existing_buildings");
+                        if (eb != null && PyStr.eq(PyStr.item(eb, "status"), "applied")) {
+                            List<Geometry> blds = new ArrayList<>();
+                            for (JsonNode f : PyStr.item(PyStr.item(eb, "features"), "features").values()) {
+                                blds.add(Geo.geojsonToShape(PyStr.item(f, "geometry")));
+                            }
+                            boolean clear = true;
+                            for (Geometry s0 : stalls) {
+                                for (Geometry bg : blds) {
+                                    clear &= Geo.toUtmk(s0).intersection(Geo.toUtmk(bg)).getArea() < 0.05;
+                                }
+                            }
+                            for (JsonNode f : PyStr.item(PyStr.item(layers, "aisles"), "features").values()) {
+                                for (Geometry bg : blds) {
+                                    clear &= Geo.toUtmk(Geo.geojsonToShape(PyStr.item(f, "geometry"))).intersection(Geo.toUtmk(bg)).getArea() < 0.05;
+                                }
+                            }
+                            rep.check(tag + " 배치: 기존 건물 " + blds.size() + "동을 피함", clear
+                                    && PyStr.str(sim.get("constraint_reasons")).contains("EXISTING_BUILDINGS_EXCLUDED"), "");
+                            // 철거 가정: 건물을 무시하고 계산 (건물 블록은 그대로 싣는다)
+                            simBody.put("existing_buildings", "ignore");
+                            JsonNode ign = c.post("/v1/reviews/" + rid + "/parking-simulations", simBody, Map.of()).json();
+                            rep.check(tag + " 배치: 철거 가정 → 건물 무시",
+                                    PyStr.eq(PyStr.path(ign, "existing_buildings", "status"), "ignored")
+                                            && !PyStr.str(ign.get("constraint_reasons")).contains("EXISTING_BUILDINGS_EXCLUDED")
+                                            && PyStr.eq(PyStr.path(ign, "params", "existing_buildings"), "ignore"),
+                                    PyStr.head(PyStr.str(ign.get("constraint_reasons")), 200));
+                            simBody.remove("existing_buildings");
+                        }
                     } else {
                         rep.check(tag + " 배치 불가 사유 제공", PyStr.truthy(sim.get("constraint_reasons")), "");
                     }

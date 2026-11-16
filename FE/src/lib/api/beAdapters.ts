@@ -4,6 +4,7 @@ import type {
   BeAlternative,
   BeBasisNode,
   BeDesignation,
+  BeExistingBuildings,
   BeGeoFeature,
   BeGeometry,
   BeLayoutLayers,
@@ -19,6 +20,10 @@ import type {
   AddressHit,
   AddressSearchResult,
   BasisNode,
+  ExistingBuilding,
+  ExistingBuildings,
+  ExistingBuildingsMode,
+  ExistingBuildingsStatus,
   GeoJsonGeometry,
   LandUse,
   LandUseKind,
@@ -39,7 +44,7 @@ import type {
   RuleStatus,
   RuleSummary,
 } from './types';
-import { SUSEONG_SGG_CODE, isRuleStatus } from './types';
+import { EXISTING_BUILDINGS_MODES, SUSEONG_SGG_CODE, isRuleStatus } from './types';
 import { outerRing, ringAreaM2, ringCentroid } from '@/lib/map/geo';
 
 /**
@@ -356,34 +361,56 @@ export function toReviewProgress(body: BeReviewProgress): ReviewProgress {
 
 // ── 주차장 배치 시뮬레이션 ──────────────────────────────────────────
 
-const GEOMETRY_TYPES = new Set(['Point', 'LineString', 'Polygon', 'MultiPolygon']);
+/** 받는 도형 종류와 좌표 깊이 — [경도, 위도] 를 몇 겹 감쌌는지 (Point=0, LineString·MultiPoint=1, Polygon·MultiLineString=2, MultiPolygon=3) */
+const GEOMETRY_DEPTH: Record<string, number> = { Point: 0, MultiPoint: 1, LineString: 1, MultiLineString: 2, Polygon: 2, MultiPolygon: 3 };
 
 function isPosition(v: unknown): boolean {
   return Array.isArray(v) && v.length >= 2 && Number.isFinite(v[0]) && Number.isFinite(v[1]);
 }
 
-/** 좌표가 [경도, 위도] 를 depth 단계만큼 감싼 배열인지 (Point=0, LineString=1, Polygon=2, MultiPolygon=3) */
+/** 좌표가 [경도, 위도] 를 depth 단계만큼 감싼 배열인지 */
 function isCoordinates(v: unknown, depth: number): boolean {
   if (depth === 0) return isPosition(v);
   return Array.isArray(v) && v.every((item) => isCoordinates(item, depth - 1));
 }
 
-const GEOMETRY_DEPTH: Record<string, number> = { Point: 0, LineString: 1, Polygon: 2, MultiPolygon: 3 };
+type MultiGeometry = { type: 'MultiPoint'; coordinates: number[][] } | { type: 'MultiLineString'; coordinates: number[][][] };
 
 /**
  * 종류와 좌표 모양이 맞는 도형만 받습니다. 모양이 틀린 좌표가 지도 그리기(매 프레임 도는 렌더)까지 가면
  * 거기서 예외가 나 지도 위 표시가 통째로 멈추므로, 여기서 걸러 그 도형만 빼고 그립니다.
  */
-function toGeometry(g: BeGeometry | null | undefined): GeoJsonGeometry | null {
-  if (!g || !GEOMETRY_TYPES.has(g.type) || !Array.isArray(g.coordinates)) return null;
+function toGeometry(g: BeGeometry | null | undefined): GeoJsonGeometry | MultiGeometry | null {
+  if (!g || !Object.hasOwn(GEOMETRY_DEPTH, g.type) || !Array.isArray(g.coordinates)) return null;
   if (!isCoordinates(g.coordinates, GEOMETRY_DEPTH[g.type])) return null;
-  return g as GeoJsonGeometry;
+  return g as GeoJsonGeometry | MultiGeometry;
 }
 
-function toLayoutFeature(f: BeGeoFeature | null | undefined, layer: LayoutLayerKind): LayoutFeature | null {
+/**
+ * BE feature → 지도 feature. MultiPoint · MultiLineString(건물로 나뉜 대지의 출입구)은 조각마다 Point · LineString feature 하나로 나눕니다
+ * (properties.part = 0, 1, …) — 출입구 수를 feature 수로 세고(gateInfo), 지도·DXF 는 점·선만 그리면 되게.
+ */
+function toLayoutFeatures(f: BeGeoFeature | null | undefined, layer: LayoutLayerKind): LayoutFeature[] {
   const geometry = toGeometry(f?.geometry);
-  if (!geometry) return null;
-  return { type: 'Feature', geometry, properties: { ...(f?.properties ?? {}), layer } };
+  if (!geometry) return [];
+  const properties = { ...(f?.properties ?? {}), layer };
+  if (geometry.type === 'MultiPoint') {
+    return geometry.coordinates.map((c, part): LayoutFeature => ({
+      type: 'Feature',
+      geometry: { type: 'Point', coordinates: c },
+      properties: { ...properties, part },
+    }));
+  }
+  if (geometry.type === 'MultiLineString') {
+    return geometry.coordinates
+      .filter((line) => line.length >= 2)
+      .map((line, part): LayoutFeature => ({
+        type: 'Feature',
+        geometry: { type: 'LineString', coordinates: line },
+        properties: { ...properties, part },
+      }));
+  }
+  return [{ type: 'Feature', geometry, properties }];
 }
 
 /**
@@ -393,15 +420,70 @@ function toLayoutFeature(f: BeGeoFeature | null | undefined, layer: LayoutLayerK
  */
 export function toLayoutLayers(layers: BeLayoutLayers | null | undefined): LayoutLayers {
   const features: LayoutFeature[] = [];
-  const push = (f: LayoutFeature | null) => {
-    if (f) features.push(f);
+  const push = (list: LayoutFeature[]) => {
+    features.push(...list);
   };
-  push(toLayoutFeature(layers?.usable_area, 'usable_area'));
-  for (const f of layers?.aisles?.features ?? []) push(toLayoutFeature(f, 'aisle'));
-  for (const f of layers?.stalls?.features ?? []) push(toLayoutFeature(f, 'stall'));
-  push(toLayoutFeature(layers?.gate_opening, 'gate_opening'));
-  push(toLayoutFeature(layers?.gate, 'gate'));
+  push(toLayoutFeatures(layers?.usable_area, 'usable_area'));
+  for (const f of layers?.aisles?.features ?? []) push(toLayoutFeatures(f, 'aisle'));
+  for (const f of layers?.stalls?.features ?? []) push(toLayoutFeatures(f, 'stall'));
+  push(toLayoutFeatures(layers?.gate_opening, 'gate_opening'));
+  push(toLayoutFeatures(layers?.gate, 'gate'));
   return { type: 'FeatureCollection', features };
+}
+
+// ── 기존 건물 ──
+
+const BUILDING_STATUSES: readonly ExistingBuildingsStatus[] = ['applied', 'ignored', 'none', 'unavailable'];
+
+function isMode(value: unknown): value is ExistingBuildingsMode {
+  return typeof value === 'string' && (EXISTING_BUILDINGS_MODES as readonly string[]).includes(value);
+}
+
+/** 건물 외곽선 한 동 — Polygon · MultiPolygon 이고 좌표 모양이 맞는 것만 */
+function toExistingBuilding(f: BeGeoFeature | null | undefined): ExistingBuilding | null {
+  const geometry = toGeometry(f?.geometry);
+  if (!geometry || (geometry.type !== 'Polygon' && geometry.type !== 'MultiPolygon')) return null;
+  const p = f?.properties ?? {};
+  const floors = num(p.floors);
+  return {
+    id: str(p.id) ?? (typeof p.id === 'number' && Number.isFinite(p.id) ? String(p.id) : null),
+    name: str(p.name),
+    floors: floors !== null && floors >= 0 ? floors : null,
+    geometry,
+  };
+}
+
+/**
+ * 기존 건물 반영 결과. 없으면(계산하지 않음 · 예전 BE) null.
+ * 모르는 status 는 unavailable(반영하지 못함)로, mode 가 이상하면 요청 파라미터 → status 로 추정, 숫자가 아니면 null, 모양이 틀린 외곽선은 뺍니다.
+ */
+export function toExistingBuildings(eb: BeExistingBuildings | null | undefined, requestedMode?: unknown): ExistingBuildings | null {
+  if (!eb || typeof eb !== 'object') return null;
+  const status: ExistingBuildingsStatus = BUILDING_STATUSES.includes(eb.status as ExistingBuildingsStatus)
+    ? (eb.status as ExistingBuildingsStatus)
+    : 'unavailable';
+  const mode: ExistingBuildingsMode = isMode(eb.mode)
+    ? eb.mode
+    : isMode(requestedMode)
+      ? requestedMode
+      : status === 'ignored'
+        ? 'ignore'
+        : 'keep';
+  const raw = status === 'unavailable' || !Array.isArray(eb.features?.features) ? [] : eb.features.features;
+  const footprints = raw.map(toExistingBuilding).filter((b): b is ExistingBuilding => b !== null);
+  const count = num(eb.count);
+  const area = num(eb.area_m2);
+  const clearance = num(eb.clearance_m);
+  return {
+    mode,
+    status,
+    // 조회 실패는 0동, 수가 숫자가 아니면 받은 외곽선 수로
+    count: status === 'unavailable' ? 0 : count !== null && count >= 0 ? Math.round(count) : footprints.length,
+    areaM2: area !== null && area >= 0 ? area : null,
+    clearanceM: clearance !== null && clearance >= 0 ? clearance : null,
+    source: str(eb.source),
+    footprints,
+  };
 }
 
 export function toLayoutAlternative(a: BeAlternative): LayoutAlternative {
@@ -426,6 +508,7 @@ export function toLayoutAlternative(a: BeAlternative): LayoutAlternative {
 export function toParkingSimulation(body: BeParkingSimulation): ParkingSimulation {
   const result = body.result;
   const alternatives = (result?.alternatives ?? []).map(toLayoutAlternative);
+  const simulated = Boolean(body.simulated);
   return {
     reviewId: body.review_id,
     pnu: body.pnu,
@@ -442,7 +525,7 @@ export function toParkingSimulation(body: BeParkingSimulation): ParkingSimulatio
       ruleIds: (b.rule_ids ?? []).filter(isUuid),
     })),
     disclaimer: str(body.disclaimer) ?? '',
-    simulated: Boolean(body.simulated),
+    simulated,
     referenceOnly: Boolean(body.reference_only),
     constraintReasons: (body.constraint_reasons ?? []).filter((s): s is string => typeof s === 'string'),
     message: str(body.message),
@@ -454,6 +537,8 @@ export function toParkingSimulation(body: BeParkingSimulation): ParkingSimulatio
           alternatives,
         }
       : null,
+    // 계산한 결과에만 붙습니다 (계산하지 않은 응답에 실려 와도 쓰지 않음)
+    existingBuildings: simulated ? toExistingBuildings(body.existing_buildings, body.params?.existing_buildings) : null,
   };
 }
 

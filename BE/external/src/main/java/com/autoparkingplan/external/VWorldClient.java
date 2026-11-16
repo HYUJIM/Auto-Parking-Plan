@@ -178,6 +178,39 @@ public final class VWorldClient implements VWorldApi, AutoCloseable {
         return parcels.isEmpty() ? Optional.empty() : Optional.of(parcels.getFirst());
     }
 
+    /**
+     * 경계 상자와 겹치는 건물 윤곽선 ('도로명주소 건물', 최대 {@value VWorld#BUILDING_PAGE_SIZE}동). [] = 건물 없음.
+     *
+     * @throws IllegalArgumentException 좌표가 유한하지 않거나 범위 밖, 또는 최소가 최대보다 큼
+     * @throws UpstreamError            조회 실패
+     */
+    @Override
+    public List<BuildingFootprint> getBuildingFootprints(double minLng, double minLat, double maxLng, double maxLat) {
+        for (double[] p : new double[][] {{minLng, minLat}, {maxLng, maxLat}}) {
+            if (!(Double.isFinite(p[0]) && Double.isFinite(p[1]) && -180 <= p[0] && p[0] <= 180 && -90 <= p[1] && p[1] <= 90)) {
+                throw new IllegalArgumentException("경계 상자 좌표가 올바르지 않습니다");
+            }
+        }
+        if (minLng > maxLng || minLat > maxLat) {
+            throw new IllegalArgumentException("경계 상자의 최소값이 최대값보다 큽니다");
+        }
+        Map<String, Object> params = new LinkedHashMap<>();
+        params.put("service", "data");
+        params.put("version", "2.0");
+        params.put("request", "GetFeature");
+        params.put("data", VWorld.BUILDING_DATASET);
+        params.put("format", "json");
+        params.put("errorFormat", "json");
+        params.put("crs", "EPSG:4326");
+        params.put("geometry", "true");
+        params.put("attribute", "true");
+        params.put("size", VWorld.BUILDING_PAGE_SIZE);
+        params.put("page", 1);
+        params.put("geomFilter", VWorld.formatBox(minLng, minLat, maxLng, maxLat));
+        JsonNode payload = call(baseUrlData, VWorld.DATA_PATH, params, VWorld.BUILDING_DATASET);
+        return VWorld.parseBuildingResponse(payload, http::scrub);
+    }
+
     /** 토지이용계획 속성(용도지역·지구·구역 등). [] = 조회는 성공했으나 지정 없음. 실패는 UpstreamError. */
     @Override
     public List<LandUseDesignation> getLandUse(String pnu) {

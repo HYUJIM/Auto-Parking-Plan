@@ -182,7 +182,7 @@
       "allow": null,
       "location_suffix": null,
       "slow": false,
-      "body": "{\"response\":{\"service\":{\"name\":\"data\",\"version\":\"2.0\",\"operation\":\"GetFeature\",\"time\":\"3(ms)\"},\"status\":\"ERROR\",\"error\":{\"level\":\"1\",\"code\":\"INVALID_RANGE\",\"text\":\"<data> 파라미터의 값이 유효한 범위를 넘었습니다. 입력한 파라미터 값 : <x> (mock 은 LP_PA_CBND_BUBUN 만 지원)\"}}}"
+      "body": "{\"response\":{\"service\":{\"name\":\"data\",\"version\":\"2.0\",\"operation\":\"GetFeature\",\"time\":\"3(ms)\"},\"status\":\"ERROR\",\"error\":{\"level\":\"1\",\"code\":\"INVALID_RANGE\",\"text\":\"<data> 파라미터의 값이 유효한 범위를 넘었습니다. 입력한 파라미터 값 : <x> (mock 은 LP_PA_CBND_BUBUN, LT_C_SPBD 만 지원)\"}}}"
     },
     {
       "name": "juso road S01",
@@ -1832,7 +1832,7 @@
       "allow": null,
       "location_suffix": null,
       "slow": false,
-      "body": "{\"response\":{\"service\":{\"name\":\"data\",\"version\":\"2.0\",\"operation\":\"GetFeature\",\"time\":\"3(ms)\"},\"status\":\"ERROR\",\"error\":{\"level\":\"1\",\"code\":\"INVALID_RANGE\",\"text\":\"<data> 파라미터의 값이 유효한 범위를 넘었습니다. 입력한 파라미터 값 : <LT_C_UQ111> (mock 은 LP_PA_CBND_BUBUN 만 지원)\"}}}"
+      "body": "{\"response\":{\"service\":{\"name\":\"data\",\"version\":\"2.0\",\"operation\":\"GetFeature\",\"time\":\"3(ms)\"},\"status\":\"ERROR\",\"error\":{\"level\":\"1\",\"code\":\"INVALID_RANGE\",\"text\":\"<data> 파라미터의 값이 유효한 범위를 넘었습니다. 입력한 파라미터 값 : <LT_C_UQ111> (mock 은 LP_PA_CBND_BUBUN, LT_C_SPBD 만 지원)\"}}}"
     },
     {
       "name": "vworld missing data",
@@ -1843,7 +1843,7 @@
       "allow": null,
       "location_suffix": null,
       "slow": false,
-      "body": "{\"response\":{\"service\":{\"name\":\"data\",\"version\":\"2.0\",\"operation\":\"GetFeature\",\"time\":\"3(ms)\"},\"status\":\"ERROR\",\"error\":{\"level\":\"1\",\"code\":\"INVALID_RANGE\",\"text\":\"<data> 파라미터의 값이 유효한 범위를 넘었습니다. 입력한 파라미터 값 : <None> (mock 은 LP_PA_CBND_BUBUN 만 지원)\"}}}"
+      "body": "{\"response\":{\"service\":{\"name\":\"data\",\"version\":\"2.0\",\"operation\":\"GetFeature\",\"time\":\"3(ms)\"},\"status\":\"ERROR\",\"error\":{\"level\":\"1\",\"code\":\"INVALID_RANGE\",\"text\":\"<data> 파라미터의 값이 유효한 범위를 넘었습니다. 입력한 파라미터 값 : <None> (mock 은 LP_PA_CBND_BUBUN, LT_C_SPBD 만 지원)\"}}}"
     },
     {
       "name": "vworld other crs",

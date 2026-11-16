@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { isPnu, type Parcel, type ReviewProgress } from '@/lib/api/types';
+import { isPnu, type ExistingBuildingsMode, type LayoutAlternative, type Parcel, type ReviewProgress } from '@/lib/api/types';
 import { isUuid } from '@/lib/api/beAdapters';
 import { resolveSite } from '@/lib/api/parcel';
 import { getCachedHit } from '@/lib/api/hitCache';
@@ -14,6 +14,15 @@ import { hasRunningStep, reportSteps } from '@/lib/report/steps';
 import { landUseParcelFromReview, landUseRows } from '@/lib/report/landUseRows';
 import { dxfFilename, dxfNotes, dxfTitle, pdfTitle, regionLabel, reportAddress } from '@/lib/report/exportNames';
 import { siteHref } from '@/lib/report/links';
+import {
+  buildingOverlay,
+  buildingSourceLine,
+  canChooseBuildings,
+  dxfBuildingsStatus,
+  pickAlternative,
+  simulationForMode,
+  type AlternativePick,
+} from '@/lib/report/existingBuildings';
 import {
   addressCandidate,
   checklistPhase,
@@ -47,10 +56,12 @@ import styles from './ReportPage.module.css';
  * 3단계 결과 리포트 (/report?pnu=…&review=…).
  *
  * 데이터: 필지(resolveSite) · 법규 검토(주소에 검토 id 가 있으면 그 검토를 GET 으로, 없으면 필지로 새 검토 — 탭 안에서 기억) ·
- * 배치 계산(simulationFor). 검토가 정해지면 주소에 &review= 를 붙여 새로고침·인쇄·상세 페이지가 같은 검토를 다시 씁니다.
+ * 배치 계산(simulationFor — 기존 건물 유지가 기본, '철거 가정'을 고르면 그 조건으로 한 번 더, 둘 다 탭 안에서 기억).
+ * 검토가 정해지면 주소에 &review= 를 붙여 새로고침·인쇄·상세 페이지가 같은 검토를 다시 씁니다.
  * 어떤 검토를 부를지 · 주소 정리 · 법규 검토 카드 상태는 lib/report/pageState.ts 의 순수 함수가 정합니다 (화면 없이 시험).
  * 화면: 머리(주소 · PNU · 기준일 · 지역, 진행 단계, 저장 버튼) → 3단(현황 부지 · 주차 배치 결과 · 토지이용계획 + 법규 검토) → 안내·고지·출처.
  * 저장: PDF 는 인쇄 창(1쪽 = 머리 + 3단, 2쪽 = 법규 검토 상세 + 안내), CAD 는 대지 경계와 고른 배치안의 DXF(EPSG:5186).
+ * 화면에 그린 결과(유지/철거 가정 · 고른 배치안)가 곧 저장 대상이라 PDF·DXF 가 화면과 같습니다.
  */
 export function ReportPage() {
   const [params] = useSearchParams();
@@ -128,14 +139,26 @@ export function ReportPage() {
   const refSim = refData?.simulated ? refData : null;
   const onReference = useCallback(() => setReferenceFor(reviewId), [reviewId]);
 
-  // 지도에 그리는 결과와 고른 배치안 (기본: 추천안)
-  const shown = refSim ?? sim;
+  // 기존 건물: 유지(기본 계산) · 철거 가정(고르면 한 번 더 계산). 결과(검증 · 참고 배치)가 바뀌면 유지로 돌아갑니다
+  const base = refSim ?? sim;
+  const resultKey = `${reviewId}:${refSim ? 'reference' : 'verified'}`;
+  const buildingChoice = canChooseBuildings(base);
+  const [buildingPick, setBuildingPick] = useState<{ key: string; mode: ExistingBuildingsMode } | null>(null);
+  const buildingMode: ExistingBuildingsMode = buildingChoice && buildingPick?.key === resultKey ? buildingPick.mode : 'keep';
+  const withReference = refSim !== null;
+  const ignoreState = useAsync(
+    (signal) => simulationFor(reviewId, { includeUnverified: withReference, existingBuildings: 'ignore', signal }),
+    [reviewId, withReference],
+    buildingMode === 'ignore',
+  );
+  const onBuildingMode = useCallback((mode: ExistingBuildingsMode) => setBuildingPick({ key: resultKey, mode }), [resultKey]);
+
+  // 지도에 그리는 결과와 고른 배치안 (기본: 추천안 — 유지/철거 가정을 바꾸면 같은 주차 방식, 없으면 추천안)
+  const shown = simulationForMode(base, ignoreState.data, buildingMode);
   const alternatives = shown?.simulated ? (shown.result?.alternatives ?? []) : [];
-  const altKey = `${reviewId}:${refSim ? 'reference' : 'verified'}`;
-  const [pick, setPick] = useState<{ key: string; code: string } | null>(null);
-  const pickedCode = pick?.key === altKey ? pick.code : (shown?.result?.recommendedCode ?? null);
-  const selected = alternatives.find((a) => a.code === pickedCode) ?? alternatives[0] ?? null;
-  const onSelect = useCallback((code: string) => setPick({ key: altKey, code }), [altKey]);
+  const [pick, setPick] = useState<({ key: string } & AlternativePick) | null>(null);
+  const selected = pickAlternative(alternatives, pick?.key === resultKey ? pick : null, shown?.result?.recommendedCode);
+  const onSelect = useCallback((a: LayoutAlternative) => setPick({ key: resultKey, code: a.code, angle: a.angle }), [resultKey]);
 
   // ── 판정 · 단계 ──
   const verdict = parkingVerdict(review, sim);
@@ -149,7 +172,7 @@ export function ReportPage() {
     siteFromSnapshot: parcel === null && review !== null && polygon.length >= 3,
     review: mismatch || reviewGone ? 'loading' : reviewState.status,
     reviewSkipped: unsupported,
-    layout: refState.status === 'loading' ? 'loading' : simState.status,
+    layout: refState.status === 'loading' || ignoreState.status === 'loading' ? 'loading' : simState.status,
     layoutSkipped:
       unsupported ||
       (polygon.length < 3 && siteSettled && reviewState.status !== 'loading') ||
@@ -185,7 +208,10 @@ export function ReportPage() {
     pendingParcel,
     progress,
   });
-  const drawnAlt = !blocker && verdict.kind !== 'not_permitted' && shown?.simulated ? selected : null;
+  // 지도에 실제로 그린 결과 — 저장(DXF)과 현황 부지의 기존 건물도 이것을 따릅니다
+  const drawnSim = !blocker && verdict.kind !== 'not_permitted' && shown?.simulated ? shown : null;
+  const drawnAlt = drawnSim ? selected : null;
+  const buildings = buildingOverlay(drawnSim);
 
   const landParcel = parcel ?? (review ? landUseParcelFromReview(review.parcel) : null);
   const rows = landParcel ? landUseRows({ parcel: landParcel, verdict, alternative: drawnAlt }) : null;
@@ -210,7 +236,11 @@ export function ReportPage() {
 
   const notices = mergeNotices(review?.dataNotices, parcel?.dataNotices);
   const disclaimers = [...new Set([review?.disclaimer, sim?.disclaimer].filter((d): d is string => Boolean(d)))];
-  const sources = [parcel ? parcelSourceLine(parcel) : '', review?.supported ? reviewSourceLine(review) : ''].filter(Boolean);
+  const sources = [
+    parcel ? parcelSourceLine(parcel) : '',
+    review?.supported ? reviewSourceLine(review) : '',
+    buildingSourceLine(drawnSim) ?? '',
+  ].filter(Boolean);
 
   // ── 저장 ──
   // 인쇄 창이 열린 채 화면을 떠나면 문서 제목을 되돌립니다
@@ -256,12 +286,13 @@ export function ReportPage() {
         road: parcel?.address.road ?? review?.parcel.roadAddress ?? undefined,
       },
     };
-    const file = dxfFilename(address, pnu, drawnAlt);
+    const file = dxfFilename(address, pnu, drawnAlt, dxfBuildingsStatus(drawnSim) === 'ignored');
     const dxf = buildResultDxf({
       parcel: parcelForDxf,
       alternative: drawnAlt,
+      buildings: buildings?.footprints,
       title: dxfTitle(address, pnu, drawnAlt),
-      notes: dxfNotes(pnu, asOfDate, Boolean(drawnAlt && shown?.referenceOnly)),
+      notes: dxfNotes(pnu, asOfDate, Boolean(drawnAlt && shown?.referenceOnly), dxfBuildingsStatus(drawnSim)),
     });
     downloadText(file, dxf, 'application/dxf');
     toast.show(fmt(t.actions.cadSaved, { file }));
@@ -337,6 +368,7 @@ export function ReportPage() {
           region={region}
           provider={provider}
           onProvider={setProvider}
+          buildings={buildings}
           loading={siteLoading}
           fallback={parcelFallback(true)}
         />
@@ -350,6 +382,7 @@ export function ReportPage() {
           selected={selected}
           onSelect={onSelect}
           reference={{ allowed: referenceAllowed, state: refState, onRequest: onReference }}
+          buildings={{ available: buildingChoice, mode: buildingMode, state: ignoreState, onChange: onBuildingMode }}
           onProvider={setProvider}
         />
         <div className={styles.aside}>

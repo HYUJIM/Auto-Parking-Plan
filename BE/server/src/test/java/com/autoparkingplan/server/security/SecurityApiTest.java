@@ -301,7 +301,8 @@ class SecurityApiTest {
     /** test_simulation_rejects_non_finite_or_out_of_range */
     @ParameterizedTest
     @ValueSource(strings = {"{\"gate_point\":[NaN,35.8]}", "{\"gate_point\":[Infinity,35.8]}", "{\"gate_point\":[500,35.8]}",
-            "{\"angles\":[\"ANGLE_45\",\"ANGLE_45\",\"ANGLE_45\",\"ANGLE_45\",\"ANGLE_45\",\"ANGLE_45\",\"ANGLE_45\",\"ANGLE_45\",\"ANGLE_45\"]}"})
+            "{\"angles\":[\"ANGLE_45\",\"ANGLE_45\",\"ANGLE_45\",\"ANGLE_45\",\"ANGLE_45\",\"ANGLE_45\",\"ANGLE_45\",\"ANGLE_45\",\"ANGLE_45\"]}",
+            "{\"existing_buildings\":\"demolish\"}", "{\"existing_buildings\":true}"})
     void simulationRejectsNonFiniteOrOutOfRange(String body) {
         Http c = makeClient();
         String rid = c.post("/v1/reviews").json(review(PNU_R2G)).send().json().get("review_id").stringValue();

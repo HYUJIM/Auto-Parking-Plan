@@ -12,8 +12,14 @@ import java.util.regex.Pattern;
 
 import jakarta.persistence.EntityManager;
 
+import org.locationtech.jts.geom.Geometry;
+
 import com.autoparkingplan.common.Json;
+import com.autoparkingplan.external.BuildingFootprint;
+import com.autoparkingplan.parking.Geo;
 import com.autoparkingplan.parking.ParkingDimensions;
+import com.autoparkingplan.parking.ParkingEngine;
+import com.autoparkingplan.parking.geom.Shapely;
 import com.autoparkingplan.db.entity.ReviewItem;
 import com.autoparkingplan.db.entity.ReviewRequest;
 import com.autoparkingplan.db.entity.Rule;
@@ -32,6 +38,9 @@ import tools.jackson.databind.node.ObjectNode;
  *   <li>주차장을 건설할 수 없다고 볼 근거가 분명하면(NOT_PERMITTED) 배치를 만들지 않고 경고 문구를 돌려준다 (참고 배치도 만들지 않는다):
  *       지목이 도로·하천 같은 공공시설 용지이거나, 승인된 용도 목록(국가 법령 + 조례)에 주차장 관련 용도가 하나도 없는 경우.</li>
  *   <li>결과는 허가 가능 여부를 단정하지 않는 '참고 배치안'이다.</li>
+ *   <li>기존 건물: 배치를 계산할 때 브이월드 '도로명주소 건물' 윤곽선을 받아, 기본(existing_buildings=keep)은 건물과 그 둘레
+ *       {@value #BUILDING_CLEARANCE_M} m 를 빼고 배치한다. ignore 이면 철거를 가정해 건물을 무시한다 (윤곽선은 응답에 그대로 싣는다).
+ *       조회에 실패하면 건물 없이 계산하고 EXISTING_BUILDINGS_UNAVAILABLE 을 남긴다.</li>
  * </ul>
  */
 public class ParkingBridge {
@@ -49,12 +58,30 @@ public class ParkingBridge {
     public static final String DISCLAIMER = "법정 최소 치수로 계산한 참고 배치안입니다. 도로 접도·진출입 위치, 경사, 지장물, 조경·보행 동선 등 현장 조건은 반영하지 않았으며 "
             + "인허가 가능 여부를 확정하지 않습니다.";
 
-    /** 요청 (검증된 값). angles 가 null 이면 엔진 기본값. */
+    /** 기존 건물 둘레에 비워 둘 거리 (m, 법규 값 아님: 문 열림·보행 여유를 둔 참고값). */
+    public static final double BUILDING_CLEARANCE_M = 1.0;
+    /** 대지와 겹친 면적이 건물 윤곽선의 이 비율 이상일 때만 '대지 위 건물'로 본다 (경계를 살짝 넘은 이웃 건물은 제외). */
+    static final double BUILDING_ON_SITE_MIN_SHARE = 0.1;
+    /** 그리고 겹친 면적이 이 이상 (㎡). */
+    static final double BUILDING_ON_SITE_MIN_M2 = 1.0;
+    public static final String EXISTING_BUILDINGS_UNAVAILABLE = "EXISTING_BUILDINGS_UNAVAILABLE";
+
+    /** 요청 (검증된 값). angles 가 null 이면 엔진 기본값. existingBuildings: keep(건물을 피함, 기본) | ignore(철거 가정). */
     public record Request(List<String> angles, String stallType, double setbackM, double[] gatePoint, int gateCount, int maxAlternatives,
-            boolean includeUnverified) {
+            boolean includeUnverified, String existingBuildings) {
+        public Request(List<String> angles, String stallType, double setbackM, double[] gatePoint, int gateCount, int maxAlternatives,
+                boolean includeUnverified) {
+            this(angles, stallType, setbackM, gatePoint, gateCount, maxAlternatives, includeUnverified, "keep");
+        }
+
+        boolean keepBuildings() {
+            return !"ignore".equals(existingBuildings);
+        }
     }
 
     private final double maxSiteAreaM2;
+    /** 기존 건물 윤곽선 조회. null 이면 건물을 보지 않는다 (응답에 existing_buildings 없음). */
+    private final BuildingFootprints buildings;
     /** 배치 엔진은 CPU 를 한 코어씩 쓴다. 동시에 도는 수를 코어 수로 묶어 여러 요청이 서버를 통째로 붙잡지 못하게 한다. */
     final Semaphore engineSlots; // 테스트가 자리를 미리 채워 '바쁨' 경로를 확인한다
 
@@ -63,8 +90,13 @@ public class ParkingBridge {
     }
 
     public ParkingBridge(double maxSiteAreaM2, int engineConcurrency) {
+        this(maxSiteAreaM2, engineConcurrency, null);
+    }
+
+    public ParkingBridge(double maxSiteAreaM2, int engineConcurrency, BuildingFootprints buildings) {
         this.maxSiteAreaM2 = maxSiteAreaM2;
         this.engineSlots = new Semaphore(Math.max(1, engineConcurrency));
+        this.buildings = buildings != null && buildings.enabled() ? buildings : null;
     }
 
     /** DB 에서 읽을 것을 다 읽은 뒤의 상태. {@link #finish()} 는 DB 없이 돈다 — 엔진 계산 동안 DB 연결을 붙잡지 않으려고 나눴다. */
@@ -202,7 +234,9 @@ public class ParkingBridge {
             }
         }
         ParkingEngineAdapter engine = new ParkingEngineAdapter();
-        base.set("params", engine.paramsJson(params));
+        ObjectNode paramsJson = engine.paramsJson(params);
+        paramsJson.put("existing_buildings", params.keepBuildings() ? "keep" : "ignore");
+        base.set("params", paramsJson);
         base.put("disclaimer", DISCLAIMER);
         if ("NOT_PERMITTED".equals(elig.get("status").stringValue())) {
             // 건설 불가로 판단되면 참고 배치(include_unverified)도 만들지 않는다
@@ -238,10 +272,22 @@ public class ParkingBridge {
         // 규칙 엔티티(지연 로딩)는 트랜잭션 안에서만 읽을 수 있다 — 치수로 풀어 두고, 엔진은 트랜잭션 밖에서 돈다
         ParkingDimensions dims = ParkingEngineAdapter.dimsFromRules(stallRules, aisleRules);
         boolean referenceOnly = !"REVIEWABLE".equals(elig.get("status").stringValue());
-        return () -> runEngine(base, geom, dims, params, referenceOnly);
+        String pnu = req.getPnu();
+        return () -> runEngine(base, pnu, geom, dims, params, referenceOnly);
     }
 
-    private ObjectNode runEngine(ObjectNode base, JsonNode geom, ParkingDimensions dims, Request params, boolean referenceOnly) {
+    private ObjectNode runEngine(ObjectNode base, String pnu, JsonNode geom, ParkingDimensions dims, Request params, boolean referenceOnly) {
+        // 건물 조회(네트워크)는 엔진 자리를 잡기 전에 한다 — 엔진 자리를 네트워크 대기로 붙잡지 않는다
+        ObjectNode existing = null;
+        ParkingEngine.Obstacles obstacles = null;
+        if (buildings != null) {
+            BuildingFootprints.Lookup lk = buildings.lookup(pnu, bbox(geom));
+            OnSite on = lk.ok() ? onSite(lk.items(), geom) : null;
+            existing = existingBlock(params.keepBuildings(), lk.ok(), on);
+            if (on != null && params.keepBuildings() && !on.geometries().isEmpty()) {
+                obstacles = new ParkingEngine.Obstacles(on.geometries(), BUILDING_CLEARANCE_M);
+            }
+        }
         boolean acquired;
         try {
             acquired = engineSlots.tryAcquire(ENGINE_WAIT_MS, TimeUnit.MILLISECONDS);
@@ -254,7 +300,7 @@ public class ParkingBridge {
         }
         ParkingEngineAdapter.SimOut sim;
         try {
-            sim = new ParkingEngineAdapter().simulate(geom, dims, params);
+            sim = new ParkingEngineAdapter().simulate(geom, dims, params, obstacles);
         } finally {
             engineSlots.release();
         }
@@ -273,8 +319,96 @@ public class ParkingBridge {
         r.put("recommended_alt_code", rec);
         r.set("alternatives", sim.alternatives());
         base.set("constraint_reasons", sim.constraintReasons());
+        if (existing != null) {
+            if ("unavailable".equals(existing.get("status").stringValue())) {
+                sim.constraintReasons().add(EXISTING_BUILDINGS_UNAVAILABLE);
+            }
+            base.set("existing_buildings", existing);
+        }
         base.putNull("message");
         return base;
+    }
+
+    /** 대지 위 건물: 엔진에 줄 윤곽선 GeoJSON, 응답용 Feature 들, 대지 안 면적 합(㎡). */
+    record OnSite(List<JsonNode> geometries, List<ObjectNode> features, double areaM2) {
+    }
+
+    /**
+     * 조회된 건물 중 대지 위 건물만 고른다: 대지와 겹친 면적이 윤곽선의 {@value #BUILDING_ON_SITE_MIN_SHARE} 이상이고
+     * {@value #BUILDING_ON_SITE_MIN_M2}㎡ 이상인 것. 지적도와 건물 윤곽선은 1m 안팎 어긋날 수 있어, 경계를 살짝 넘은 이웃 건물은 뺀다.
+     */
+    static OnSite onSite(List<BuildingFootprint> items, JsonNode siteGeom) {
+        Geometry site;
+        try {
+            site = Geo.toUtmk(Geo.geojsonToShape(siteGeom));
+        } catch (RuntimeException e) {
+            return new OnSite(List.of(), List.of(), 0.0);
+        }
+        List<JsonNode> geoms = new ArrayList<>();
+        List<ObjectNode> feats = new ArrayList<>();
+        List<Geometry> inside = new ArrayList<>();
+        for (BuildingFootprint b : items) {
+            Geometry g;
+            try {
+                g = Geo.toUtmk(Geo.geojsonToShape(b.geometry()));
+            } catch (RuntimeException e) {
+                continue;
+            }
+            if (g.isEmpty() || !g.intersects(site)) {
+                continue;
+            }
+            Geometry in = Shapely.intersection(g, site);
+            double overlap = in.getArea();
+            if (overlap < BUILDING_ON_SITE_MIN_M2 || overlap < BUILDING_ON_SITE_MIN_SHARE * g.getArea()) {
+                continue;
+            }
+            geoms.add(b.geometry());
+            inside.add(in);
+            ObjectNode f = Json.object();
+            f.put("type", "Feature");
+            f.set("geometry", b.geometry());
+            ObjectNode p = f.putObject("properties");
+            p.put("id", b.id());
+            p.put("name", b.name());
+            if (b.floors() == null) {
+                p.putNull("floors");
+            } else {
+                p.put("floors", b.floors());
+            }
+            feats.add(f);
+        }
+        double area = inside.isEmpty() ? 0.0 : Shapely.unionAll(inside).getArea();
+        return new OnSite(geoms, feats, area);
+    }
+
+    /** 응답의 existing_buildings 블록. */
+    static ObjectNode existingBlock(boolean keep, boolean ok, OnSite on) {
+        ObjectNode o = Json.object();
+        o.put("mode", keep ? "keep" : "ignore");
+        int count = ok && on != null ? on.features().size() : 0;
+        o.put("status", !ok ? "unavailable" : count == 0 ? "none" : keep ? "applied" : "ignored");
+        o.put("count", count);
+        o.put("area_m2", count == 0 ? 0.0 : Math.round(on.areaM2() * 10.0) / 10.0);
+        o.put("clearance_m", BUILDING_CLEARANCE_M);
+        o.put("source", BuildingFootprints.SOURCE);
+        if (!ok) {
+            o.putNull("features");
+        } else {
+            ObjectNode fc = o.putObject("features");
+            fc.put("type", "FeatureCollection");
+            ArrayNode fa = fc.putArray("features");
+            if (on != null) {
+                on.features().forEach(fa::add);
+            }
+        }
+        return o;
+    }
+
+    /** 경계 GeoJSON 의 경계 상자 [최소경도, 최소위도, 최대경도, 최대위도]. 좌표가 없으면 null. */
+    static double[] bbox(JsonNode geom) {
+        double[] b = {Double.POSITIVE_INFINITY, Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY, Double.NEGATIVE_INFINITY};
+        extend(geom == null ? null : geom.get("coordinates"), b, 0);
+        return b[0] <= b[2] && b[1] <= b[3] ? b : null;
     }
 
     /**

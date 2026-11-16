@@ -293,7 +293,11 @@ export interface LayoutFeature {
   properties: { layer: LayoutLayerKind; [key: string]: unknown };
 }
 
-/** 배치안 한 개의 지도 레이어 — GeoJSON FeatureCollection (각 feature 의 properties.layer 로 종류 구분) */
+/**
+ * 배치안 한 개의 지도 레이어 — GeoJSON FeatureCollection (각 feature 의 properties.layer 로 종류 구분).
+ * 건물로 대지가 나뉘면 BE 는 출입구를 MultiPoint · MultiLineString 하나로 주지만, 어댑터가 조각마다 feature 하나로 나눠
+ * (properties.part = 조각 번호) 출입구 수를 feature 수로 셀 수 있게 합니다. 그래서 여기에는 Multi 점·선이 없습니다.
+ */
 export interface LayoutLayers {
   type: 'FeatureCollection';
   features: LayoutFeature[];
@@ -314,6 +318,49 @@ export interface LayoutAlternative {
   layers: LayoutLayers;
 }
 
+/** 기존 건물을 배치에서 어떻게 다룰지 — keep: 건물(+ 이격)을 피해 배치(기본) · ignore: 건물을 철거한다고 가정 */
+export type ExistingBuildingsMode = 'keep' | 'ignore';
+
+export const EXISTING_BUILDINGS_MODES: readonly ExistingBuildingsMode[] = ['keep', 'ignore'];
+
+/**
+ * 기존 건물 반영 결과
+ *  - applied: 대지 위 건물을 피해 배치함 (keep · 1동 이상)
+ *  - ignored: 철거 가정으로 건물을 무시함 (ignore · 1동 이상)
+ *  - none: 대지 위에 건물이 없음
+ *  - unavailable: 건물 조회 실패 — 건물 없이 계산함 (외곽선 없음)
+ */
+export type ExistingBuildingsStatus = 'applied' | 'ignored' | 'none' | 'unavailable';
+
+export type FootprintGeometry = Extract<GeoJsonGeometry, { type: 'Polygon' | 'MultiPolygon' }>;
+
+/** 건물 한 동의 외곽선 (브이월드 도로명주소 건물) */
+export interface ExistingBuilding {
+  id: string | null;
+  name: string | null;
+  /** 층수 — 모르면 null */
+  floors: number | null;
+  /** EPSG:4326 [경도, 위도] */
+  geometry: FootprintGeometry;
+}
+
+/** 배치 계산이 본 기존 건물 (simulated=true 일 때만 BE 가 줌) */
+export interface ExistingBuildings {
+  /** 이 결과를 계산한 방식 (요청의 메아리) */
+  mode: ExistingBuildingsMode;
+  status: ExistingBuildingsStatus;
+  /** 대지와 겹치는 건물 수 */
+  count: number;
+  /** 대지 안 건물 면적 (㎡, 0.1 단위) — 모르면 null */
+  areaM2: number | null;
+  /** 건물에서 띄운 거리 (m) — 모르면 null */
+  clearanceM: number | null;
+  /** 출처 이름 (예: 브이월드 도로명주소 건물) */
+  source: string | null;
+  /** 지도·DXF 에 그릴 외곽선 — 모양이 틀린 것은 뺌. 조회 실패면 빈 배열 */
+  footprints: ExistingBuilding[];
+}
+
 export interface ParkingSimulation {
   reviewId: string;
   pnu: string;
@@ -332,6 +379,8 @@ export interface ParkingSimulation {
     recommendedCode: string | null;
     alternatives: LayoutAlternative[];
   } | null;
+  /** 기존 건물 반영 결과 — 계산하지 않았거나(simulated=false) 예전 BE 응답이면 null */
+  existingBuildings: ExistingBuildings | null;
 }
 
 // ── 법규 원문 근거 (GET /v1/rules/{ruleId}/basis) ──────────

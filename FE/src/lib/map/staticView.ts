@@ -1,4 +1,4 @@
-import type { LatLng, LayoutLayers } from '@/lib/api/types';
+import type { GeoJsonGeometry, LatLng, LayoutLayers } from '@/lib/api/types';
 import { fitZoom, project } from './geo';
 import { TILE_MAX_ZOOM, visibleTiles, type TileZoomRange } from './tileSource';
 
@@ -100,27 +100,48 @@ function ringOf(raw: unknown): LatLng[] {
   return Array.isArray(raw) ? raw.map(lngLat).filter((p): p is LatLng => p !== null) : [];
 }
 
-/** 배치안 GeoJSON → SVG 도형 (그리는 순서: 가용 영역 → 차로 → 주차구획 → 출입구) */
-export function layoutShapes(view: StaticView, layers: LayoutLayers | null | undefined): StaticShape[] {
-  if (!layers) return [];
-  const order = ['usable_area', 'aisle', 'stall', 'gate_opening', 'gate'];
-  const out: StaticShape[] = [];
-  for (const f of layers.features) {
-    const layer = String(f.properties?.layer ?? '');
-    const g = f.geometry;
-    if (g.type === 'Polygon') {
-      const d = g.coordinates.map((r) => ringPath(view, ringOf(r))).join('');
-      if (d) out.push({ layer, d });
-    } else if (g.type === 'MultiPolygon') {
-      const d = g.coordinates.map((poly) => poly.map((r) => ringPath(view, ringOf(r))).join('')).join('');
-      if (d) out.push({ layer, d });
-    } else if (g.type === 'LineString') {
-      const d = ringPath(view, ringOf(g.coordinates), false);
-      if (d) out.push({ layer, d });
-    } else if (g.type === 'Point') {
-      const p = lngLat(g.coordinates);
-      if (p) out.push({ layer, d: '', point: view.toPx(p) });
-    }
+/** 도형 하나 → SVG 도형 (모양이 틀려 그릴 점이 없으면 null) */
+function geometryShape(view: StaticView, layer: string, g: GeoJsonGeometry): StaticShape | null {
+  if (g.type === 'Polygon') {
+    const d = g.coordinates.map((r) => ringPath(view, ringOf(r))).join('');
+    return d ? { layer, d } : null;
   }
-  return out.sort((a, b) => order.indexOf(a.layer) - order.indexOf(b.layer));
+  if (g.type === 'MultiPolygon') {
+    const d = g.coordinates.map((poly) => poly.map((r) => ringPath(view, ringOf(r))).join('')).join('');
+    return d ? { layer, d } : null;
+  }
+  if (g.type === 'LineString') {
+    const d = ringPath(view, ringOf(g.coordinates), false);
+    return d ? { layer, d } : null;
+  }
+  if (g.type === 'Point') {
+    const p = lngLat(g.coordinates);
+    return p ? { layer, d: '', point: view.toPx(p) } : null;
+  }
+  return null;
+}
+
+/** 그리는 순서(아래 → 위): 가용 영역 → 차로 → 주차구획 → 기존 건물 → 출입구 개구부 → 출입구 */
+const SHAPE_ORDER = ['usable_area', 'aisle', 'stall', 'building', 'gate_opening', 'gate'];
+
+/**
+ * 배치안 GeoJSON(과 기존 건물 외곽선) → SVG 도형.
+ * 기존 건물(layer 'building')은 주차구획 위·출입구 아래에 그립니다 — 철거 가정이면 그 자리에 놓인 구획 위로 점선 외곽선이 보이고, 출입구 표시는 가리지 않게.
+ * 출입구는 점마다 하나 (건물로 나뉜 대지는 어댑터가 MultiPoint 를 점마다 feature 로 나눠 둠)
+ */
+export function layoutShapes(
+  view: StaticView,
+  layers: LayoutLayers | null | undefined,
+  buildings: readonly { geometry: GeoJsonGeometry }[] = [],
+): StaticShape[] {
+  const out: StaticShape[] = [];
+  for (const f of layers?.features ?? []) {
+    const shape = geometryShape(view, String(f.properties?.layer ?? ''), f.geometry);
+    if (shape) out.push(shape);
+  }
+  for (const b of buildings) {
+    const shape = geometryShape(view, 'building', b.geometry);
+    if (shape) out.push(shape);
+  }
+  return out.sort((a, b) => SHAPE_ORDER.indexOf(a.layer) - SHAPE_ORDER.indexOf(b.layer));
 }

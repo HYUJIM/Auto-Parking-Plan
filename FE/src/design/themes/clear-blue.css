@@ -106,6 +106,14 @@
   --map-layout-gate-stroke-width: 4;
   --map-layout-usable-stroke: #ffffff;
 
+  /* 기존 건물 (배치가 피한 건물 외곽선) — 유지: 진한 회색 채움 + 더 진한 외곽선 · 철거 가정: 연한 채움 + 점선 */
+  --map-building-fill: #4a5261;
+  --map-building-fill-opacity: 0.9;
+  --map-building-stroke: #1c2129;
+  --map-building-demolished-fill: #ffffff;
+  --map-building-demolished-fill-opacity: 0.16;
+  --map-building-demolished-stroke: #ffffff;
+
   /* 소개 페이지(/) — 도면풍 어두운 바탕과 모션 강조색. 투명도는 쓰는 쪽에서 color-mix 로 만듭니다 */
   --landing-ink: #0a1330;
   --landing-ink-2: #13224f;
